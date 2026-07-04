@@ -1,0 +1,13 @@
+.vs/
+obj/
+bin/
+*.user
+.idea/
+.dotnet/
+.qoder/
+DailyRoutines.Modules/General/DevModule.cs
+
+.fake
+.claude
+.codex
+.reasonix
