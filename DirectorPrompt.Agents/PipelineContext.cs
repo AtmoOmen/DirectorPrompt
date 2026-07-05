@@ -20,11 +20,18 @@ public sealed class PipelineContext
 
     public string? NarrativeOutput { get; set; }
 
+    public string? ThinkingOutput { get; set; }
+
     public List<Violation> Violations { get; } = [];
 
     public bool AuditPassed { get; set; }
 
     public int AuditRetryCount { get; set; }
+
+    /// <summary>
+    /// 流式回调, 参数为 (narrativeText, thinkingText), 表示当前累计的叙事文本和思考文本
+    /// </summary>
+    public Action<string, string>? OnStreamingUpdate { get; set; }
 
     public ToolExecutionContext ToolContext => new
     (

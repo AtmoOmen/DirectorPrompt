@@ -3,6 +3,7 @@ using DirectorPrompt.Agents;
 using DirectorPrompt.Domain.Configurations;
 using Microsoft.Extensions.AI;
 using OpenAI;
+using Serilog;
 
 namespace DirectorPrompt.Infrastructure.AI;
 
@@ -11,6 +12,14 @@ public sealed class ChatClientFactory : IChatClientFactory
     public IChatClient Create(ModelConfig config)
     {
         var provider = config.Provider.ToLowerInvariant();
+
+        Log.Information
+        (
+            "创建 ChatClient: Provider={Provider}, 模型={Model}, Endpoint={Endpoint}",
+            provider,
+            config.ModelName,
+            config.Endpoint
+        );
 
         var openAIClient = provider switch
         {

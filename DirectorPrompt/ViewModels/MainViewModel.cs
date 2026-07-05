@@ -73,6 +73,8 @@ public sealed partial class MainViewModel : ObservableObject
     {
         try
         {
+            Log.Information("加载项目列表");
+
             var projects = await projectRepository.GetAllAsync();
 
             var previousID = CurrentProject?.ID;
@@ -88,6 +90,8 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 CurrentProject = Projects.FirstOrDefault(p => p.ID == previousID.Value);
             }
+
+            Log.Information("项目列表加载完成: 数量={Count}", Projects.Count);
         }
         catch (Exception ex)
         {
@@ -165,9 +169,26 @@ public sealed partial class MainViewModel : ObservableObject
             var directorContent = string.Join("\n", items.Select(d => $"[{d.Type}] {d.Content}"));
             Dialog.AddDirectorEntry(0, directorContent);
 
-            var result = await orchestrator.ProcessBatchAsync(batch);
+            var streamingEntry = Dialog.BeginStreamingNarrative(0);
 
-            Dialog.AddNarrativeEntry(result.RoundID, result.Narrative);
+            var dispatcher = Application.Current.Dispatcher;
+
+            var result = await orchestrator.ProcessBatchAsync
+            (
+                batch,
+                onStreamingUpdate: (narrative, thinking) =>
+                {
+                    dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        streamingEntry.UpdateStreamingContent(narrative, thinking);
+                    }));
+                }
+            );
+
+            streamingEntry.RoundID = result.RoundID;
+            streamingEntry.Content = result.Narrative;
+            streamingEntry.Thinking = result.Thinking;
+            streamingEntry.RenderMarkdown();
 
             await RefreshSidebarAsync();
 
@@ -273,6 +294,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (value is not null)
         {
+            Log.Information("切换项目: ID={ProjectID}, 名称={Name}", value.ID, value.Name);
+
             if (!string.IsNullOrWhiteSpace(value.OpeningMessage))
             {
                 Dialog.AddOpeningMessage(value.OpeningMessage);

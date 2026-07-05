@@ -14,7 +14,7 @@ public static class LoggingConfiguration
         Directory.CreateDirectory(fullPath);
 
         return new LoggerConfiguration()
-               .MinimumLevel.Information()
+               .MinimumLevel.Debug()
                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
                .MinimumLevel.Override("System", LogEventLevel.Warning)
                .Enrich.FromLogContext()

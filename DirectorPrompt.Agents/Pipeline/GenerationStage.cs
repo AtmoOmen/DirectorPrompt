@@ -5,6 +5,7 @@ using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents.Pipeline;
 
@@ -33,6 +34,13 @@ public sealed class GenerationStage
         if (narratorAgent is null)
             throw new InvalidOperationException("未配置 Narrator Agent");
 
+        Log.Information
+        (
+            "GenerationStage 开始: 模型={Model}, 温度={Temperature}",
+            narratorAgent.ModelConfig.ModelName,
+            narratorAgent.Temperature
+        );
+
         var client      = chatClientFactory.Create(narratorAgent.ModelConfig);
         var tools       = knowledgeTools.Create(context.ToolContext);
         var userMessage = BuildNarratorInput(context);
@@ -50,9 +58,51 @@ public sealed class GenerationStage
             Tools       = [.. tools]
         };
 
-        var response = await client.GetResponseAsync(messages, options, cancellationToken);
+        var narrativeBuilder = new StringBuilder();
+        var reasoningBuilder = new StringBuilder();
+        var updateCount      = 0;
 
-        context.NarrativeOutput = response.Messages.LastOrDefault()?.Text ?? string.Empty;
+        var updates = client.GetStreamingResponseAsync(messages, options, cancellationToken);
+
+        await foreach (var update in updates)
+        {
+            updateCount++;
+
+            foreach (var content in update.Contents)
+            {
+                if (content is TextReasoningContent reasoning)
+                    reasoningBuilder.Append(reasoning.Text);
+                else if (content is TextContent text)
+                    narrativeBuilder.Append(text.Text);
+            }
+
+            if (context.OnStreamingUpdate is not null)
+            {
+                context.OnStreamingUpdate
+                (
+                    narrativeBuilder.ToString(),
+                    reasoningBuilder.ToString()
+                );
+            }
+        }
+
+        var apiReasoning = reasoningBuilder.ToString();
+        var rawText      = narrativeBuilder.ToString();
+        var (thinking, narrative) = ThinkingParser.Merge(apiReasoning, rawText);
+
+        context.NarrativeOutput = narrative;
+        context.ThinkingOutput  = thinking;
+
+        Log.Information
+        (
+            "GenerationStage 完成: 流式更新数={Updates}, 叙事长度={NarrativeLen}, 思考长度={ThinkingLen}",
+            updateCount,
+            narrative.Length,
+            thinking.Length
+        );
+
+        if (!string.IsNullOrEmpty(thinking))
+            Log.Debug("Thinking 内容预览: {Preview}", thinking.Length > 200 ? thinking[..200] + "..." : thinking);
     }
 
     public async Task RetryWithFeedbackAsync
@@ -66,6 +116,13 @@ public sealed class GenerationStage
 
         if (narratorAgent is null)
             throw new InvalidOperationException("未配置 Narrator Agent");
+
+        Log.Information
+        (
+            "GenerationStage 重试: 模型={Model}, 违规数={ViolationCount}",
+            narratorAgent.ModelConfig.ModelName,
+            violations.Count
+        );
 
         var client = chatClientFactory.Create(narratorAgent.ModelConfig);
         var tools  = knowledgeTools.Create(context.ToolContext);
@@ -103,7 +160,37 @@ public sealed class GenerationStage
 
         var response = await client.GetResponseAsync(messages, options, cancellationToken);
 
-        context.NarrativeOutput = response.Messages.LastOrDefault()?.Text ?? string.Empty;
+        var assistantMessage = response.Messages.LastOrDefault();
+
+        var apiReasoning = ExtractReasoning(assistantMessage);
+        var rawText      = assistantMessage?.Text ?? string.Empty;
+        var (thinking, narrative) = ThinkingParser.Merge(apiReasoning, rawText);
+
+        context.NarrativeOutput = narrative;
+        context.ThinkingOutput  = thinking;
+
+        Log.Information
+        (
+            "GenerationStage 重试完成: 叙事长度={NarrativeLen}, 思考长度={ThinkingLen}",
+            narrative.Length,
+            thinking.Length
+        );
+    }
+
+    private static string ExtractReasoning(ChatMessage? message)
+    {
+        if (message is null)
+            return string.Empty;
+
+        var sb = new StringBuilder();
+
+        foreach (var content in message.Contents)
+        {
+            if (content is TextReasoningContent reasoning)
+                sb.Append(reasoning.Text);
+        }
+
+        return sb.ToString();
     }
 
     private static string BuildNarratorInput(PipelineContext context)

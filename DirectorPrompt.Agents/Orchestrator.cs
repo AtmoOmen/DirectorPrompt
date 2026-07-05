@@ -8,6 +8,7 @@ using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents;
 
@@ -120,8 +121,9 @@ public sealed class Orchestrator
 
     public async Task<NarrationResult> ProcessBatchAsync
     (
-        DirectiveBatch    batch,
-        CancellationToken cancellationToken = default
+        DirectiveBatch             batch,
+        Action<string, string>?    onStreamingUpdate = null,
+        CancellationToken          cancellationToken = default
     )
     {
         var project = await projectRepository.GetByIDAsync(batch.ProjectID, cancellationToken);
@@ -133,6 +135,15 @@ public sealed class Orchestrator
         var activeScene      = await sceneRepository.GetActiveSceneAsync(batch.ProjectID, cancellationToken);
         var timelinePosition = activeScene?.TimelinePosition ?? 0;
 
+        Log.Information
+        (
+            "Orchestrator 开始处理批次: 项目={ProjectID}, 轮次={RoundID}, 场景={SceneID}, 指令数={DirectiveCount}",
+            batch.ProjectID,
+            roundID,
+            activeScene?.ID,
+            batch.Directives.Count
+        );
+
         await ProcessDirectivesAsync(batch, roundID, activeScene, cancellationToken);
 
         var context = new PipelineContext
@@ -140,7 +151,8 @@ public sealed class Orchestrator
             DirectiveBatch          = batch,
             RoundID                 = roundID,
             CurrentSceneID          = activeScene?.ID,
-            CurrentTimelinePosition = timelinePosition
+            CurrentTimelinePosition = timelinePosition,
+            OnStreamingUpdate       = onStreamingUpdate
         };
 
         await retrievalStage.ExecuteAsync(context, cancellationToken);
@@ -182,22 +194,35 @@ public sealed class Orchestrator
 
         await directiveRepository.DecrementTTLAsync(batch.ProjectID, cancellationToken);
 
+        Log.Information
+        (
+            "Orchestrator 批次处理完成: 轮次={RoundID}, 审计通过={Passed}, 违规数={Violations}",
+            roundID,
+            context.AuditPassed,
+            context.Violations.Count
+        );
+
         return new NarrationResult
         (
             context.NarrativeOutput ?? string.Empty,
+            context.ThinkingOutput ?? string.Empty,
             roundID,
             context.Violations,
             context.AuditPassed
         );
     }
 
-    public async Task DeleteRoundAsync(long projectID, long roundID, CancellationToken cancellationToken = default) =>
+    public async Task DeleteRoundAsync(long projectID, long roundID, CancellationToken cancellationToken = default)
+    {
+        Log.Information("删除轮次: 项目={ProjectID}, 轮次={RoundID}", projectID, roundID);
         await eventRepository.RemoveByRoundAsync(roundID, cancellationToken);
+    }
 
     public async Task<NarrationResult> RewriteAsync
     (
-        DirectiveBatch    batch,
-        CancellationToken cancellationToken = default
+        DirectiveBatch          batch,
+        Action<string, string>? onStreamingUpdate = null,
+        CancellationToken       cancellationToken = default
     )
     {
         var latestRound = await eventRepository.GetLatestRoundIDAsync(batch.ProjectID, cancellationToken);
@@ -205,7 +230,7 @@ public sealed class Orchestrator
         if (latestRound > 0)
             await eventRepository.RemoveByRoundAsync(latestRound, cancellationToken);
 
-        return await ProcessBatchAsync(batch, cancellationToken);
+        return await ProcessBatchAsync(batch, onStreamingUpdate, cancellationToken);
     }
 
     public async Task<NarrationResult> CorrectAsync
@@ -227,7 +252,7 @@ public sealed class Orchestrator
 
         await eventRepository.RemoveByRoundAsync(latestRound, cancellationToken);
 
-        return await ProcessBatchAsync(correctedBatch, cancellationToken);
+        return await ProcessBatchAsync(correctedBatch, null, cancellationToken);
     }
 
     private async Task ProcessDirectivesAsync
@@ -245,6 +270,13 @@ public sealed class Orchestrator
                 var ttl = directive.Type == DirectiveType.Tone ?
                               5 :
                               (int?)null;
+
+                Log.Information
+                (
+                    "添加生效指令: 类型={Type}, TTL={TTL}",
+                    directive.Type,
+                    ttl?.ToString() ?? "永久"
+                );
 
                 await directiveRepository.AddAsync
                 (
@@ -276,7 +308,17 @@ public sealed class Orchestrator
         var sceneAgent = config.Agents.FirstOrDefault(a => a.Role == AgentRole.Scene);
 
         if (sceneAgent is null || !sceneAgent.Enabled)
+        {
+            Log.Debug("Scene Agent 未启用, 跳过场景创建");
             return;
+        }
+
+        Log.Information
+        (
+            "场景创建: 模型={Model}, 描述={Description}",
+            sceneAgent.ModelConfig.ModelName,
+            description
+        );
 
         var toolContext = new ToolExecutionContext
         (
@@ -303,6 +345,8 @@ public sealed class Orchestrator
         };
 
         await client.GetResponseAsync(messages, options, cancellationToken);
+
+        Log.Information("场景创建完成");
     }
 
     private async Task RunAuditLoopAsync(PipelineContext context, CancellationToken cancellationToken)
@@ -311,16 +355,35 @@ public sealed class Orchestrator
 
         for (var attempt = 0; attempt <= maxRetries; attempt++)
         {
+            Log.Information
+            (
+                "审计循环: 尝试={Attempt}/{MaxRetries}",
+                attempt,
+                maxRetries
+            );
+
             await auditStage.ExecuteAsync(context, cancellationToken);
             context.AuditRetryCount = attempt;
 
             if (context.AuditPassed)
+            {
+                Log.Information("审计通过, 退出循环");
                 return;
+            }
 
             if (attempt < maxRetries && config.AuditConfig.Mode == AuditMode.Blocking)
+            {
+                Log.Warning
+                (
+                    "审计未通过, 准备重试: 违规数={ViolationCount}",
+                    context.Violations.Count
+                );
+
                 await generationStage.RetryWithFeedbackAsync(context, context.Violations, cancellationToken);
+            }
             else
             {
+                Log.Warning("达到最大重试次数或非阻塞模式, 强制通过");
                 context.AuditPassed = true;
                 return;
             }
@@ -336,6 +399,14 @@ public sealed class Orchestrator
         CancellationToken cancellationToken
     )
     {
+        Log.Debug
+        (
+            "记录事件: 类型={Type}, 轮次={RoundID}, 数据长度={DataLength}",
+            type,
+            roundID,
+            data.Length
+        );
+
         var eventItem = new PlaythroughEvent
         {
             ProjectID = projectID,

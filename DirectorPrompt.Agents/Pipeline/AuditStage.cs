@@ -3,6 +3,7 @@ using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents.Pipeline;
 
@@ -45,6 +46,7 @@ public sealed class AuditStage
 
         if (auditConfig.Mode == AuditMode.Disabled)
         {
+            Log.Information("AuditStage: 审计已禁用, 跳过");
             context.AuditPassed = true;
             return;
         }
@@ -53,6 +55,7 @@ public sealed class AuditStage
 
         if (auditAgent is null || !auditAgent.Enabled)
         {
+            Log.Information("AuditStage: Audit Agent 未启用, 跳过");
             context.AuditPassed = true;
             return;
         }
@@ -60,6 +63,14 @@ public sealed class AuditStage
         var dimensions = auditConfig.Dimensions.Count > 0 ?
                              auditConfig.Dimensions.ToList() :
                              Enum.GetValues<AuditDimension>().ToList();
+
+        Log.Information
+        (
+            "AuditStage 开始: 模型={Model}, 维度数={DimensionCount}, 维度=[{Dimensions}]",
+            auditAgent.ModelConfig.ModelName,
+            dimensions.Count,
+            string.Join(", ", dimensions)
+        );
 
         var dimensionTasks = dimensions
                              .Select(dim => AuditDimensionAsync(context, auditAgent, dim, cancellationToken))
@@ -74,6 +85,24 @@ public sealed class AuditStage
         context.Violations.Clear();
         context.Violations.AddRange(allViolations);
         context.AuditPassed = allViolations.Count == 0;
+
+        Log.Information
+        (
+            "AuditStage 完成: 违规数={ViolationCount}, 审计通过={Passed}",
+            allViolations.Count,
+            context.AuditPassed
+        );
+
+        foreach (var v in allViolations)
+        {
+            Log.Warning
+            (
+                "审计违规: 类型={Type}, 严重性={Severity}, 描述={Description}",
+                v.Type,
+                v.Severity,
+                v.Description
+            );
+        }
     }
 
     private async Task AuditDimensionAsync
@@ -84,6 +113,8 @@ public sealed class AuditStage
         CancellationToken cancellationToken
     )
     {
+        Log.Debug("审计维度 {Dimension} 开始", dimension);
+
         auditTools.Reset();
 
         var (prompt, tools) = GetDimensionConfig(dimension, context.ToolContext);
@@ -103,6 +134,9 @@ public sealed class AuditStage
         };
 
         await client.GetResponseAsync(messages, options, cancellationToken);
+
+        var violations = auditTools.Violations.Count;
+        Log.Debug("审计维度 {Dimension} 完成: 违规数={ViolationCount}", dimension, violations);
     }
 
     private (string prompt, IList<AIFunction> tools) GetDimensionConfig

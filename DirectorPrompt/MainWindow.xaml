@@ -151,8 +151,37 @@
                                             </ui:Button>
                                         </Grid>
 
-                                        <ContentControl Margin="0,4,0,0"
-                                                        Visibility="{Binding IsNarrative, Converter={StaticResource BoolToVisibility}}">
+                                        <Expander Header="思考过程"
+                                                  Margin="0,4,0,0"
+                                                  FontSize="12"
+                                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                  Visibility="{Binding HasThinking, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="{Binding Thinking}"
+                                                       TextWrapping="Wrap"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                       Margin="0,4,0,0" />
+                                        </Expander>
+
+                                        <TextBlock Margin="0,4,0,0"
+                                                   Text="{Binding Content}"
+                                                   TextWrapping="Wrap"
+                                                   Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVisibility}}" />
+
+                                        <ContentControl Margin="0,4,0,0">
+                                            <ContentControl.Style>
+                                                <Style TargetType="ContentControl">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsNarrative}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsStreaming}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ContentControl.Style>
                                             <FlowDocumentScrollViewer Document="{Binding Document}"
                                                                       IsSelectionEnabled="True"
                                                                       VerticalScrollBarVisibility="Hidden" />

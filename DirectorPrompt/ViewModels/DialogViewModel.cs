@@ -8,15 +8,58 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed class DialogEntryViewModel : INotifyPropertyChanged
 {
-    private bool isLast;
+    private bool   isLast;
+    private string content  = string.Empty;
+    private string thinking = string.Empty;
+    private bool   isStreaming;
 
     public long ID { get; init; }
 
-    public long RoundID { get; init; }
+    public long RoundID { get; set; }
 
     public EventType Type { get; init; }
 
-    public string Content { get; init; } = string.Empty;
+    public string Content
+    {
+        get => content;
+        set
+        {
+            if (content != value)
+            {
+                content = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Content)));
+            }
+        }
+    }
+
+    public string Thinking
+    {
+        get => thinking;
+        set
+        {
+            if (thinking != value)
+            {
+                thinking = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Thinking)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasThinking)));
+            }
+        }
+    }
+
+    public bool HasThinking => !string.IsNullOrWhiteSpace(thinking);
+
+    public bool IsStreaming
+    {
+        get => isStreaming;
+        set
+        {
+            if (isStreaming != value)
+            {
+                isStreaming = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsStreaming)));
+            }
+        }
+    }
 
     public FlowDocument? Document { get; private set; }
 
@@ -44,7 +87,15 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
         if (IsNarrative)
         {
             Document = MarkdownRenderer.Render(Content);
+            IsStreaming = false;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
         }
+    }
+
+    public void UpdateStreamingContent(string narrative, string thinking)
+    {
+        Content = narrative;
+        Thinking = thinking;
     }
 }
 
@@ -90,7 +141,26 @@ public sealed class DialogViewModel
         Entries.Add(entry);
     }
 
-    public void AddNarrativeEntry(long roundID, string content)
+    public DialogEntryViewModel BeginStreamingNarrative(long roundID)
+    {
+        ClearLastFlag();
+
+        var entry = new DialogEntryViewModel
+        {
+            ID = Entries.Count + 1,
+            RoundID = roundID,
+            Type = EventType.NarrativeOutput,
+            Content = string.Empty,
+            Thinking = string.Empty,
+            IsStreaming = true,
+            IsLast = true
+        };
+
+        Entries.Add(entry);
+        return entry;
+    }
+
+    public void AddNarrativeEntry(long roundID, string content, string thinking = "")
     {
         ClearLastFlag();
 
@@ -100,6 +170,7 @@ public sealed class DialogViewModel
             RoundID = roundID,
             Type = EventType.NarrativeOutput,
             Content = content,
+            Thinking = thinking,
             IsLast = true
         };
 

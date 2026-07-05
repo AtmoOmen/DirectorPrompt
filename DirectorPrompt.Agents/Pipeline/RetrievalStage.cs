@@ -6,6 +6,7 @@ using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents.Pipeline;
 
@@ -44,6 +45,8 @@ public sealed class RetrievalStage
 
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
+        Log.Information("RetrievalStage 开始: 项目={ProjectID}, 轮次={RoundID}", context.DirectiveBatch.ProjectID, context.RoundID);
+
         var toolContext   = context.ToolContext;
         var knowledgeTask = RetrieveKnowledgeAsync(context, cancellationToken);
         var memoryTask    = RetrieveMemoryAsync(context, cancellationToken);
@@ -54,6 +57,14 @@ public sealed class RetrievalStage
         context.KnowledgeContext = await knowledgeTask;
         context.MemoryContext    = await memoryTask;
         context.SystemInjection  = await injectionTask;
+
+        Log.Information
+        (
+            "RetrievalStage 完成: 知识上下文长度={KnowledgeLen}, 记忆上下文长度={MemoryLen}, 系统注入长度={InjectionLen}",
+            context.KnowledgeContext?.Length ?? 0,
+            context.MemoryContext?.Length ?? 0,
+            context.SystemInjection?.Length ?? 0
+        );
     }
 
     private async Task<string> RetrieveKnowledgeAsync(PipelineContext context, CancellationToken cancellationToken)
@@ -61,7 +72,12 @@ public sealed class RetrievalStage
         var knowledgeAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Knowledge);
 
         if (knowledgeAgent is null || !knowledgeAgent.Enabled)
+        {
+            Log.Debug("Knowledge Agent 未启用, 跳过知识检索");
             return string.Empty;
+        }
+
+        Log.Information("知识检索: 模型={Model}", knowledgeAgent.ModelConfig.ModelName);
 
         var client        = chatClientFactory.Create(knowledgeAgent.ModelConfig);
         var tools         = knowledgeTools.Create(context.ToolContext);
@@ -82,7 +98,11 @@ public sealed class RetrievalStage
 
         var response = await client.GetResponseAsync(messages, options, cancellationToken);
 
-        return response.Messages.LastOrDefault()?.Text ?? string.Empty;
+        var assistantMessage = response.Messages.LastOrDefault();
+        var text             = assistantMessage?.Text ?? string.Empty;
+
+        Log.Information("知识检索完成: 返回长度={Length}", text.Length);
+        return text;
     }
 
     private async Task<string> RetrieveMemoryAsync(PipelineContext context, CancellationToken cancellationToken)
@@ -90,7 +110,12 @@ public sealed class RetrievalStage
         var memoryAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Memory);
 
         if (memoryAgent is null || !memoryAgent.Enabled)
+        {
+            Log.Debug("Memory Agent 未启用, 跳过记忆检索");
             return string.Empty;
+        }
+
+        Log.Information("记忆检索: 模型={Model}", memoryAgent.ModelConfig.ModelName);
 
         var client        = chatClientFactory.Create(memoryAgent.ModelConfig);
         var tools         = memoryTools.Create(context.ToolContext);
@@ -111,7 +136,11 @@ public sealed class RetrievalStage
 
         var response = await client.GetResponseAsync(messages, options, cancellationToken);
 
-        return response.Messages.LastOrDefault()?.Text ?? string.Empty;
+        var assistantMessage = response.Messages.LastOrDefault();
+        var text             = assistantMessage?.Text ?? string.Empty;
+
+        Log.Information("记忆检索完成: 返回长度={Length}", text.Length);
+        return text;
     }
 
     private async Task<string> BuildSystemInjectionAsync(ToolExecutionContext context, CancellationToken cancellationToken)

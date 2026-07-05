@@ -3,6 +3,7 @@ using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents.Pipeline;
 
@@ -35,7 +36,16 @@ public sealed class PostProcessingStage
         var memoryAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Memory);
 
         if (memoryAgent is null || !memoryAgent.Enabled)
+        {
+            Log.Debug("PostProcessingStage: Memory Agent 未启用, 跳过");
             return;
+        }
+
+        Log.Information
+        (
+            "PostProcessingStage 开始: 模型={Model}",
+            memoryAgent.ModelConfig.ModelName
+        );
 
         var client      = chatClientFactory.Create(memoryAgent.ModelConfig);
         var toolContext = context.ToolContext;
@@ -59,5 +69,7 @@ public sealed class PostProcessingStage
         };
 
         await client.GetResponseAsync(messages, options, cancellationToken);
+
+        Log.Information("PostProcessingStage 完成");
     }
 }
