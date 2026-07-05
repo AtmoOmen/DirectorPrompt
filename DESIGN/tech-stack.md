@@ -22,7 +22,6 @@
 | Markdown 渲染 | Markdig → FlowDocument | — | 自定义 FlowDocument 渲染器, 原生 WPF, 无 WebView2 依赖 |
 | MCP | ModelContextProtocol | `ModelContextProtocol` | 官方 .NET SDK, Server + Client |
 | 弹性 | Polly | `Polly` + `Microsoft.Extensions.Http.Resilience` | AI 调用重试与熔断 |
-| 测试 | xUnit + FluentAssertions | `xunit` + `FluentAssertions` | |
 
 ## 数据访问层: Dapper
 

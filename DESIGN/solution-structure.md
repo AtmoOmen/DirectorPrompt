@@ -12,8 +12,7 @@ DirectorPrompt/
 ├── DirectorPrompt.Domain/            # 领域模型 + 抽象接口
 ├── DirectorPrompt.Agents/            # Agent 定义 + 编排器 + 工具
 ├── DirectorPrompt.Infrastructure/    # 数据访问 + 外部集成
-├── DirectorPrompt/                   # WPF UI 主程序
-└── DirectorPrompt.Tests/             # 测试
+└── DirectorPrompt/                   # WPF UI 主程序
 ```
 
 ## 各项目职责
@@ -79,15 +78,6 @@ WPF 桌面应用主程序。依赖 Domain + Agents + Infrastructure + WPF-UI + C
 - 资源: 样式、主题、图标
 - 配置加载: `appsettings.json` 读取, 项目配置管理
 
-### DirectorPrompt.Tests
-
-测试项目。依赖全部项目。
-
-**内容:**
-- Domain 测试: 条件引擎、时间线坐标计算、状态阶段检测等纯逻辑测试
-- Agents 测试: Orchestrator 流水线测试 (mock AI 调用和仓储)、工具 handler 测试
-- Infrastructure 测试: 仓储实现测试 (内存 SQLite)、向量检索测试
-
 ## 依赖关系
 
 ```
@@ -114,11 +104,6 @@ WPF 桌面应用主程序。依赖 Domain + Agents + Infrastructure + WPF-UI + C
                     Markdig
                     M.E.Hosting
                     Serilog
-                        |
-                        ↓
-                  DirectorPrompt.Tests
-                   (net10.0-windows)
-              依赖: 全部
 ```
 
 ### 关键依赖规则
@@ -137,7 +122,6 @@ WPF 桌面应用主程序。依赖 Domain + Agents + Infrastructure + WPF-UI + C
 | Agents | `net10.0` | M.E.AI 跨平台, Agent 逻辑不依赖 Windows |
 | Infrastructure | `net10.0` | SQLite/Dapper/MCP 跨平台 |
 | DirectorPrompt | `net10.0-windows` | WPF 需要 Windows |
-| Tests | `net10.0-windows` | 需要测试 WPF 组件 |
 
 核心三层 (Domain/Agents/Infrastructure) 都是 `net10.0`, 不绑定 Windows。未来如果要做 CLI 版本或 Web 版本, 核心逻辑可以直接复用, 只需替换 UI 层。
 
