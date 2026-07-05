@@ -6,6 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\DirectorPrompt.Agents\DirectorPrompt.Agents.csproj"/>
         <ProjectReference Include="..\DirectorPrompt.Domain\DirectorPrompt.Domain.csproj"/>
     </ItemGroup>
 
@@ -20,12 +21,17 @@
         <PackageReference Include="Microsoft.Extensions.Hosting"/>
         <PackageReference Include="Microsoft.Extensions.Http.Resilience"/>
         <PackageReference Include="ModelContextProtocol"/>
+        <PackageReference Include="OpenAI"/>
         <PackageReference Include="Polly"/>
         <PackageReference Include="Serilog"/>
         <PackageReference Include="Serilog.Extensions.Hosting"/>
         <PackageReference Include="Serilog.Sinks.Async"/>
         <PackageReference Include="Serilog.Sinks.File"/>
         <PackageReference Include="sqlite-vec"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Schema\*.sql"/>
     </ItemGroup>
 
 </Project>

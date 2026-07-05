@@ -57,7 +57,7 @@ Agent 定义、编排器、工具实现。依赖 Domain + Microsoft.Extensions.A
 - SQLite 仓储实现: 所有 `I*Repository` 的 Dapper 实现
 - 向量检索: sqlite-vec 扩展加载、向量 CRUD、近邻查询封装
 - Schema 版本化: `schema_version` 表 + 嵌入式 SQL 脚本 + 迁移执行器
-- AI Provider 设置: `IChatClient` 和 `IEmbeddingGenerator` 的工厂/注册, OpenAI/Anthropic/Ollama 的连接配置
+- AI Provider 设置: `IChatClient` 和 `IEmbeddingGenerator` 的工厂/注册, OpenAI/Ollama 的连接配置
 - Embedding 服务实现: `IEmbeddingService` 的实现, 调用 `IEmbeddingGenerator` 生成向量
 - MCP 集成: MCP Server (对外暴露工具) + MCP Client (连接外部 MCP Server)
 - 弹性处理: Polly 策略配置 (重试、熔断), 包装 AI 调用
