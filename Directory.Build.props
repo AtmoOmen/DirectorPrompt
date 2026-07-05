@@ -1,0 +1,15 @@
+<Project>
+
+    <PropertyGroup Label="Target">
+        <PlatformTarget>x64</PlatformTarget>
+        <Platforms>x64</Platforms>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+        <NoWarn>1701;1702;CS0414;CS8601;CS8602;CS8604;CS8603;IDE1006;IDE0300;MSB3270;MSB324;CS0649;CA2211;CS8509;CS8625;MSB3305;CS8618;CS8600;CS8605;CS8620</NoWarn>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+        <BaseOutputPath>$(SolutionDir)bin</BaseOutputPath>
+        <SatelliteResourceLanguages>xxx</SatelliteResourceLanguages>
+    </PropertyGroup>
+
+</Project>
