@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Services;
+using DirectorPrompt.Infrastructure;
 using DirectorPrompt.Localization;
 using Serilog;
 
@@ -20,14 +21,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         Converters             = { new JsonStringEnumConverter() }
     };
 
-    private static readonly string UserSettingsDir = Path.Combine
-    (
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DirectorPrompt"
-    );
-
-    private static readonly string UserSettingsPath = Path.Combine(UserSettingsDir, "usersettings.json");
-
     private readonly IModelConnectionTester connectionTester;
     private readonly ILocalizationService   localizationService;
 
@@ -36,9 +29,6 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string validationMessage = string.Empty;
-
-    [ObservableProperty]
-    private string databasePath = string.Empty;
 
     [ObservableProperty]
     private int snapshotInterval;
@@ -66,7 +56,6 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private void LoadSettings(UserSettings userSettings)
     {
-        DatabasePath     = userSettings.Database.Path;
         SnapshotInterval = userSettings.Orchestrator.SnapshotInterval;
         SelectedLanguage = userSettings.Localization.Language;
 
@@ -122,8 +111,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             var settings = BuildUserSettings();
             var json     = JsonSerializer.Serialize(settings, JSONOptions);
 
-            Directory.CreateDirectory(UserSettingsDir);
-            await File.WriteAllTextAsync(UserSettingsPath, json);
+            Directory.CreateDirectory(AppPaths.DataDirectory);
+            await File.WriteAllTextAsync(AppPaths.UserSettingsPath, json);
 
             ValidationMessage = Loc.Get("Settings.Saved");
         }
@@ -162,7 +151,6 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         return new UserSettings
         {
-            Database = new DatabaseConfig { Path = DatabasePath },
             Orchestrator = new UserOrchestratorConfig
             {
                 Agents           = agents,

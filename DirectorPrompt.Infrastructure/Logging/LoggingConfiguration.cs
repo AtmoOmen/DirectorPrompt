@@ -7,9 +7,9 @@ namespace DirectorPrompt.Infrastructure.Logging;
 
 public static class LoggingConfiguration
 {
-    public static Logger CreateLogger(string logDirectory = "logs")
+    public static Logger CreateLogger(string? logDirectory = null)
     {
-        var fullPath = Path.Combine(AppContext.BaseDirectory, logDirectory);
+        var fullPath = logDirectory ?? AppPaths.LogDirectory;
 
         Directory.CreateDirectory(fullPath);
 

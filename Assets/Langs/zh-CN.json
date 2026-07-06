@@ -71,7 +71,6 @@
     "Character.Panel.Title": "人物列表",
     "Settings.Title": "全局设置",
     "Settings.Database.Title": "数据库",
-    "Settings.Database.Path": "数据库路径",
     "Settings.Database.SnapshotInterval": "快照间隔",
     "Settings.Agent.Title": "Agent 配置",
     "Settings.Agent.Description": "每个 Agent 可独立配置模型和温度",

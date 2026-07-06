@@ -71,7 +71,6 @@
     "Character.Panel.Title": "Characters",
     "Settings.Title": "Global Settings",
     "Settings.Database.Title": "Database",
-    "Settings.Database.Path": "Database Path",
     "Settings.Database.SnapshotInterval": "Snapshot Interval",
     "Settings.Agent.Title": "Agent Configuration",
     "Settings.Agent.Description": "Each agent can be configured with its own model and temperature",

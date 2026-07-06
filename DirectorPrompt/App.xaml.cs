@@ -35,22 +35,14 @@ public partial class App : Application
             host = Host.CreateDefaultBuilder()
                        .UseContentRoot(AppContext.BaseDirectory)
                        .UseSerilog()
-                       .ConfigureAppConfiguration
-                       (config =>
-                           {
-                               config.SetBasePath(AppContext.BaseDirectory);
-                               config.AddJsonFile("appsettings.json", false, true);
-
-                               var userSettingsDir = Path.Combine
-                               (
-                                   Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                                   "DirectorPrompt"
-                               );
-
-                               var userSettingsPath = Path.Combine(userSettingsDir, "usersettings.json");
-                               config.AddJsonFile(userSettingsPath, true, true);
-                           }
-                       )
+                        .ConfigureAppConfiguration
+                        (config =>
+                            {
+                                config.SetBasePath(AppContext.BaseDirectory);
+                                config.AddJsonFile("appsettings.json", false, true);
+                                config.AddJsonFile(AppPaths.UserSettingsPath, true, true);
+                            }
+                        )
                        .ConfigureServices(ConfigureServices)
                        .Build();
 
@@ -113,18 +105,9 @@ public partial class App : Application
     {
         var configuration = context.Configuration;
 
-        var dbPath = configuration["Database:Path"] ?? "director.db";
+        Directory.CreateDirectory(AppPaths.DataDirectory);
 
-        var fullDBPath = Path.IsPathRooted(dbPath) ?
-                             dbPath :
-                             Path.Combine(AppContext.BaseDirectory, dbPath);
-
-        var dbDirectory = Path.GetDirectoryName(fullDBPath);
-
-        if (!string.IsNullOrEmpty(dbDirectory) && !Directory.Exists(dbDirectory))
-            Directory.CreateDirectory(dbDirectory);
-
-        var connectionString  = $"Data Source={fullDBPath}";
+        var connectionString  = $"Data Source={AppPaths.DatabasePath}";
         var connectionFactory = new SqliteConnectionFactory(connectionString);
 
         services.AddSingleton(connectionFactory);
