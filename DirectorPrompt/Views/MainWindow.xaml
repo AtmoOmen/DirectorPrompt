@@ -255,7 +255,8 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <ScrollViewer Grid.Row="1"
+                <ScrollViewer x:Name="DialogScrollViewer"
+                              Grid.Row="1"
                               VerticalScrollBarVisibility="Auto"
                               Padding="16,8,16,8">
                     <ItemsControl ItemsSource="{Binding Dialog.Entries}">
@@ -350,7 +351,8 @@
                                             <FlowDocumentScrollViewer Document="{Binding Document}"
                                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                                                       IsSelectionEnabled="True"
-                                                                      VerticalScrollBarVisibility="Auto">
+                                                                      VerticalScrollBarVisibility="Disabled"
+                                                                      PreviewMouseWheel="OnFlowDocumentPreviewMouseWheel">
                                                 <FlowDocumentScrollViewer.Style>
                                                     <Style TargetType="FlowDocumentScrollViewer">
                                                         <Setter Property="Visibility" Value="Visible" />

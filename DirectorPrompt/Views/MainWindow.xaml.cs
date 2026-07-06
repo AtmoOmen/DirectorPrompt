@@ -128,4 +128,10 @@ public partial class MainWindow : FluentWindow
         if (PromptDialog.Confirm(this, Loc.Get("Common.Delete"), message, true))
             _ = viewModel.DeleteSessionCommand.ExecuteAsync(session);
     }
+
+    private void OnFlowDocumentPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        DialogScrollViewer.ScrollToVerticalOffset(DialogScrollViewer.VerticalOffset - e.Delta);
+        e.Handled = true;
+    }
 }
