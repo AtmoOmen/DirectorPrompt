@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using DirectorPrompt.Localization;
 using DirectorPrompt.ViewModels;
 using Wpf.Ui.Controls;
 using ListViewItem = System.Windows.Controls.ListViewItem;
@@ -50,6 +51,17 @@ public partial class ProjectEditWindow : FluentWindow
                                         Visibility.Collapsed;
     }
 
+    private void OnDeleteKnowledgeGroup(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: KnowledgeGroupEditViewModel group })
+            return;
+
+        if (!PromptDialog.Confirm(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteKnowledgeGroup", group.Name), true))
+            return;
+
+        ViewModel.DeleteKnowledgeGroupCommand.Execute(group);
+    }
+
     private void OnEditKnowledgeEntry(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement { Tag: KnowledgeEntryEditViewModel entry })
@@ -58,8 +70,13 @@ public partial class ProjectEditWindow : FluentWindow
 
     private void OnDeleteKnowledgeEntry(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { Tag: KnowledgeEntryEditViewModel entry })
-            ViewModel.DeleteKnowledgeEntryCommand.Execute(entry);
+        if (sender is not FrameworkElement { Tag: KnowledgeEntryEditViewModel entry })
+            return;
+
+        if (!PromptDialog.Confirm(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteKnowledgeEntry", entry.Title), true))
+            return;
+
+        ViewModel.DeleteKnowledgeEntryCommand.Execute(entry);
     }
 
     private void OnEditStateAttribute(object sender, RoutedEventArgs e)
@@ -70,8 +87,13 @@ public partial class ProjectEditWindow : FluentWindow
 
     private void OnDeleteStateAttribute(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { Tag: StateAttributeEditViewModel attr })
-            ViewModel.DeleteStateAttributeCommand.Execute(attr);
+        if (sender is not FrameworkElement { Tag: StateAttributeEditViewModel attr })
+            return;
+
+        if (!PromptDialog.Confirm(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteStateAttribute", attr.DisplayName), true))
+            return;
+
+        ViewModel.DeleteStateAttributeCommand.Execute(attr);
     }
 
     private async void OnSaveClick(object sender, RoutedEventArgs e)

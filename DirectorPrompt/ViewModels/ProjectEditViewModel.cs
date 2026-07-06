@@ -257,14 +257,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         var groups  = await knowledgeRepository.GetGroupsAsync(projectID);
         var entries = await knowledgeRepository.GetByProjectAsync(projectID);
 
-        var ungrouped = new KnowledgeGroupEditViewModel
-        {
-            ID          = 0,
-            Name        = Loc.Get("Knowledge.Group.Unnamed"),
-            Description = string.Empty,
-            Active      = true
-        };
-
         foreach (var group in groups)
         {
             var groupVM = new KnowledgeGroupEditViewModel
@@ -280,11 +272,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
             KnowledgeGroups.Add(groupVM);
         }
-
-        foreach (var entry in entries.Where(e => e.GroupID is null or 0))
-            ungrouped.Entries.Add(CreateEntryVM(entry, Loc.Get("Knowledge.Group.Unnamed")));
-
-        KnowledgeGroups.Add(ungrouped);
     }
 
     private async Task LoadStateSystemAsync()
@@ -370,8 +357,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
             foreach (var group in KnowledgeGroups)
             {
-                if (group.ID > 0)
-                    await SaveKnowledgeGroupAsync(group);
+                await SaveKnowledgeGroupAsync(group);
 
                 foreach (var entry in group.Entries)
                 {
@@ -412,9 +398,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             Title     = Loc.Get("Knowledge.Entry.New"),
             Content   = string.Empty,
             Tags      = [],
-            GroupID = group?.ID > 0 ?
-                          group.ID :
-                          null,
+            GroupID = group?.ID,
             Active = true
         };
 
@@ -428,17 +412,11 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             Tags         = string.Empty,
             GroupID      = created.GroupID,
             Active       = true,
-            GroupDisplay = group?.Name ?? Loc.Get("Knowledge.Group.Unnamed"),
+            GroupDisplay = group?.Name ?? string.Empty,
             IsEditing    = true
         };
 
-        if (group is not null)
-            group.Entries.Add(entryVM);
-        else
-        {
-            var ungrouped = KnowledgeGroups.FirstOrDefault(g => g.ID == 0);
-            ungrouped?.Entries.Add(entryVM);
-        }
+        group?.Entries.Add(entryVM);
     }
 
     [RelayCommand]
@@ -524,10 +502,8 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
         var created = await knowledgeRepository.CreateGroupAsync(group);
 
-        var insertIndex = KnowledgeGroups.Count - 1;
-        KnowledgeGroups.Insert
+        KnowledgeGroups.Add
         (
-            insertIndex,
             new KnowledgeGroupEditViewModel
             {
                 ID          = created.ID,

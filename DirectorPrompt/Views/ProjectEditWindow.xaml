@@ -242,13 +242,19 @@
                                                                    Appearance="Caution"
                                                                    Icon="Delete24"
                                                                    Padding="6,4"
-                                                                   Command="{Binding DataContext.DeleteKnowledgeGroupCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                                   CommandParameter="{Binding}" />
+                                                                   Click="OnDeleteKnowledgeGroup"
+                                                                   Tag="{Binding}" />
                                                     </StackPanel>
                                                 </Grid>
                                             </ui:CardExpander.Header>
 
                                             <StackPanel>
+                                                
+                                                <CheckBox
+                                                    Content="{Binding [Knowledge.Group.Enable], Source={x:Static loc:Loc.Instance}}"
+                                                    IsChecked="{Binding Active}"
+                                                    Margin="0,-4,0,8" />
+                                                
                                                 <TextBlock
                                                     Text="{Binding [Knowledge.Group.Name], Source={x:Static loc:Loc.Instance}}"
                                                     FontWeight="SemiBold" Margin="0,0,0,4" />
@@ -261,10 +267,6 @@
                                                 <ui:TextBox
                                                     Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
                                                     PlaceholderText="{Binding [Knowledge.Group.PlaceholderOptional], Source={x:Static loc:Loc.Instance}}"
-                                                    Margin="0,0,0,12" />
-                                                <CheckBox
-                                                    Content="{Binding [Knowledge.Group.Enable], Source={x:Static loc:Loc.Instance}}"
-                                                    IsChecked="{Binding Active}"
                                                     Margin="0,0,0,12" />
 
                                                 <TextBlock
@@ -309,6 +311,12 @@
                                                                     </Grid>
                                                                     <StackPanel
                                                                         Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                                        
+                                                                        <CheckBox
+                                                                            Content="{Binding [Knowledge.Entry.Active], Source={x:Static loc:Loc.Instance}}"
+                                                                            IsChecked="{Binding Active}"
+                                                                            Margin="0,8,0,4" />
+                                                                        
                                                                         <TextBlock
                                                                             Text="{Binding [Knowledge.Entry.TitleLabel], Source={x:Static loc:Loc.Instance}}"
                                                                             Margin="0,8,0,4" />
@@ -329,10 +337,6 @@
                                                                         <ui:TextBox
                                                                             Text="{Binding Tags, UpdateSourceTrigger=PropertyChanged}"
                                                                             PlaceholderText="{Binding [Knowledge.Entry.TagsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
-                                                                        <CheckBox
-                                                                            Content="{Binding [Knowledge.Entry.Active], Source={x:Static loc:Loc.Instance}}"
-                                                                            IsChecked="{Binding Active}"
-                                                                            Margin="0,8,0,4" />
                                                                     </StackPanel>
                                                                 </StackPanel>
                                                             </Border>
