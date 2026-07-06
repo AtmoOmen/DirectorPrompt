@@ -136,7 +136,6 @@ StateSnapshot {
     roundId: long          // 快照拍摄时的 roundId
     globalState: json      // 全局状态值
     characterState: json   // 人物状态值
-    flags: json            // 标记
     activeDirectives: json // 生效指令
     currentSceneId: long   // 当前场景
     sceneCharacters: json  // 当前在场人物

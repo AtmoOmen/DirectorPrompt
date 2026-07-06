@@ -169,10 +169,9 @@ public sealed class RetrievalStage
                             Task.FromResult<Scene?>(null);
 
         var stateTask      = stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Global, cancellationToken);
-        var flagsTask      = stateRepository.GetFlagsAsync(context.SessionID, cancellationToken);
         var directivesTask = directiveRepository.GetActiveAsync(context.SessionID, cancellationToken);
 
-        await Task.WhenAll(sceneTask, stateTask, flagsTask, directivesTask);
+        await Task.WhenAll(sceneTask, stateTask, directivesTask);
 
         var scene = await sceneTask;
 
@@ -194,21 +193,6 @@ public sealed class RetrievalStage
             {
                 var value = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID, cancellationToken);
                 sb.AppendLine($"- {attr.DisplayName}: {value?.Value ?? "未设置"}");
-            }
-
-            sb.AppendLine();
-        }
-
-        var flags = await flagsTask;
-
-        if (flags.Count > 0)
-        {
-            sb.AppendLine("## 标记");
-
-            foreach (var flag in flags)
-            {
-                if (flag.Value)
-                    sb.AppendLine($"- {flag.DisplayName}: 已触发");
             }
 
             sb.AppendLine();

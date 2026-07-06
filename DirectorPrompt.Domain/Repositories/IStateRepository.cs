@@ -41,11 +41,5 @@ public interface IStateRepository
 
     Task RemoveCompositeItemAsync(long itemID, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Flag>> GetFlagsAsync(long sessionID, CancellationToken cancellationToken = default);
-
-    Task DeleteFlagAsync(long sessionID, string name, CancellationToken cancellationToken = default);
-
-    Task SetFlagAsync(long projectID, long sessionID, string name, bool value, long? sceneID, CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<StateChangeLog>> GetChangeLogsAsync(long attributeID, long? sceneID = null, CancellationToken cancellationToken = default);
 }

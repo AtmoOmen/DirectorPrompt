@@ -28,12 +28,6 @@ public sealed class StateTools
         ),
         AIFunctionFactory.Create
         (
-            () => GetFlagsAsync(context),
-            "get_flags",
-            "查询所有标记的当前值"
-        ),
-        AIFunctionFactory.Create
-        (
             (string attribute) => GetCompositeItemsAsync(context, attribute),
             "get_composite_items",
             "查询复合类型状态属性的所有条目。attribute: 属性名"
@@ -52,12 +46,6 @@ public sealed class StateTools
             "set_state",
             "设置状态属性为指定值。attribute: 属性名; value: 新值; reason: 变更原因"
         ),
-        AIFunctionFactory.Create
-        (
-            (string name, string reason) => SetFlagAsync(context, name, reason),
-            "set_flag",
-            "设置全局标记。name: 标记名; reason: 原因"
-        )
     ];
 
     private async Task<string> GetStateAsync(ToolExecutionContext context, string attribute)
@@ -98,20 +86,6 @@ public sealed class StateTools
                 }
             );
         }
-
-        return JsonSerializer.Serialize(result);
-    }
-
-    private async Task<string> GetFlagsAsync(ToolExecutionContext context)
-    {
-        var flags = await stateRepository.GetFlagsAsync(context.SessionID);
-        var result = flags.Select
-        (f => new
-            {
-                name  = f.Name,
-                value = f.Value
-            }
-        );
 
         return JsonSerializer.Serialize(result);
     }
@@ -215,10 +189,4 @@ public sealed class StateTools
         );
     }
 
-    private async Task<string> SetFlagAsync(ToolExecutionContext context, string name, string reason)
-    {
-        await stateRepository.SetFlagAsync(context.ProjectID, context.SessionID, name, true, context.SceneID);
-
-        return JsonSerializer.Serialize(new { name, value = true });
-    }
 }

@@ -140,7 +140,7 @@ enum 变换和 composite 条目完成/失败时, 可以触发效果:
 
 ```
 Effect {
-    type: enum     // inject_knowledge / change_directive / update_state / set_flag
+    type: enum     // inject_knowledge / change_directive / update_state
     target: string
 }
 ```
@@ -150,25 +150,7 @@ Effect {
 | inject_knowledge | 注入知识条目到叙事上下文 | 天气变暴风雨 → 注入暴风雨相关知识 |
 | change_directive | 改变叙事基调 | 理智崩溃 → 基调变为混乱 |
 | update_state | 联动更新其他状态属性 | 任务完成 → 评价 +5 |
-| set_flag | 设置全局标记 | 阵营变为叛军 → 设置 joined_rebellion |
-
 Effect 是系统行为, 在状态变换时自动触发, 不经过 AI。
-
-## Flag: 全局事件标记
-
-独立于 StateAttribute, 记录"某件事是否发生过":
-
-```
-Flag {
-    name: string          // "met_mystery_man"
-    displayName: string   // "见过神秘人"
-    value: boolean
-    setAt: long?          // sceneId
-}
-```
-
-标记没有数值、没有阶段、没有变更规则 — 就是一个开关。来源是 Effect 的 `set_flag` 或 AI 的 tool call。
-
 ## 变更审计
 
 所有状态变更都记录:
@@ -196,7 +178,6 @@ StateChangeLog {
 StateSnapshot {
     sceneId: long
     attributes: json      // { "money": 500, "weather": "雨", ... }
-    flags: json           // { "met_mystery_man": true, ... }
 }
 ```
 
@@ -209,7 +190,6 @@ StateSnapshot {
 ```
 get_state(attribute: string) -> { value, stage? }
 get_all_state() -> [{ attribute, value, stage? }]
-get_flags() -> [{ name, value }]
 get_composite_items(attribute: string) -> [{ description, current, target, status }]
 ```
 
@@ -228,12 +208,6 @@ update_item(attribute: string, itemId: long, delta: float, reason: string) -> { 
 remove_item(attribute: string, itemId: long, reason: string)
 ```
 
-### 标记
-
-```
-set_flag(name: string, reason: string)
-```
-
 ### 权限矩阵
 
 | 操作 | narrative 驱动 | system 驱动 |
@@ -242,8 +216,6 @@ set_flag(name: string, reason: string)
 | update_state / set_state | ✓ | ✗ |
 | add_item / remove_item | ✓ | ✗ (仅 system 触发生成时由系统调用) |
 | update_item | ✓ | ✓ (推进进度是叙事的一部分) |
-| set_flag | ✓ | ✓ |
-
 ## 与其他系统的交互
 
 | 系统 | 交互方式 |

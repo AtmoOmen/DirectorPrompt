@@ -14,8 +14,6 @@ public record StateSnapshot
 
     public string CharacterState { get; init; } = "{}";
 
-    public string Flags { get; init; } = "{}";
-
     public string ActiveDirectives { get; init; } = "{}";
 
     public long CurrentSceneID { get; init; }

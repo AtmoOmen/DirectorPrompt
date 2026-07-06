@@ -371,63 +371,6 @@ public sealed class StateRepository : IStateRepository
         await connection.ExecuteAsync("DELETE FROM composite_items WHERE id = @itemID", new { itemID });
     }
 
-    public async Task<IReadOnlyList<Flag>> GetFlagsAsync(long sessionID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var rows = await connection.QueryAsync<FlagRow>
-                   (
-                       "SELECT * FROM flags WHERE session_id = @sessionID",
-                       new { sessionID }
-                   );
-
-        return rows.Select(r => r.ToFlag()).ToList();
-    }
-
-    public async Task DeleteFlagAsync(long sessionID, string name, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
-        (
-            "DELETE FROM flags WHERE session_id = @sessionID AND name = @name",
-            new { sessionID, name }
-        );
-    }
-
-    public async Task SetFlagAsync
-    (
-        long              projectID,
-        long              sessionID,
-        string            name,
-        bool              value,
-        long?             sceneID,
-        CancellationToken cancellationToken = default
-    )
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
-        (
-            """
-            INSERT INTO flags (project_id, session_id, name, display_name, value, set_at_scene_id)
-            VALUES (@projectID, @sessionID, @name, @name, @value, @sceneID)
-            ON CONFLICT(session_id, name)
-            DO UPDATE SET value = @value, set_at_scene_id = @sceneID
-            """,
-            new
-            {
-                projectID,
-                sessionID,
-                name,
-                value = value ?
-                            1 :
-                            0,
-                sceneID
-            }
-        );
-    }
-
     public async Task<IReadOnlyList<StateChangeLog>> GetChangeLogsAsync
     (
         long              attributeID,
@@ -529,29 +472,6 @@ public sealed class StateRepository : IStateRepository
                     "failed"    => CompositeItemStatus.Failed,
                     _           => CompositeItemStatus.Active
                 }
-            };
-    }
-
-    private sealed class FlagRow
-    {
-        public long   ID              { get; set; }
-        public long   Project_ID      { get; set; }
-        public long?  Session_ID      { get; set; }
-        public string Name            { get; set; } = string.Empty;
-        public string Display_Name    { get; set; } = string.Empty;
-        public int    Value           { get; set; }
-        public long?  Set_At_Scene_ID { get; set; }
-
-        public Flag ToFlag() =>
-            new()
-            {
-                ID           = ID,
-                ProjectID    = Project_ID,
-                SessionID    = Session_ID ?? 0,
-                Name         = Name,
-                DisplayName  = Display_Name,
-                Value        = Value != 0,
-                SetAtSceneID = Set_At_Scene_ID
             };
     }
 

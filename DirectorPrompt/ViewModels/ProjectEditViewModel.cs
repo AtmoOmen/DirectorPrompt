@@ -43,8 +43,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
     public ObservableCollection<StateAttributeEditViewModel> StateAttributes { get; } = [];
 
-    public ObservableCollection<FlagEditViewModel> Flags { get; } = [];
-
     public EmbeddingSettingViewModel Embedding { get; } = new();
 
     public AuditSettingViewModel Audit { get; } = new();
@@ -295,7 +293,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             return;
 
         StateAttributes.Clear();
-        Flags.Clear();
 
         var attributes = await stateRepository.GetAttributesAsync(projectID);
         var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
@@ -318,19 +315,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             StateAttributes.Add(attrVM);
         }
 
-        var flags = await stateRepository.GetFlagsAsync(projectID);
-
-        foreach (var flag in flags)
-        {
-            Flags.Add
-            (
-                new FlagEditViewModel
-                {
-                    Name        = flag.Name,
-                    DisplayName = flag.DisplayName
-                }
-            );
-        }
     }
 
     public bool Validate()
@@ -677,44 +661,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         {
             Log.Error(ex, "删除状态属性失败");
             ValidationMessage = Loc.Get("Common.DeleteFailed", ex.Message);
-        }
-    }
-
-    [RelayCommand]
-    private async Task AddFlagAsync()
-    {
-        if (projectID <= 0)
-        {
-            ValidationMessage = Loc.Get("Project.SaveBasicInfoFirst");
-            return;
-        }
-
-        var name = $"flag_{Flags.Count + 1}";
-
-        await stateRepository.SetFlagAsync(projectID, 0, name, false, null);
-
-        Flags.Add
-        (
-            new FlagEditViewModel
-            {
-                Name        = name,
-                DisplayName = name
-            }
-        );
-    }
-
-    [RelayCommand]
-    private async Task DeleteFlagAsync(FlagEditViewModel flag)
-    {
-        try
-        {
-            await stateRepository.DeleteFlagAsync(projectID, flag.Name);
-            Flags.Remove(flag);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "删除标记失败");
-            ValidationMessage = Loc.Get("State.Flag.DeleteFailed", ex.Message);
         }
     }
 

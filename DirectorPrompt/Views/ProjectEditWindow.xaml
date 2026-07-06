@@ -528,61 +528,6 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <Grid Margin="0,24,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0"
-                                           Text="{Binding [State.Flag.Title], Source={x:Static loc:Loc.Instance}}"
-                                           FontSize="16"
-                                           FontWeight="SemiBold"
-                                           VerticalAlignment="Center" />
-                                <ui:Button Grid.Column="1"
-                                           Content="{Binding [State.Flag.Add], Source={x:Static loc:Loc.Instance}}"
-                                           Icon="Add24"
-                                           Command="{Binding AddFlagCommand}" />
-                            </Grid>
-                            <TextBlock
-                                Text="{Binding [State.Flag.Description], Source={x:Static loc:Loc.Instance}}"
-                                FontSize="12"
-                                Foreground="Gray"
-                                TextWrapping="Wrap"
-                                Margin="0,0,0,8" />
-
-                            <ItemsControl ItemsSource="{Binding Flags}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Margin="0,2"
-                                                Padding="12,6"
-                                                Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="6">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding DisplayName}"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,8,0" />
-                                                    <TextBlock Text="{Binding Name}"
-                                                               Foreground="Gray"
-                                                               FontSize="12"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                                <ui:Button Grid.Column="1"
-                                                           Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
-                                                           Appearance="Caution"
-                                                           Command="{Binding DataContext.DeleteFlagCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                           CommandParameter="{Binding}" />
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
                         </StackPanel>
 
                         <!-- 审计配置 -->

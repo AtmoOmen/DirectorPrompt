@@ -4,6 +4,5 @@ public enum EffectType
 {
     InjectKnowledge,
     ChangeDirective,
-    UpdateState,
-    SetFlag
+    UpdateState
 }

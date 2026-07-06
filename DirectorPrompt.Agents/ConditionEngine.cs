@@ -341,7 +341,6 @@ public sealed class ConditionEngine : IConditionEngine
                 "state" => context.StateValues.TryGetValue(name, out var value) ?
                                value :
                                null,
-                "flag" => context.Flags.TryGetValue(name, out var value) && value,
                 _      => throw new ArgumentException($"未知的引用前缀: '{prefix}'")
             };
         }

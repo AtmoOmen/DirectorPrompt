@@ -22,7 +22,7 @@ DirectorPrompt/
 纯领域模型和抽象接口, 零外部依赖 (除 System.Text.Json)。
 
 **内容:**
-- 实体模型: `Scene`、`Round`、`StateAttribute`、`CompositeItem`、`Flag`、`KnowledgeEntry`、`KnowledgeGroup`、`MemoryEntry`、`Character`、`CharacterCategory`、`CharacterRelation`、`PlaythroughEvent`
+- 实体模型: `Scene`、`Round`、`StateAttribute`、`CompositeItem`、`KnowledgeEntry`、`KnowledgeGroup`、`MemoryEntry`、`Character`、`CharacterCategory`、`CharacterRelation`、`PlaythroughEvent`
 - 值对象和枚举: `ValueType`、`Driver`、`SceneStatus`、`CharacterStatus`、`DirectiveType`、`AuditSeverity` 等
 - 配置模型: `AuditConfig`、`MemoryConfig`、`KnowledgeRetrievalConfig`、`OrchestratorConfig`
 - Effect 模型: `Effect`、`EffectType`

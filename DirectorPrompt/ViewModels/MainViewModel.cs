@@ -658,23 +658,6 @@ public sealed partial class MainViewModel : ObservableObject
                 }
             );
         }
-
-        var flags = await stateRepository.GetFlagsAsync(CurrentSession.ID);
-
-        foreach (var flag in flags)
-        {
-            StatePanel.StateItems.Add
-            (
-                new StateItemViewModel
-                {
-                    Name = flag.DisplayName,
-                    Value = flag.Value ?
-                                "✓" :
-                                "✗",
-                    Scope = "Flag"
-                }
-            );
-        }
     }
 
     private async Task RefreshDirectivesPanelAsync()

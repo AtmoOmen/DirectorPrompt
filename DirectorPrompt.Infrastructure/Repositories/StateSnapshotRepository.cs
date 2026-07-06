@@ -42,8 +42,8 @@ public sealed class StateSnapshotRepository : IStateSnapshotRepository
                  (
                      """
                      INSERT INTO state_snapshots
-                         (project_id, session_id, round_id, global_state, character_state, flags, active_directives, current_scene_id, scene_characters, created_at)
-                     VALUES (@projectID, @sessionID, @roundID, @globalState, @characterState, @flags, @activeDirectives, @currentSceneID, @sceneCharacters, @createdAt);
+                         (project_id, session_id, round_id, global_state, character_state, active_directives, current_scene_id, scene_characters, created_at)
+                     VALUES (@projectID, @sessionID, @roundID, @globalState, @characterState, @activeDirectives, @currentSceneID, @sceneCharacters, @createdAt);
                      SELECT last_insert_rowid();
                      """,
                      new
@@ -53,8 +53,7 @@ public sealed class StateSnapshotRepository : IStateSnapshotRepository
                          roundID          = snapshot.RoundID,
                          globalState      = snapshot.GlobalState,
                          characterState   = snapshot.CharacterState,
-                         flags            = snapshot.Flags,
-                         activeDirectives = snapshot.ActiveDirectives,
+                        activeDirectives = snapshot.ActiveDirectives,
                          currentSceneID   = snapshot.CurrentSceneID,
                          sceneCharacters  = snapshot.SceneCharacters,
                          createdAt        = snapshot.CreatedAt.ToString("O")
@@ -90,7 +89,6 @@ public sealed class StateSnapshotRepository : IStateSnapshotRepository
         public long   Round_ID          { get; set; }
         public string Global_State      { get; set; } = "{}";
         public string Character_State   { get; set; } = "{}";
-        public string Flags             { get; set; } = "{}";
         public string Active_Directives { get; set; } = "{}";
         public long   Current_Scene_ID  { get; set; }
         public string Scene_Characters  { get; set; } = "[]";
@@ -105,7 +103,6 @@ public sealed class StateSnapshotRepository : IStateSnapshotRepository
                 RoundID          = Round_ID,
                 GlobalState      = Global_State,
                 CharacterState   = Character_State,
-                Flags            = Flags,
                 ActiveDirectives = Active_Directives,
                 CurrentSceneID   = Current_Scene_ID,
                 SceneCharacters  = Scene_Characters,
