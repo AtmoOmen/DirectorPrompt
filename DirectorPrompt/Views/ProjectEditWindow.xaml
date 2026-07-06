@@ -212,7 +212,9 @@
                                                                Text="{Binding Name}"
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
-                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                    <StackPanel Grid.Column="1" 
+                                                                Margin="0, 0, 8, 0" 
+                                                                Orientation="Horizontal">
                                                         <ui:Button Content="添加条目"
                                                                    Appearance="Secondary"
                                                                    Icon="Add24"
@@ -300,11 +302,6 @@
                                                                         <CheckBox Content="参与检索"
                                                                                 IsChecked="{Binding Active}"
                                                                                 Margin="0,8,0,4" />
-                                                                        <ui:Button Content="保存"
-                                                                                Appearance="Primary"
-                                                                                Margin="0,4,0,0"
-                                                                                Command="{Binding DataContext.SaveKnowledgeEntryCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                                                CommandParameter="{Binding}" />
                                                                     </StackPanel>
                                                                 </StackPanel>
                                                             </Border>
@@ -467,11 +464,6 @@
                                                             SelectedItem="{Binding RegenerateTrigger, Converter={StaticResource EnumDisplay}}" />
                                                     </StackPanel>
 
-                                                    <ui:Button Content="保存"
-                                                               Appearance="Primary"
-                                                               Margin="0,8,0,0"
-                                                               Command="{Binding DataContext.SaveStateAttributeCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                               CommandParameter="{Binding}" />
                                                 </StackPanel>
                                             </StackPanel>
                                         </Border>

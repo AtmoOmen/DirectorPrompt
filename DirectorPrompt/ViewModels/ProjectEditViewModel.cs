@@ -244,6 +244,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         }
         catch
         {
+            // ignored
         }
     }
 
@@ -381,6 +382,24 @@ public sealed partial class ProjectEditViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsEditing));
                 OnPropertyChanged(nameof(TitleText));
             }
+
+            foreach (var group in KnowledgeGroups)
+            {
+                if (group.ID > 0)
+                    await SaveKnowledgeGroupAsync(group);
+
+                foreach (var entry in group.Entries)
+                {
+                    if (entry.ID > 0)
+                        await SaveKnowledgeEntryAsync(entry);
+                }
+            }
+
+            foreach (var attr in StateAttributes)
+            {
+                if (attr.ID > 0)
+                    await SaveStateAttributeAsync(attr);
+            }
         }
         catch (Exception ex)
         {
@@ -457,7 +476,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             };
 
             await knowledgeRepository.UpdateAsync(model);
-            entry.IsEditing   = false;
             ValidationMessage = string.Empty;
         }
         catch (Exception ex)
@@ -631,7 +649,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             };
 
             await stateRepository.UpdateAttributeAsync(model);
-            attribute.IsEditing = false;
             ValidationMessage   = string.Empty;
         }
         catch (Exception ex)
