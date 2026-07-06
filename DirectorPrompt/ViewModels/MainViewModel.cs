@@ -5,9 +5,11 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Localization;
 using DirectorPrompt.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,36 +17,39 @@ using Serilog;
 
 namespace DirectorPrompt.ViewModels;
 
-public sealed partial class MainViewModel : ObservableObject
+public sealed partial class MainViewModel
+(
+    Orchestrator         orchestrator,
+    IProjectRepository   projectRepository,
+    ISessionRepository   sessionRepository,
+    IEventRepository     eventRepository,
+    ISceneRepository     sceneRepository,
+    IStateRepository     stateRepository,
+    ICharacterRepository characterRepository,
+    IDirectiveRepository directiveRepository,
+    IServiceProvider     serviceProvider,
+    UserSettings         userSettings
+)
+    : ObservableObject
 {
-    private readonly Orchestrator         orchestrator;
-    private readonly IProjectRepository   projectRepository;
-    private readonly ISessionRepository   sessionRepository;
-    private readonly IEventRepository     eventRepository;
-    private readonly ISceneRepository     sceneRepository;
-    private readonly IStateRepository     stateRepository;
-    private readonly ICharacterRepository characterRepository;
-    private readonly IDirectiveRepository directiveRepository;
-    private readonly IServiceProvider     serviceProvider;
-
     private bool pendingRewrite;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsProjectSelected))]
-    private Project? currentProject;
+    public partial Project? CurrentProject { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSessionSelected))]
-    private Session? currentSession;
+    public partial Session? CurrentSession { get; set; }
 
     [ObservableProperty]
-    private string statusMessage = Loc.Get("Status.Ready");
+    public partial string StatusMessage { get; set; } = Loc.Get("Status.Ready");
 
     [ObservableProperty]
-    private bool isProcessing;
+    public partial bool IsProcessing { get; set; }
 
     [ObservableProperty]
-    private bool isSessionSidebarExpanded = true;
+    public partial bool IsSessionSidebarExpanded { get; set; } = true;
 
     public bool IsProjectSelected => CurrentProject is not null;
 
@@ -66,30 +71,6 @@ public sealed partial class MainViewModel : ObservableObject
 
     public ObservableCollection<PipelineStageViewModel> PipelineStages { get; } = [];
 
-    public MainViewModel
-    (
-        Orchestrator         orchestrator,
-        IProjectRepository   projectRepository,
-        ISessionRepository   sessionRepository,
-        IEventRepository     eventRepository,
-        ISceneRepository     sceneRepository,
-        IStateRepository     stateRepository,
-        ICharacterRepository characterRepository,
-        IDirectiveRepository directiveRepository,
-        IServiceProvider     serviceProvider
-    )
-    {
-        this.orchestrator        = orchestrator;
-        this.projectRepository   = projectRepository;
-        this.sessionRepository   = sessionRepository;
-        this.eventRepository     = eventRepository;
-        this.sceneRepository     = sceneRepository;
-        this.stateRepository     = stateRepository;
-        this.characterRepository = characterRepository;
-        this.directiveRepository = directiveRepository;
-        this.serviceProvider     = serviceProvider;
-    }
-
     [RelayCommand]
     private async Task LoadProjectsAsync()
     {
@@ -99,7 +80,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             var projects = await projectRepository.GetAllAsync();
 
-            var previousID = CurrentProject?.ID;
+            var previousID = CurrentProject?.ID ?? userSettings.Session.LastProjectID;
 
             Projects.Clear();
 
@@ -130,7 +111,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             var sessions = await sessionRepository.GetByProjectAsync(CurrentProject.ID);
 
-            var previousID = CurrentSession?.ID;
+            var previousID = CurrentSession?.ID ?? userSettings.Session.LastSessionID;
 
             Sessions.Clear();
 
@@ -566,11 +547,28 @@ public sealed partial class MainViewModel : ObservableObject
         {
             Log.Information("切换对话: ID={SessionID}", value.ID);
 
+            _ = SaveSessionStateAsync();
+
             if (CurrentProject is not null && !string.IsNullOrWhiteSpace(CurrentProject.OpeningMessage))
                 Dialog.AddOpeningMessage(CurrentProject.OpeningMessage);
 
             _ = LoadDialogHistoryAsync(value.ID);
             _ = RefreshSidebarAsync();
+        }
+    }
+
+    private async Task SaveSessionStateAsync()
+    {
+        try
+        {
+            userSettings.Session.LastProjectID = CurrentProject?.ID;
+            userSettings.Session.LastSessionID = CurrentSession?.ID;
+
+            await userSettings.SaveAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "保存会话状态失败");
         }
     }
 

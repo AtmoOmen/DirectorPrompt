@@ -1,12 +1,10 @@
 using System.Collections.ObjectModel;
-using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Infrastructure;
+using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Localization;
 using Serilog;
 
@@ -14,18 +12,9 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed partial class SettingsViewModel : ObservableObject
 {
-    private static readonly JsonSerializerOptions JSONOptions = new()
-    {
-        WriteIndented          = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters =
-        {
-            new JsonStringEnumConverter()
-        }
-    };
-
     private readonly IModelConnectionTester connectionTester;
     private readonly ILocalizationService   localizationService;
+    private readonly UserSettings           userSettings;
 
     [ObservableProperty]
     public partial bool IsSaving { get; set; }
@@ -50,6 +39,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         this.connectionTester    = connectionTester;
         this.localizationService = localizationService;
+        this.userSettings        = userSettings;
 
         LoadSettings(userSettings);
     }
@@ -104,11 +94,27 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var settings = BuildUserSettings();
-            var json     = JsonSerializer.Serialize(settings, JSONOptions);
+            userSettings.Orchestrator.Agents = Agents.Select
+            (
+                a => new AgentDefinition
+                {
+                    Role         = a.Role,
+                    ModelConfig = new ModelConfig
+                    {
+                        Provider  = a.Provider,
+                        Endpoint  = a.Endpoint,
+                        APIKey    = a.APIKey,
+                        ModelName = a.ModelName
+                    },
+                    SystemPrompt = a.SystemPrompt,
+                    Temperature  = a.Temperature,
+                    Tools        = a.Tools,
+                }
+            ).ToList();
 
-            Directory.CreateDirectory(AppPaths.DataDirectory);
-            await File.WriteAllTextAsync(AppPaths.UserSettingsPath, json);
+            userSettings.Localization.Language = SelectedLanguage;
+
+            await userSettings.SaveAsync();
 
             ValidationMessage = Loc.Get("Settings.Saved");
         }
@@ -121,35 +127,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             IsSaving = false;
         }
-    }
-
-    private UserSettings BuildUserSettings()
-    {
-        var agents = Agents.Select
-        (a => new AgentDefinition
-            {
-                Role = a.Role,
-                ModelConfig = new ModelConfig
-                {
-                    Provider  = a.Provider,
-                    Endpoint  = a.Endpoint,
-                    APIKey    = a.APIKey,
-                    ModelName = a.ModelName
-                },
-                SystemPrompt = a.SystemPrompt,
-                Temperature  = a.Temperature,
-                Tools        = a.Tools,
-            }
-        ).ToList();
-
-        return new UserSettings
-        {
-            Orchestrator = new UserOrchestratorConfig
-            {
-                Agents           = agents
-            },
-            Localization = new LocalizationConfig { Language = SelectedLanguage }
-        };
     }
 
     [RelayCommand]

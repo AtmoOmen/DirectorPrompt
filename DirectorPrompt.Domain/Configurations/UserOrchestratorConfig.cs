@@ -1,6 +1,6 @@
 namespace DirectorPrompt.Domain.Configurations;
 
-public record UserOrchestratorConfig
+public class UserOrchestratorConfig
 {
-    public List<AgentDefinition> Agents { get; init; } = [];
+    public List<AgentDefinition> Agents { get; set; } = [];
 }
