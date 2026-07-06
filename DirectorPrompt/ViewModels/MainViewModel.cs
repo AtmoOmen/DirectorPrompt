@@ -27,6 +27,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IDirectiveRepository directiveRepository;
     private readonly IServiceProvider     serviceProvider;
 
+    private bool pendingRewrite;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsProjectSelected))]
     private Project? currentProject;
@@ -358,13 +360,14 @@ public sealed partial class MainViewModel : ObservableObject
 
             var dispatcher = Application.Current.Dispatcher;
 
-            var result = await orchestrator.ProcessBatchAsync
-                         (
-                             batch,
-                             CurrentSession.ID,
-                             (narrative, thinking) => { dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); })); },
-                             update => { dispatcher.BeginInvoke(new Action(() => { UpdatePipelineStage(update.Stage, update.Status, update.Detail); })); }
-                         );
+            Action<string, string>      streamingUpdate = (narrative, thinking) => dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); }));
+            Action<PipelineStageUpdate> stageUpdate     = update => dispatcher.BeginInvoke(new Action(() => { UpdatePipelineStage(update.Stage, update.Status, update.Detail); }));
+
+            var result = await (pendingRewrite ?
+                                   orchestrator.RewriteAsync(batch, CurrentSession.ID, streamingUpdate, stageUpdate) :
+                                   orchestrator.ProcessBatchAsync(batch, CurrentSession.ID, streamingUpdate, stageUpdate));
+
+            pendingRewrite = false;
 
             streamingEntry.RoundID  = result.RoundID;
             streamingEntry.Content  = result.Narrative;
@@ -470,7 +473,37 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
             }
 
-            StatusMessage = Loc.Get("Status.RewriteNeedReinput");
+            DirectiveInput.Clear();
+
+            try
+            {
+                using var doc = JsonDocument.Parse(directorEvent.Data);
+
+                var order = 1;
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    var typeStr = element.GetProperty("type").GetString() ?? "Plot";
+                    var content = element.GetProperty("content").GetString() ?? string.Empty;
+
+                    var type = typeStr switch
+                    {
+                        "Tone"                => DirectiveType.Tone,
+                        "TemporaryConstraint" => DirectiveType.TemporaryConstraint,
+                        "SceneChange"         => DirectiveType.SceneChange,
+                        _                     => DirectiveType.Plot
+                    };
+
+                    DirectiveInput.Directives.Add(new DirectiveItemViewModel { Type = type, Content = content, Order = order++ });
+                }
+            }
+            catch
+            {
+                StatusMessage = Loc.Get("Status.OriginalDirectiveNotFound");
+                return;
+            }
+
+            pendingRewrite = true;
+            StatusMessage  = Loc.Get("Status.RewriteNeedReinput");
         }
         catch (Exception ex)
         {

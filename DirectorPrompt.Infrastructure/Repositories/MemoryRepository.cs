@@ -1,15 +1,22 @@
+using System.Collections;
+using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Domain.Services;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class MemoryRepository : IMemoryRepository
 {
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SqliteConnectionFactory   connectionFactory;
+    private readonly IRoundChangeRepository   roundChangeRepository;
 
-    public MemoryRepository(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public MemoryRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository)
+    {
+        this.connectionFactory     = connectionFactory;
+        this.roundChangeRepository = roundChangeRepository;
+    }
 
     public async Task<MemoryEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -108,12 +115,24 @@ public sealed class MemoryRepository : IMemoryRepository
                      }
                  );
 
-        return entry with { ID = id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        var result = entry with { ID = id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+
+        await roundChangeRepository.RecordCreateAsync(RoundContext.Current ?? 0, "memory_entries", id, null, cancellationToken);
+
+        return result;
     }
 
     public async Task UpdateAsync(MemoryEntry entry, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                     (
+                         "SELECT * FROM memory_entries WHERE id = @id",
+                         new { id = entry.ID }
+                     );
+
+        var oldDataJSON = oldRow is null ? "{}" : JsonSerializer.Serialize(oldRow);
 
         await connection.ExecuteAsync
         (
@@ -134,6 +153,8 @@ public sealed class MemoryRepository : IMemoryRepository
                 updatedAt           = DateTime.UtcNow.ToString("O")
             }
         );
+
+        await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "memory_entries", entry.ID, oldDataJSON, cancellationToken);
     }
 
     public async Task<MemoryEntry> MergeAsync
@@ -208,6 +229,18 @@ public sealed class MemoryRepository : IMemoryRepository
                         transaction
                     );
 
+        var sourceRows = new List<string>();
+        foreach (var id in memoryIDs)
+        {
+            var row = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                      (
+                          "SELECT * FROM memory_entries WHERE id = @id",
+                          new { id },
+                          transaction
+                      );
+            sourceRows.Add(row is null ? "{}" : JsonSerializer.Serialize(row));
+        }
+
         await connection.ExecuteAsync
         (
             "DELETE FROM memory_entries WHERE id IN @ids",
@@ -216,6 +249,11 @@ public sealed class MemoryRepository : IMemoryRepository
         );
 
         await transaction.CommitAsync(cancellationToken);
+
+        var roundID = RoundContext.Current ?? 0;
+        await roundChangeRepository.RecordCreateAsync(roundID, "memory_entries", newID, null, cancellationToken);
+        for (var i = 0; i < memoryIDs.Count; i++)
+            await roundChangeRepository.RecordDeleteAsync(roundID, "memory_entries", memoryIDs[i], sourceRows[i], cancellationToken);
 
         return new MemoryEntry
         {
@@ -236,7 +274,16 @@ public sealed class MemoryRepository : IMemoryRepository
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
+        var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                     (
+                         "SELECT * FROM memory_entries WHERE id = @id",
+                         new { id }
+                     );
+
         await connection.ExecuteAsync("DELETE FROM memory_entries WHERE id = @id", new { id });
+
+        if (oldRow is not null)
+            await roundChangeRepository.RecordDeleteAsync(RoundContext.Current ?? 0, "memory_entries", id, JsonSerializer.Serialize(oldRow), cancellationToken);
     }
 
     private sealed class MemoryEntryRow

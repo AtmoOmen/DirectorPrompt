@@ -1,16 +1,22 @@
+using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Domain.Services;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class DirectiveRepository : IDirectiveRepository
 {
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SqliteConnectionFactory   connectionFactory;
+    private readonly IRoundChangeRepository   roundChangeRepository;
 
-    public DirectiveRepository(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public DirectiveRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository)
+    {
+        this.connectionFactory     = connectionFactory;
+        this.roundChangeRepository = roundChangeRepository;
+    }
 
     public async Task<IReadOnlyList<ActiveDirective>> GetActiveAsync(long sessionID, CancellationToken cancellationToken = default)
     {
@@ -52,6 +58,8 @@ public sealed class DirectiveRepository : IDirectiveRepository
                      }
                  );
 
+        await roundChangeRepository.RecordCreateAsync(RoundContext.Current ?? 0, "active_directives", id, cancellationToken: cancellationToken);
+
         return directive with { ID = id };
     }
 
@@ -59,7 +67,16 @@ public sealed class DirectiveRepository : IDirectiveRepository
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
+        var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                     (
+                         "SELECT * FROM active_directives WHERE id = @id",
+                         new { id }
+                     );
+
         await connection.ExecuteAsync("DELETE FROM active_directives WHERE id = @id", new { id });
+
+        if (oldRow is not null)
+            await roundChangeRepository.RecordDeleteAsync(RoundContext.Current ?? 0, "active_directives", id, JsonSerializer.Serialize(oldRow), cancellationToken);
     }
 
     public async Task<IReadOnlyList<ActiveDirective>> DecrementTTLAsync(long sessionID, CancellationToken cancellationToken = default)
@@ -67,12 +84,47 @@ public sealed class DirectiveRepository : IDirectiveRepository
         await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
-        await connection.ExecuteAsync
-        (
-            "UPDATE active_directives SET ttl = ttl - 1 WHERE session_id = @sessionID AND ttl IS NOT NULL",
-            new { sessionID },
-            transaction
-        );
+        var affectedRows = await connection.QueryAsync
+                           (
+                               """
+                               SELECT id, ttl FROM active_directives
+                               WHERE session_id = @sessionID AND ttl IS NOT NULL
+                               """,
+                               new { sessionID },
+                               transaction
+                           );
+
+        foreach (var row in affectedRows)
+        {
+            var oldTTL = (long)row.ttl;
+            var oldData = JsonSerializer.Serialize(new { id = (long)row.id, ttl = oldTTL });
+
+            await connection.ExecuteAsync
+            (
+                "UPDATE active_directives SET ttl = ttl - 1 WHERE id = @id",
+                new { id = (long)row.id },
+                transaction
+            );
+
+            await roundChangeRepository.RecordUpdateAsync
+            (
+                RoundContext.Current ?? 0,
+                "active_directives",
+                (long)row.id,
+                oldData,
+                cancellationToken
+            );
+        }
+
+        var expiredRows = await connection.QueryAsync
+                          (
+                              """
+                              SELECT * FROM active_directives
+                              WHERE session_id = @sessionID AND ttl IS NOT NULL AND ttl <= 0
+                              """,
+                              new { sessionID },
+                              transaction
+                          );
 
         await connection.ExecuteAsync
         (
@@ -80,6 +132,18 @@ public sealed class DirectiveRepository : IDirectiveRepository
             new { sessionID },
             transaction
         );
+
+        foreach (var row in expiredRows)
+        {
+            await roundChangeRepository.RecordDeleteAsync
+            (
+                RoundContext.Current ?? 0,
+                "active_directives",
+                (long)row.id,
+                JsonSerializer.Serialize(row),
+                cancellationToken
+            );
+        }
 
         var rows = await connection.QueryAsync<ActiveDirectiveRow>
                    (

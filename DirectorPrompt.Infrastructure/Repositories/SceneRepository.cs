@@ -1,16 +1,22 @@
+using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Domain.Services;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class SceneRepository : ISceneRepository
 {
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SqliteConnectionFactory   connectionFactory;
+    private readonly IRoundChangeRepository   roundChangeRepository;
 
-    public SceneRepository(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public SceneRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository)
+    {
+        this.connectionFactory     = connectionFactory;
+        this.roundChangeRepository = roundChangeRepository;
+    }
 
     public async Task<Scene?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -86,12 +92,20 @@ public sealed class SceneRepository : ISceneRepository
                      }
                  );
 
+        await roundChangeRepository.RecordCreateAsync(RoundContext.Current ?? 0, "scenes", id, cancellationToken: cancellationToken);
+
         return scene with { ID = id };
     }
 
     public async Task UpdateAsync(Scene scene, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                     (
+                         "SELECT * FROM scenes WHERE id = @id",
+                         new { id = scene.ID }
+                     );
 
         await connection.ExecuteAsync
         (
@@ -110,6 +124,9 @@ public sealed class SceneRepository : ISceneRepository
                 status    = scene.Status.ToString().ToLowerInvariant()
             }
         );
+
+        if (oldRow is not null)
+            await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "scenes", scene.ID, JsonSerializer.Serialize(oldRow), cancellationToken);
     }
 
     private sealed class SceneRow

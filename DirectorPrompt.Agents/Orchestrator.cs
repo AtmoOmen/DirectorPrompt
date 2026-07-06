@@ -27,6 +27,7 @@ public sealed class Orchestrator
     private readonly IMemoryRepository        memoryRepository;
     private readonly IEmbeddingService        embeddingService;
     private readonly ITimelineCalculator      timelineCalculator;
+    private readonly IRoundChangeRepository   roundChangeRepository;
     private readonly OrchestratorConfig       config;
 
     private readonly SceneTools     sceneTools;
@@ -55,6 +56,7 @@ public sealed class Orchestrator
         IMemoryRepository        memoryRepository,
         IEmbeddingService        embeddingService,
         ITimelineCalculator      timelineCalculator,
+        IRoundChangeRepository   roundChangeRepository,
         OrchestratorConfig       config
     )
     {
@@ -70,6 +72,7 @@ public sealed class Orchestrator
         this.memoryRepository    = memoryRepository;
         this.embeddingService    = embeddingService;
         this.timelineCalculator  = timelineCalculator;
+        this.roundChangeRepository = roundChangeRepository;
         this.config              = config;
 
         sceneTools     = new SceneTools(sceneRepository, timelineCalculator);
@@ -143,6 +146,8 @@ public sealed class Orchestrator
         var activeScene      = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
         var timelinePosition = activeScene?.TimelinePosition ?? 0;
 
+        using (RoundContext.Enter(roundID))
+        {
         Log.Information
         (
             "Orchestrator 开始处理批次: 项目={ProjectID} ({ProjectName}), 对话={SessionID}, 轮次={RoundID}, 场景={SceneID}, 指令数={DirectiveCount}",
@@ -283,11 +288,16 @@ public sealed class Orchestrator
             context.Violations,
             context.AuditPassed
         );
+        }
     }
 
     public async Task DeleteRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
     {
         Log.Information("删除轮次: 对话={SessionID}, 轮次={RoundID}", sessionID, roundID);
+
+        await roundChangeRepository.RollbackRoundAsync(roundID, cancellationToken);
+        await stateRepository.RollbackByRoundAsync(sessionID, roundID, cancellationToken);
+        await roundChangeRepository.RemoveByRoundAsync(roundID, cancellationToken);
         await eventRepository.RemoveByRoundAsync(roundID, cancellationToken);
     }
 
@@ -303,7 +313,7 @@ public sealed class Orchestrator
         var latestRound = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken);
 
         if (latestRound > 0)
-            await eventRepository.RemoveByRoundAsync(latestRound, cancellationToken);
+            await DeleteRoundAsync(sessionID, latestRound, cancellationToken);
 
         return await ProcessBatchAsync(batch, sessionID, onStreamingUpdate, onStageUpdate, cancellationToken);
     }

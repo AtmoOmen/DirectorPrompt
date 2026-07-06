@@ -42,4 +42,6 @@ public interface IStateRepository
     Task RemoveCompositeItemAsync(long itemID, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<StateChangeLog>> GetChangeLogsAsync(long attributeID, long? sceneID = null, CancellationToken cancellationToken = default);
+
+    Task RollbackByRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default);
 }

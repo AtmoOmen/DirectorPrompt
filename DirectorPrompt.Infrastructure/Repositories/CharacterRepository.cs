@@ -1,16 +1,22 @@
+using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Domain.Services;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class CharacterRepository : ICharacterRepository
 {
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SqliteConnectionFactory   connectionFactory;
+    private readonly IRoundChangeRepository   roundChangeRepository;
 
-    public CharacterRepository(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public CharacterRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository)
+    {
+        this.connectionFactory     = connectionFactory;
+        this.roundChangeRepository = roundChangeRepository;
+    }
 
     public async Task<Character?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -95,12 +101,20 @@ public sealed class CharacterRepository : ICharacterRepository
                      }
                  );
 
+        await roundChangeRepository.RecordCreateAsync(RoundContext.Current ?? 0, "characters", id, cancellationToken: cancellationToken);
+
         return character with { ID = id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
     }
 
     public async Task UpdateAsync(Character character, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                     (
+                         "SELECT * FROM characters WHERE id = @id",
+                         new { id = character.ID }
+                     );
 
         await connection.ExecuteAsync
         (
@@ -123,11 +137,20 @@ public sealed class CharacterRepository : ICharacterRepository
                 updatedAt   = DateTime.UtcNow.ToString("O")
             }
         );
+
+        if (oldRow is not null)
+            await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "characters", character.ID, JsonSerializer.Serialize(oldRow), cancellationToken);
     }
 
     public async Task SetStatusAsync(long characterID, CharacterStatus status, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                     (
+                         "SELECT * FROM characters WHERE id = @id",
+                         new { id = characterID }
+                     );
 
         await connection.ExecuteAsync
         (
@@ -139,6 +162,9 @@ public sealed class CharacterRepository : ICharacterRepository
                 updatedAt = DateTime.UtcNow.ToString("O")
             }
         );
+
+        if (oldRow is not null)
+            await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "characters", characterID, JsonSerializer.Serialize(oldRow), cancellationToken);
     }
 
     public async Task<IReadOnlyList<CharacterCategory>> GetCategoriesAsync(long projectID, CancellationToken cancellationToken = default)
@@ -355,6 +381,18 @@ public sealed class CharacterRepository : ICharacterRepository
 
         await transaction.CommitAsync(cancellationToken);
 
+        var roundID = RoundContext.Current ?? 0;
+
+        if (existing is not null)
+        {
+            var oldData = JsonSerializer.Serialize(existing);
+            await roundChangeRepository.RecordUpdateAsync(roundID, "character_relations", relationID, oldData, cancellationToken);
+        }
+        else
+        {
+            await roundChangeRepository.RecordCreateAsync(roundID, "character_relations", relationID, cancellationToken: cancellationToken);
+        }
+
         var resultProjectID = await connection.QueryFirstAsync<long>
                               (
                                   "SELECT project_id FROM characters WHERE id = @sourceID",
@@ -406,17 +444,24 @@ public sealed class CharacterRepository : ICharacterRepository
             """,
             new { characterID, sceneID }
         );
+
+        var rowData = JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID });
+        await roundChangeRepository.RecordCreateAsync(RoundContext.Current ?? 0, "character_scene_presence", 0, rowData, cancellationToken);
     }
 
     public async Task LeaveSceneAsync(long characterID, long sceneID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
+        var oldData = JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID });
+
         await connection.ExecuteAsync
         (
             "DELETE FROM character_scene_presence WHERE character_id = @characterID AND scene_id = @sceneID",
             new { characterID, sceneID }
         );
+
+        await roundChangeRepository.RecordDeleteAsync(RoundContext.Current ?? 0, "character_scene_presence", 0, oldData, cancellationToken);
     }
 
     public async Task<CharacterCategoryResolution?> GetResolvedCategoriesAsync(long characterID, CancellationToken cancellationToken = default)
@@ -492,6 +537,12 @@ public sealed class CharacterRepository : ICharacterRepository
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
+        var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                     (
+                         "SELECT * FROM character_state_values WHERE character_id = @characterID AND attribute_id = @attributeID",
+                         new { characterID, attributeID }
+                     );
+
         await connection.ExecuteAsync
         (
             """
@@ -508,6 +559,24 @@ public sealed class CharacterRepository : ICharacterRepository
                 updatedAt = DateTime.UtcNow.ToString("O")
             }
         );
+
+        var roundID = RoundContext.Current ?? 0;
+
+        if (oldRow is null)
+        {
+            var rowData = JsonSerializer.Serialize(new
+            {
+                character_id = characterID,
+                attribute_id = attributeID,
+                value,
+                updated_at   = DateTime.UtcNow.ToString("O")
+            });
+            await roundChangeRepository.RecordCreateAsync(roundID, "character_state_values", 0, rowData, cancellationToken);
+        }
+        else
+        {
+            await roundChangeRepository.RecordUpdateAsync(roundID, "character_state_values", 0, JsonSerializer.Serialize(oldRow), cancellationToken);
+        }
     }
 
     public async Task CloneProjectCharactersToSessionAsync

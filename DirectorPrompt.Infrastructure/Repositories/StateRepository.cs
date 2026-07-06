@@ -402,6 +402,76 @@ public sealed class StateRepository : IStateRepository
         return rows.Select(r => r.ToStateChangeLog()).ToList();
     }
 
+    public async Task RollbackByRoundAsync
+    (
+        long              sessionID,
+        long              roundID,
+        CancellationToken cancellationToken = default
+    )
+    {
+        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            var logs = await connection.QueryAsync
+                       (
+                           """
+                           SELECT attribute_id, session_id, old_value
+                           FROM state_change_logs
+                           WHERE round_id = @roundID AND session_id = @sessionID
+                           ORDER BY id ASC
+                           """,
+                           new { roundID, sessionID },
+                           transaction
+                       );
+
+            var firstPerAttribute = new Dictionary<long, string>();
+
+            foreach (var log in logs)
+            {
+                var attrID = (long)log.attribute_id;
+
+                if (!firstPerAttribute.ContainsKey(attrID))
+                    firstPerAttribute[attrID] = (string)log.old_value;
+            }
+
+            foreach (var (attrID, oldValue) in firstPerAttribute)
+            {
+                await connection.ExecuteAsync
+                (
+                    """
+                    UPDATE state_values
+                    SET value = @oldValue, updated_at = @updatedAt
+                    WHERE attribute_id = @attrID AND session_id = @sessionID
+                    """,
+                    new
+                    {
+                        attrID,
+                        sessionID,
+                        oldValue,
+                        updatedAt = DateTime.UtcNow.ToString("O")
+                    },
+                    transaction
+                );
+            }
+
+            await connection.ExecuteAsync
+            (
+                "DELETE FROM state_change_logs WHERE round_id = @roundID AND session_id = @sessionID",
+                new { roundID, sessionID },
+                transaction
+            );
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
     private sealed class StateAttributeRow
     {
         public long   ID           { get; set; }
