@@ -19,6 +19,9 @@ public partial class SettingsWindow : FluentWindow
 
     private void OnNavSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (AgentsPanel is null || LanguagePanel is null)
+            return;
+
         if (NavList.SelectedItem is not ListViewItem item)
             return;
 
