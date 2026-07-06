@@ -10,5 +10,7 @@ public interface ISessionRepository
 
     Task<Session> CreateAsync(Session session, CancellationToken cancellationToken = default);
 
+    Task UpdateAsync(Session session, CancellationToken cancellationToken = default);
+
     Task DeleteAsync(long id, CancellationToken cancellationToken = default);
 }

@@ -13,4 +13,6 @@ public interface IEventRepository
     Task RemoveByRoundAsync(long roundID, CancellationToken cancellationToken = default);
 
     Task<long> GetLatestRoundIDAsync(long sessionID, CancellationToken cancellationToken = default);
+
+    Task UpdateEventDataAsync(long eventID, string data, CancellationToken cancellationToken = default);
 }

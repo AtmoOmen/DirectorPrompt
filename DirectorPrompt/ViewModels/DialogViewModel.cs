@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 using System.Windows.Documents;
+using System.Windows.Threading;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Markdown;
 
@@ -12,10 +14,14 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
     private string content  = string.Empty;
     private string thinking = string.Empty;
     private bool   isStreaming;
+    private bool   isEditing;
+    private string editingContent = string.Empty;
 
     public long ID { get; init; }
 
     public long RoundID { get; set; }
+
+    public long? EventID { get; set; }
 
     public EventType Type { get; init; }
 
@@ -61,6 +67,32 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool IsEditing
+    {
+        get => isEditing;
+        set
+        {
+            if (isEditing != value)
+            {
+                isEditing = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEditing)));
+            }
+        }
+    }
+
+    public string EditingContent
+    {
+        get => editingContent;
+        set
+        {
+            if (editingContent != value)
+            {
+                editingContent = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EditingContent)));
+            }
+        }
+    }
+
     public FlowDocument? Document { get; private set; }
 
     public bool IsDirector => Type == EventType.DirectorInput;
@@ -80,22 +112,40 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
         }
     }
 
+    public string Role => IsDirector ? "导演" : "AI";
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public void RenderMarkdown()
     {
-        if (IsNarrative)
-        {
-            Document    = MarkdownRenderer.Render(Content);
-            IsStreaming = false;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
-        }
+        Document    = MarkdownRenderer.Render(Content);
+        IsStreaming = false;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
     }
 
     public void UpdateStreamingContent(string narrative, string thinking)
     {
         Content  = narrative;
         Thinking = thinking;
+    }
+
+    public void StartEdit()
+    {
+        EditingContent = Content;
+        IsEditing      = true;
+    }
+
+    public void CommitEdit()
+    {
+        Content    = EditingContent;
+        IsEditing  = false;
+        RenderMarkdown();
+    }
+
+    public void CancelEdit()
+    {
+        IsEditing      = false;
+        EditingContent = string.Empty;
     }
 }
 
@@ -119,8 +169,8 @@ public sealed class DialogViewModel
             IsLast  = true
         };
 
-        entry.RenderMarkdown();
         Entries.Add(entry);
+        DeferredRender(entry);
     }
 
     public void AddDirectorEntry(long roundID, string content)
@@ -137,6 +187,7 @@ public sealed class DialogViewModel
         };
 
         Entries.Add(entry);
+        DeferredRender(entry);
     }
 
     public DialogEntryViewModel BeginStreamingNarrative(long roundID)
@@ -172,8 +223,8 @@ public sealed class DialogViewModel
             IsLast   = true
         };
 
-        entry.RenderMarkdown();
         Entries.Add(entry);
+        DeferredRender(entry);
     }
 
     public void RemoveEntriesByRound(long roundID)
@@ -200,5 +251,12 @@ public sealed class DialogViewModel
     {
         foreach (var entry in Entries)
             entry.IsLast = false;
+    }
+
+    private static void DeferredRender(DialogEntryViewModel entry)
+    {
+        Application.Current.Dispatcher.BeginInvoke(
+            DispatcherPriority.Background,
+            entry.RenderMarkdown);
     }
 }

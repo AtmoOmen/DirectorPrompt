@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Text;
+using System.Text.Json;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -200,6 +202,83 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (window.ShowDialog() == true)
             await LoadProjectsAsync();
+    }
+
+    [RelayCommand]
+    private async Task DeleteProjectAsync(Project project)
+    {
+        try
+        {
+            await projectRepository.DeleteAsync(project.ID);
+
+            Log.Information("删除项目: ID={ProjectID}, 名称={Name}", project.ID, project.Name);
+
+            if (CurrentProject?.ID == project.ID)
+                CurrentProject = null;
+
+            await LoadProjectsAsync();
+            StatusMessage = Loc.Get("Status.ProjectDeleted");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "删除项目失败: ID={ProjectID}", project.ID);
+            StatusMessage = Loc.Get("Status.DeleteProjectFailed", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteSessionAsync(Session session)
+    {
+        try
+        {
+            await sessionRepository.DeleteAsync(session.ID);
+
+            Log.Information("删除对话: ID={SessionID}, 标题={Title}", session.ID, session.Title);
+
+            if (CurrentSession?.ID == session.ID)
+                CurrentSession = null;
+
+            await LoadSessionsAsync();
+            StatusMessage = Loc.Get("Status.SessionDeleted");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "删除对话失败: ID={SessionID}", session.ID);
+            StatusMessage = Loc.Get("Status.DeleteSessionFailed", ex.Message);
+        }
+    }
+
+    public async Task RenameSessionAsync(Session session, string newTitle)
+    {
+        if (string.IsNullOrWhiteSpace(newTitle))
+            return;
+
+        try
+        {
+            var updated = session with { Title = newTitle.Trim() };
+
+            await sessionRepository.UpdateAsync(updated);
+
+            Log.Information("重命名对话: ID={SessionID}, 新标题={NewTitle}", session.ID, updated.Title);
+
+            var existing = Sessions.FirstOrDefault(s => s.ID == session.ID);
+
+            if (existing is not null)
+            {
+                var index = Sessions.IndexOf(existing);
+                Sessions[index] = updated;
+            }
+
+            if (CurrentSession?.ID == session.ID)
+                CurrentSession = updated;
+
+            StatusMessage = Loc.Get("Status.SessionRenamed");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "重命名对话失败: ID={SessionID}", session.ID);
+            StatusMessage = Loc.Get("Status.RenameSessionFailed", ex.Message);
+        }
     }
 
     [RelayCommand]
@@ -405,6 +484,33 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task SaveEditAsync(DialogEntryViewModel entry)
+    {
+        entry.CommitEdit();
+
+        if (entry.EventID.HasValue)
+        {
+            try
+            {
+                await eventRepository.UpdateEventDataAsync(entry.EventID.Value, entry.Content);
+
+                Log.Information("手动编辑已保存: 事件ID={EventID}", entry.EventID.Value);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "保存手动编辑失败: 事件ID={EventID}", entry.EventID.Value);
+                StatusMessage = Loc.Get("Status.SaveEditFailed");
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void CancelEdit(DialogEntryViewModel entry)
+    {
+        entry.CancelEdit();
+    }
+
     partial void OnCurrentProjectChanged(Project? value)
     {
         CurrentSession = null;
@@ -429,7 +535,87 @@ public sealed partial class MainViewModel : ObservableObject
             if (CurrentProject is not null && !string.IsNullOrWhiteSpace(CurrentProject.OpeningMessage))
                 Dialog.AddOpeningMessage(CurrentProject.OpeningMessage);
 
+            _ = LoadDialogHistoryAsync(value.ID);
             _ = RefreshSidebarAsync();
+        }
+    }
+
+    private async Task LoadDialogHistoryAsync(long sessionID)
+    {
+        try
+        {
+            var events = await eventRepository.GetBySessionAsync(sessionID);
+
+            var directorEvents = events
+                                 .Where(e => e.Type == EventType.DirectorInput)
+                                 .GroupBy(e => e.RoundID)
+                                 .ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.ID).First());
+
+            var narrativeEvents = events
+                                  .Where(e => e.Type == EventType.NarrativeOutput)
+                                  .GroupBy(e => e.RoundID)
+                                  .ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.ID).First());
+
+            var roundIDs = directorEvents.Keys
+                                         .Concat(narrativeEvents.Keys)
+                                         .Distinct()
+                                         .OrderBy(r => r)
+                                         .ToList();
+
+            foreach (var roundID in roundIDs)
+            {
+                if (directorEvents.TryGetValue(roundID, out var directorEvent))
+                {
+                    var directorContent = ParseDirectorInputData(directorEvent.Data);
+                    Dialog.AddDirectorEntry(roundID, directorContent);
+                    Dialog.Entries[^1].EventID = directorEvent.ID;
+                }
+
+                if (narrativeEvents.TryGetValue(roundID, out var narrativeEvent))
+                {
+                    var narrativeText = narrativeEvent.Data;
+
+                    if (!string.IsNullOrWhiteSpace(narrativeText))
+                    {
+                        Dialog.AddNarrativeEntry(roundID, narrativeText);
+                        Dialog.Entries[^1].EventID = narrativeEvent.ID;
+                    }
+                }
+            }
+
+            Log.Information
+            (
+                "对话历史加载完成: 对话={SessionID}, 轮次数={RoundCount}",
+                sessionID,
+                roundIDs.Count
+            );
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "加载对话历史失败: 对话={SessionID}", sessionID);
+        }
+    }
+
+    private static string ParseDirectorInputData(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+
+            var parts = new List<string>();
+
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                var type    = element.GetProperty("type").GetString();
+                var content = element.GetProperty("content").GetString();
+                parts.Add($"[{type}] {content}");
+            }
+
+            return string.Join("\n", parts);
+        }
+        catch
+        {
+            return json;
         }
     }
 

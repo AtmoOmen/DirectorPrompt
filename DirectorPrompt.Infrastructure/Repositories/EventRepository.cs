@@ -87,6 +87,17 @@ public sealed class EventRepository : IEventRepository
         return result ?? 0;
     }
 
+    public async Task UpdateEventDataAsync(long eventID, string data, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await connection.ExecuteAsync
+        (
+            "UPDATE playthrough_events SET data = @data WHERE id = @eventID",
+            new { eventID, data }
+        );
+    }
+
     private sealed class EventRow
     {
         public long   ID         { get; set; }

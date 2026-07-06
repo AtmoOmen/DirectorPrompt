@@ -69,6 +69,27 @@ public sealed class SessionRepository : ISessionRepository
         await connection.ExecuteAsync("DELETE FROM sessions WHERE id = @id", new { id });
     }
 
+    public async Task UpdateAsync(Session session, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await connection.ExecuteAsync
+        (
+            """
+            UPDATE sessions
+            SET title = @title,
+                updated_at = @updatedAt
+            WHERE id = @id
+            """,
+            new
+            {
+                id        = session.ID,
+                title     = session.Title,
+                updatedAt = DateTime.UtcNow.ToString("O")
+            }
+        );
+    }
+
     private sealed class SessionRow
     {
         public long   ID         { get; set; }

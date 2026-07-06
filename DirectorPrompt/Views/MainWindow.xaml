@@ -19,6 +19,28 @@
                  WindowCornerPreference="Round">
     <ui:FluentWindow.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <ContextMenu x:Key="ProjectItemContextMenu" x:Shared="False">
+            <MenuItem
+                Header="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}"
+                Click="OnEditProjectItem"
+                Tag="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem
+                Header="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                Click="OnDeleteProjectItem"
+                Tag="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+        </ContextMenu>
+
+        <ContextMenu x:Key="SessionItemContextMenu" x:Shared="False">
+            <MenuItem
+                Header="{Binding [Common.Rename], Source={x:Static loc:Loc.Instance}}"
+                Click="OnRenameSessionItem"
+                Tag="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem
+                Header="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                Click="OnDeleteSessionItem"
+                Tag="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+        </ContextMenu>
     </ui:FluentWindow.Resources>
 
     <Grid>
@@ -41,59 +63,70 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="160" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="160" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0"
-                           Text="{Binding [Navigation.Project], Source={x:Static loc:Loc.Instance}}"
-                           VerticalAlignment="Center"
-                           Margin="0,0,8,0" />
-                <ComboBox Grid.Column="1"
-                          Margin="0,0,8,0"
-                          ItemsSource="{Binding Projects}"
-                          DisplayMemberPath="Name"
-                          SelectedItem="{Binding CurrentProject}" />
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding [Navigation.Project], Source={x:Static loc:Loc.Instance}}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ComboBox Width="180"
+                              Margin="0,0,4,0"
+                              ItemsSource="{Binding Projects}"
+                              DisplayMemberPath="Name"
+                              SelectedItem="{Binding CurrentProject}">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                                <Setter Property="ContextMenu" Value="{StaticResource ProjectItemContextMenu}" />
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                    <ui:Button Appearance="Secondary"
+                               Padding="8,6"
+                               Command="{Binding NewProjectCommand}"
+                               ToolTip="{Binding [Navigation.NewProject], Source={x:Static loc:Loc.Instance}}">
+                        <ui:SymbolIcon Symbol="Add24" />
+                    </ui:Button>
+                </StackPanel>
+
+                <Border Grid.Column="1"
+                        Width="1"
+                        Background="{DynamicResource ControlElevationBorderBrush}"
+                        Margin="12,2"
+                        VerticalAlignment="Stretch" />
+
                 <TextBlock Grid.Column="2"
                            Text="{Binding [Navigation.Session], Source={x:Static loc:Loc.Instance}}"
                            VerticalAlignment="Center"
-                           Margin="0,0,8,0" />
-                <ComboBox Grid.Column="3"
-                          Margin="0,0,8,0"
-                          ItemsSource="{Binding Sessions}"
-                          DisplayMemberPath="Title"
-                          SelectedItem="{Binding CurrentSession}"
-                          IsEnabled="{Binding IsProjectSelected}" />
-                <ui:Button Grid.Column="4"
-                           Content="{Binding [Navigation.NewSession], Source={x:Static loc:Loc.Instance}}"
-                           Icon="Add24"
-                           Appearance="Secondary"
-                           Margin="0,0,4,0"
-                           Padding="12,6"
-                           Command="{Binding NewSessionCommand}"
-                           IsEnabled="{Binding IsProjectSelected}" />
+                           Margin="0,0,6,0" />
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox Width="180"
+                              Margin="0,0,4,0"
+                              ItemsSource="{Binding Sessions}"
+                              DisplayMemberPath="Title"
+                              SelectedItem="{Binding CurrentSession}"
+                              IsEnabled="{Binding IsProjectSelected}">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                                <Setter Property="ContextMenu" Value="{StaticResource SessionItemContextMenu}" />
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                    <ui:Button Appearance="Secondary"
+                               Padding="8,6"
+                               Command="{Binding NewSessionCommand}"
+                               IsEnabled="{Binding IsProjectSelected}"
+                               ToolTip="{Binding [Navigation.NewSession], Source={x:Static loc:Loc.Instance}}">
+                        <ui:SymbolIcon Symbol="Add24" />
+                    </ui:Button>
+                </StackPanel>
+
                 <ui:Button Grid.Column="5"
-                           Content="{Binding [Navigation.NewProject], Source={x:Static loc:Loc.Instance}}"
-                           Icon="Add24"
-                           Appearance="Secondary"
-                           Margin="0,0,4,0"
-                           Padding="12,6"
-                           Command="{Binding NewProjectCommand}" />
-                <ui:Button Grid.Column="6"
-                           Content="{Binding [Navigation.EditProject], Source={x:Static loc:Loc.Instance}}"
-                           Icon="Edit24"
-                           Appearance="Secondary"
-                           Margin="0,0,4,0"
-                           Padding="12,6"
-                           Command="{Binding EditProjectCommand}"
-                           IsEnabled="{Binding IsProjectSelected}"
-                           HorizontalAlignment="Left" />
-                <ui:Button Grid.Column="7"
                            Content="{Binding [Navigation.Settings], Source={x:Static loc:Loc.Instance}}"
                            Icon="Settings24"
                            Appearance="Secondary"
@@ -194,6 +227,11 @@
                                             <Setter Property="BorderBrush"
                                                     Value="{DynamicResource ControlElevationBorderBrush}" />
                                             <Setter Property="BorderThickness" Value="1" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDirector}" Value="True">
+                                                    <Setter Property="HorizontalAlignment" Value="Right" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
                                         </Style>
                                     </Border.Style>
                                     <StackPanel>
@@ -205,20 +243,24 @@
                                             </Grid.ColumnDefinitions>
 
                                             <TextBlock Grid.Column="0"
-                                                       Text="{Binding IsDirector, Converter={x:Static vm:DialogEntryRoleConverter.Instance}}"
+                                                       Text="{Binding Role}"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                        Margin="0,0,8,0"
                                                        VerticalAlignment="Top" />
 
-                                            <ui:Button Grid.Column="2"
-                                                       Icon="MoreHorizontal24"
-                                                       Appearance="Secondary"
-                                                       Padding="6,4"
-                                                       VerticalAlignment="Top"
-                                                       Visibility="{Binding IsLast, Converter={StaticResource BoolToVisibility}}">
-                                                <ui:Button.ContextMenu>
-                                                    <ContextMenu>
+                                            <Button Grid.Column="2"
+                                                    Click="OnMoreButtonClick"
+                                                    Padding="6,2"
+                                                    VerticalAlignment="Top"
+                                                    Visibility="{Binding IsLast, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock Text="⋯" FontSize="14" />
+                                                <Button.ContextMenu>
+                                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                        <MenuItem
+                                                            Header="{Binding [Dialog.Edit], Source={x:Static loc:Loc.Instance}}"
+                                                            Click="OnEditEntry"
+                                                            Tag="{Binding}" />
                                                         <MenuItem
                                                             Header="{Binding [Dialog.Rewrite], Source={x:Static loc:Loc.Instance}}"
                                                             Click="OnRewriteRound"
@@ -228,8 +270,8 @@
                                                             Click="OnDeleteRound"
                                                             Tag="{Binding}" />
                                                     </ContextMenu>
-                                                </ui:Button.ContextMenu>
-                                            </ui:Button>
+                                                </Button.ContextMenu>
+                                            </Button>
                                         </Grid>
 
                                         <Expander
@@ -245,34 +287,57 @@
                                                        Margin="0,4,0,0" />
                                         </Expander>
 
-                                        <TextBlock Margin="0,4,0,0"
-                                                   Text="{Binding Content}"
-                                                   TextWrapping="Wrap"
-                                                   Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVisibility}}" />
+                                        <!-- 内容区域: 三种状态重叠, 同一时刻只显示一个 -->
+                                        <Grid Margin="0,4,0,0">
+                                            <!-- 流式输出中: 纯文本, 不渲染 Markdown -->
+                                            <TextBlock Text="{Binding Content}"
+                                                       TextWrapping="Wrap"
+                                                       Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVisibility}}" />
 
-                                        <ContentControl Margin="0,4,0,0">
-                                            <ContentControl.Style>
-                                                <Style TargetType="ContentControl">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsNarrative}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding IsStreaming}" Value="True">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </ContentControl.Style>
+                                            <!-- 正常显示: 渲染后的 Markdown -->
                                             <FlowDocumentScrollViewer Document="{Binding Document}"
+                                                                      Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                                                       IsSelectionEnabled="True"
-                                                                      VerticalScrollBarVisibility="Hidden" />
-                                        </ContentControl>
+                                                                      VerticalScrollBarVisibility="Auto">
+                                                <FlowDocumentScrollViewer.Style>
+                                                    <Style TargetType="FlowDocumentScrollViewer">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsStreaming}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </FlowDocumentScrollViewer.Style>
+                                            </FlowDocumentScrollViewer>
 
-                                        <TextBlock Margin="0,4,0,0"
-                                                   Text="{Binding Content}"
-                                                   TextWrapping="Wrap"
-                                                   Visibility="{Binding IsDirector, Converter={StaticResource BoolToVisibility}}" />
+                                            <!-- 编辑模式: TextBox 替换正文 -->
+                                            <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                <ui:TextBox Text="{Binding EditingContent, UpdateSourceTrigger=PropertyChanged}"
+                                                            AcceptsReturn="True"
+                                                            TextWrapping="Wrap"
+                                                            MinHeight="100"
+                                                            Margin="0,0,0,4" />
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                    <ui:Button Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
+                                                               Icon="Save24"
+                                                               Appearance="Primary"
+                                                               Padding="12,6"
+                                                               Margin="0,0,4,0"
+                                                               Command="{Binding DataContext.SaveEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                               CommandParameter="{Binding}" />
+                                                    <ui:Button Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
+                                                               Icon="Dismiss24"
+                                                               Appearance="Secondary"
+                                                               Padding="12,6"
+                                                               Command="{Binding DataContext.CancelEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                               CommandParameter="{Binding}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -307,29 +372,37 @@
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                        Margin="0,0,8,0"
                                                        VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding Content}"
+                                            <ui:TextBox Grid.Column="1"
+                                                       Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
                                                        TextWrapping="Wrap"
-                                                       VerticalAlignment="Center" />
+                                                       AcceptsReturn="True"
+                                                       MinLines="1"
+                                                       MaxLines="3"
+                                                       VerticalAlignment="Center"
+                                                       BorderThickness="0"
+                                                       Background="Transparent" />
                                             <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                <ui:Button Appearance="Secondary"
-                                                           Icon="ArrowUp24"
-                                                           Padding="8,6"
-                                                           Margin="2,0"
-                                                           Command="{Binding DataContext.DirectiveInput.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                           CommandParameter="{Binding}" />
-                                                <ui:Button Appearance="Secondary"
-                                                           Icon="ArrowDown24"
-                                                           Padding="8,6"
-                                                           Margin="2,0"
-                                                           Command="{Binding DataContext.DirectiveInput.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                           CommandParameter="{Binding}" />
-                                                <ui:Button Appearance="Secondary"
-                                                           Icon="Delete24"
-                                                           Padding="8,6"
-                                                           Margin="2,0"
-                                                           Command="{Binding DataContext.DirectiveInput.RemoveDirectiveCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                           CommandParameter="{Binding}" />
+                                                <Button Padding="12,8"
+                                                        MinWidth="36"
+                                                        Margin="2,0"
+                                                        Command="{Binding DataContext.DirectiveInput.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="↑" FontSize="14" />
+                                                </Button>
+                                                <Button Padding="12,8"
+                                                        MinWidth="36"
+                                                        Margin="2,0"
+                                                        Command="{Binding DataContext.DirectiveInput.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="↓" FontSize="14" />
+                                                </Button>
+                                                <Button Padding="12,8"
+                                                        MinWidth="36"
+                                                        Margin="2,0"
+                                                        Command="{Binding DataContext.DirectiveInput.RemoveDirectiveCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="✕" FontSize="14" />
+                                                </Button>
                                             </StackPanel>
                                         </Grid>
                                     </Border>

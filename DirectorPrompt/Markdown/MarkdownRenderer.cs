@@ -17,7 +17,6 @@ public static class MarkdownRenderer
         {
             FontFamily  = new FontFamily("Microsoft YaHei UI"),
             FontSize    = 14,
-            Foreground  = new SolidColorBrush(Color.FromRgb(230, 230, 230)),
             PagePadding = new Thickness(0)
         };
 
