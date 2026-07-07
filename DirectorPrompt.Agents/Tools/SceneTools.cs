@@ -20,14 +20,19 @@ public sealed class SceneTools
         (
             () => QuerySceneAsync(context),
             "query_scene",
-            "查询当前对话的所有场景列表, 返回每个场景的 ID、timelinePosition、timeLabel、status"
+            "查询当前对话的所有场景列表"
         ),
         AIFunctionFactory.Create
         (
             (long? afterSceneID, long? beforeSceneID, string timeLabel) =>
                 CreateSceneAsync(context, afterSceneID, beforeSceneID, timeLabel),
             "create_scene",
-            "创建新场景。afterSceneID: 新场景在时间轴上位于此场景之后; beforeSceneID: 新场景在时间轴上位于此场景之前; 至少填一个, 都填表示插入两者之间; timeLabel: 语义时间标签"
+            """
+            创建新场景, afterSceneID 与 beforeSceneID 至少填一个
+            afterSceneID: 新场景在此场景之后
+            beforeSceneID: 新场景在此场景之前
+            timeLabel: 语义时间标签
+            """
         )
     ];
 

@@ -8,44 +8,59 @@ using Serilog;
 namespace DirectorPrompt.Agents.Tools;
 
 public sealed class MemoryTools
+(
+    IMemoryRepository        memoryRepository,
+    IEmbeddingServiceFactory embeddingServiceFactory
+)
 {
-    private readonly IMemoryRepository        memoryRepository;
-    private readonly IEmbeddingServiceFactory embeddingServiceFactory;
-
-    public MemoryTools(IMemoryRepository memoryRepository, IEmbeddingServiceFactory embeddingServiceFactory)
-    {
-        this.memoryRepository        = memoryRepository;
-        this.embeddingServiceFactory = embeddingServiceFactory;
-    }
-
     public IList<AIFunction> Create(ToolExecutionContext context) =>
     [
         AIFunctionFactory.Create
         (
             (string query, string? tags, int? topK) => QueryMemoryAsync(context, query, tags, topK),
             "query_memory",
-            "语义检索记忆条目。query: 检索内容; tags: 可选, 按标签过滤 (逗号分隔); topK: 返回条数, 默认 10"
+            """
+            语义检索记忆条目
+            query: 检索内容
+            tags: 按标签过滤, 逗号分隔 (可选)
+            topK: 返回条数, 默认 10
+            """
         ),
         AIFunctionFactory.Create
         (
             (long sceneID, string content, string tags) =>
                 CreateMemoryAsync(context, sceneID, content, tags),
             "create_memory",
-            "创建新记忆。sceneID: 归属场景 ID; content: 记忆正文; tags: 标签 (逗号分隔)"
+            """
+            创建新记忆
+            sceneID: 归属场景 ID
+            content: 记忆正文
+            tags: 标签 (逗号分隔)
+            """
         ),
         AIFunctionFactory.Create
         (
             (long memoryID, string content, string? tags) =>
                 UpdateMemoryAsync(context, memoryID, content, tags),
             "update_memory",
-            "改写已有记忆。memoryID: 记忆 ID; content: 新内容; tags: 可选, 新标签 (逗号分隔)"
+            """
+            改写已有记忆
+            memoryID: 记忆 ID
+            content: 新内容
+            tags: 新标签, 逗号分隔 (可选)
+            """
         ),
         AIFunctionFactory.Create
         (
             (string memoryIDs, string content, string tags) =>
                 MergeMemoriesAsync(context, memoryIDs, content, tags),
             "merge_memories",
-            "合并多条记忆为一条。memoryIDs: 要合并的记忆 ID 列表 (逗号分隔); content: 合并后的内容; tags: 标签 (逗号分隔)"
+            """
+            合并多条记忆为一条
+            memoryIDs: 要合并的记忆 ID 列表 (逗号分隔)
+            content: 合并后的内容
+            tags: 标签 (逗号分隔)
+            """
         )
     ];
 

@@ -16,7 +16,13 @@ public sealed class AuditTools
         (
             AddViolation,
             "add_violation",
-            "报告审计问题。type: 问题类型 (setting/state/character/time/memory); description: 问题描述; severity: 严重程度 (unacceptable/severe/general); suggestion: 可选, 修改建议"
+            """
+            报告审计问题
+            type: 问题类型 (setting/state/character/time/memory)
+            description: 问题描述
+            severity: 严重程度 (unacceptable/severe/general)
+            suggestion: 修改建议 (可选)
+            """
         )
     ];
 

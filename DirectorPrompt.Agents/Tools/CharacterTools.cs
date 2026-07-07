@@ -20,7 +20,10 @@ public sealed class CharacterTools
         (
             (string name) => GetCharacterAsync(context, name),
             "get_character",
-            "查询人物详情。name: 人物名称"
+            """
+            查询特定人物
+            name: 人物名
+            """
         ),
         AIFunctionFactory.Create
         (
@@ -30,68 +33,115 @@ public sealed class CharacterTools
         ),
         AIFunctionFactory.Create
         (
-            (string characterName) => GetRelationsAsync(context, characterName),
+            (string name) => GetRelationsAsync(context, name),
             "get_relations",
-            "查询人物的关系网络。characterName: 人物名称"
+            """
+            查询特定人物的关系网络
+            name: 人物名
+            """
         ),
         AIFunctionFactory.Create
         (
-            (string characterName, string attribute) => GetCharacterStateAsync(context, characterName, attribute),
+            (string name, string attribute) => GetCharacterStateAsync(context, name, attribute),
             "get_character_state",
-            "查询人物的状态属性值。characterName: 人物名称; attribute: 属性名"
+            """
+            查询人物的状态属性值
+            name: 人物名
+            attribute: 属性名
+            """
         ),
         AIFunctionFactory.Create
         (
             (string name, string description, string categoryIDs, string reason) =>
                 AddCharacterAsync(context, name, description, categoryIDs, reason),
             "add_character",
-            "新增人物。name: 名称; description: 描述; categoryIDs: 分类 ID 列表 (逗号分隔); reason: 新增原因"
+            """
+            新增人物
+            name: 人物名
+            description: 描述
+            categoryIDs: 分类 ID 列表 (逗号分隔)
+            reason: 新增原因
+            """
         ),
         AIFunctionFactory.Create
         (
             (string name, string reason) => RemoveCharacterAsync(context, name, reason),
             "remove_character",
-            "标记人物离场或死亡。name: 人物名称; reason: 原因"
+            """
+            标记人物离场或死亡
+            name: 人物名
+            reason: 原因
+            """
         ),
         AIFunctionFactory.Create
         (
             (string name, string description, string reason) =>
                 UpdateCharacterAsync(context, name, description, reason),
             "update_character",
-            "更新人物描述。name: 人物名称; description: 新描述; reason: 原因"
+            """
+            更新人物描述
+            name: 人物名
+            description: 新描述
+            reason: 原因
+            """
         ),
         AIFunctionFactory.Create
         (
             (string sourceName, string targetName, string relationType, string? description, string reason) =>
                 SetRelationAsync(context, sourceName, targetName, relationType, description, reason),
             "set_relation",
-            "设置或更新人物关系。sourceName: 主体人物; targetName: 客体人物; relationType: 关系类型; description: 可选, 关系描述; reason: 原因"
+            """
+            设置或更新人物关系
+            sourceName: 主体人物
+            targetName: 客体人物
+            relationType: 关系类型
+            description: 关系描述 (可选)
+            reason: 原因
+            """
         ),
         AIFunctionFactory.Create
         (
             (string name) => EnterSceneAsync(context, name),
             "enter_scene",
-            "标记人物进入当前场景。name: 人物名称"
+            """
+            标记人物进入当前场景
+            name: 人物名
+            """
         ),
         AIFunctionFactory.Create
         (
             (string name) => LeaveSceneAsync(context, name),
             "leave_scene",
-            "标记人物离开当前场景。name: 人物名称"
+            """
+            标记人物离开当前场景
+            name: 人物名
+            """
         ),
         AIFunctionFactory.Create
         (
             (string characterName, string attribute, double delta, string reason) =>
                 UpdateCharacterStateAsync(context, characterName, attribute, delta, reason),
             "update_character_state",
-            "数值增减人物状态属性。characterName: 人物名称; attribute: 属性名; delta: 变化量; reason: 原因"
+            """
+            数值增减人物状态属性
+            characterName: 人物名
+            attribute: 属性名
+            delta: 变化量
+            reason: 原因
+            """
         ),
         AIFunctionFactory.Create
         (
             (string characterName, string attribute, string value, string reason) =>
                 SetCharacterStateAsync(context, characterName, attribute, value, reason),
             "set_character_state",
-            "设置人物状态属性为指定值。characterName: 人物名称; attribute: 属性名; value: 新值; reason: 原因"
+            """
+            设置人物状态属性为指定值
+            characterName: 人物名
+            attribute: 属性名
+            value: 新值
+            reason: 原因
+            """
         )
     ];
 

@@ -18,7 +18,11 @@ public sealed class KnowledgeTools
         (
             (string query, int? topK) => QueryKnowledgeAsync(context, query, topK),
             "query_knowledge",
-            "语义检索知识条目。query: 检索内容; topK: 返回条数, 默认 8"
+            """
+            语义检索知识条目
+            query: 检索内容
+            topK: 返回条数, 默认 8
+            """
         )
     ];
 

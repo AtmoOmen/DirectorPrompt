@@ -18,33 +18,49 @@ public sealed class StateTools
         (
             (string attribute) => GetStateAsync(context, attribute),
             "get_state",
-            "查询单个状态属性的当前值。attribute: 属性名"
+            """
+            查询特定状态属性当前值
+            attribute: 属性名
+            """
         ),
         AIFunctionFactory.Create
         (
             () => GetAllStateAsync(context),
             "get_all_state",
-            "查询所有全局状态属性的当前值"
+            "查询所有状态属性的当前值"
         ),
         AIFunctionFactory.Create
         (
             (string attribute) => GetCompositeItemsAsync(context, attribute),
             "get_composite_items",
-            "查询复合类型状态属性的所有条目。attribute: 属性名"
+            """
+            查询复合类型状态属性的所有条目
+            attribute: 属性名
+            """
         ),
         AIFunctionFactory.Create
         (
             (string attribute, double delta, string reason) =>
                 UpdateStateAsync(context, attribute, delta, reason),
             "update_state",
-            "数值增减状态属性。attribute: 属性名; delta: 变化量 (正为增, 负为减); reason: 变更原因"
+            """
+            数值增减状态属性
+            attribute: 属性名
+            delta: 变化量 (正为增, 负为减)
+            reason: 变更原因
+            """
         ),
         AIFunctionFactory.Create
         (
             (string attribute, string value, string reason) =>
                 SetStateAsync(context, attribute, value, reason),
             "set_state",
-            "设置状态属性为指定值。attribute: 属性名; value: 新值; reason: 变更原因"
+            """
+            设置状态属性为指定值
+            attribute: 属性名
+            value: 新值
+            reason: 变更原因
+            """
         )
     ];
 
