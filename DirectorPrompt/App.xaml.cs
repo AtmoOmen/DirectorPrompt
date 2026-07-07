@@ -152,6 +152,8 @@ public partial class App : Application
         services.AddSingleton<CharacterTools>();
 
         services.AddSingleton<DirectiveProcessingStage>();
+        services.AddSingleton<PhaseEvaluator>();
+        services.AddSingleton<CharacterTransitionEvaluator>();
         services.AddSingleton<RetrievalStage>();
         services.AddSingleton<GenerationStage>();
         services.AddSingleton<AuditStage>();

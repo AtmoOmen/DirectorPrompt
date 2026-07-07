@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using DirectorPrompt.Agents;
+using DirectorPrompt.Domain.Enums;
 
 namespace DirectorPrompt.ViewModels;
 
@@ -39,6 +41,10 @@ public sealed partial class PhaseEditViewModel : ObservableObject
     public ObservableCollection<KnowledgeSelectionItem> AvailableKnowledgeItems { get; } = [];
 
     public ObservableCollection<KnowledgeSelectionItem> LinkedKnowledgeItems { get; } = [];
+
+    public DirectiveInputViewModel EnterDirectiveInput { get; } = new();
+
+    public DirectiveInputViewModel ExitDirectiveInput { get; } = new();
 
     public long[] GetKnowledgeIDs() =>
         LinkedKnowledgeItems
@@ -105,7 +111,9 @@ public sealed partial class PhaseEditViewModel : ObservableObject
         string name,
         string expression,
         long[] knowledgeIds,
-        long[] knowledgeGroupIds
+        long[] knowledgeGroupIds,
+        IReadOnlyList<DirectiveItem> enterDirectives,
+        IReadOnlyList<DirectiveItem> exitDirectives
     )
     {
         Name       = name;
@@ -128,6 +136,38 @@ public sealed partial class PhaseEditViewModel : ObservableObject
         {
             AvailableKnowledgeItems.Remove(item);
             LinkedKnowledgeItems.Add(item);
+        }
+
+        var order = 1;
+
+        foreach (var d in enterDirectives)
+        {
+            EnterDirectiveInput.Directives.Add
+            (
+                new DirectiveItemViewModel
+                {
+                    Type    = d.Type,
+                    Content = d.Content,
+                    Order   = order++,
+                    TTL     = d.TTL
+                }
+            );
+        }
+
+        order = 1;
+
+        foreach (var d in exitDirectives)
+        {
+            ExitDirectiveInput.Directives.Add
+            (
+                new DirectiveItemViewModel
+                {
+                    Type    = d.Type,
+                    Content = d.Content,
+                    Order   = order++,
+                    TTL     = d.TTL
+                }
+            );
         }
     }
 }

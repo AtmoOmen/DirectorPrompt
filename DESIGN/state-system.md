@@ -145,6 +145,14 @@ Phase {
     expression:        string        // 表达式, 使用 {val} 代表当前值
     knowledgeIds:      long[]        // 关联的知识条目 ID (必须为禁用状态)
     knowledgeGroupIds: long[]        // 关联的知识分组 ID (必须为禁用状态)
+    enterDirectives:   PhaseDirective[]  // 进入指令: Phase 激活时在下一轮追加到用户指令开头
+    exitDirectives:    PhaseDirective[]  // 退出指令: Phase 失活时在下一轮追加到用户指令开头
+}
+
+PhaseDirective {
+    type:    DirectiveType  // 剧情 / 基调 / 临时约束 / 时间场景变更
+    content: string         // 指令内容
+    ttl:     int?           // 生效轮数, null 表示永久 (仅基调/临时约束有意义)
 }
 ```
 
@@ -168,6 +176,22 @@ Phase {
 - 知识在 Phase 激活期间持续可检索, Phase 失效后退出检索池
 - 能否被检索到取决于 Knowledge Agent 的语义匹配和实体匹配, Phase 只控制“可不可被检索”, 不强制注入
 
+### 进入/退出指令
+
+Phase 激活 (从非激活变为激活) 或失活 (从激活变为非激活) 时, 可以在下一轮自动追加指令到用户指令开头:
+
+- **进入指令** (enterDirectives): Phase 激活时触发, 在下一轮用户指令前追加
+- **退出指令** (exitDirectives): Phase 失活时触发, 在下一轮用户指令前追加
+
+这些指令与主界面底部的指令组合器完全一致, 可以组合多个不同分类的指令 (剧情、基调、临时约束、时间/场景变更)。但它们是系统指令, 具有以下特性:
+
+- 在主界面消息渲染中不可见
+- 无法编辑
+- 回退时不恢复到输入框 (不会泄漏)
+- AI 在叙事上下文中能看到完整指令 (包含系统指令), 按顺序理解
+
+Phase 状态追踪通过 `PhaseTransition` 事件实现: 每轮结束时记录当前激活的 Phase 集合, 下一轮开始时与上一轮对比, 计算进入/退出转换。回退时事件自动移除, Phase 状态自然回退。
+
 ### 示例
 
 **numeric + narrative (金钱):**
@@ -188,7 +212,7 @@ phases: [
 ]
 ```
 
-金钱达到 100 万时, "百万富翁"相关的禁用知识变为可检索; 跌破 100 时, "破产边缘"相关知识变为可检索。Knowledge Agent 在检索时会将这些知识纳入候选池, 但只有语义相关才会被检索到。
+金钱达到 100 万时, "百万富翁"相关的禁用知识变为可检索, 同时追加进入指令 (如 "[基调] 富足奢华"、"[剧情] 描写角色的财富展示"); 跌破 100 时, "破产边缘"相关知识变为可检索, 同时追加退出指令 (如 "[基调] 紧迫困窘")。这些系统指令在主界面不可见, 但 AI 能在叙事上下文中看到。
 
 **enum + system (天气):**
 
@@ -267,4 +291,4 @@ remove_item(attribute: string, itemId: long, reason: string)
 | 记忆系统 | 状态变更原因记录在 changeLog, Memory Sub-Agent 压缩时可参考 |
 | 人物系统 | 复用 StateAttribute 模型, scope=category; 人物状态跟随分类继承解析 |
 | 审计系统 | Audit Agent 用当前状态值 + changeLog 校验叙事一致性 |
-| Agent 编排 | Memory Sub-Agent 负责提取 narrative 驱动的变更 (全局 + 人物); system 驱动的变换由系统自动执行; Phase 的表达式求值和知识注入由系统自动完成 |
+| Agent 编排 | Memory Sub-Agent 负责提取 narrative 驱动的变更 (全局 + 人物); system 驱动的变换由系统自动执行; Phase 的表达式求值、知识启用和进入/退出指令注入由 PhaseEvaluator 和 Orchestrator 自动完成 |

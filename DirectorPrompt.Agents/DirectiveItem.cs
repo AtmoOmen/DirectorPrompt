@@ -7,5 +7,6 @@ public record DirectiveItem
     DirectiveType Type,
     string        Content,
     int           Order,
-    int?          TTL = null
+    int?          TTL = null,
+    bool          IsSystem = false
 );

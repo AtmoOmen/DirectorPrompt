@@ -1,0 +1,124 @@
+<UserControl x:Class="DirectorPrompt.Views.Components.PhaseEditControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:views="clr-namespace:DirectorPrompt.Views"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components">
+    <StackPanel x:Name="RootPanel">
+        <TextBlock Text="{Binding [State.Attribute.Phases], Source={x:Static loc:Loc.Instance}}"
+                   FontWeight="SemiBold"
+                   Margin="0,12,0,4" />
+        <TextBlock Text="{Binding [State.Attribute.PhasesHint], Source={x:Static loc:Loc.Instance}}"
+                   FontSize="11"
+                   Foreground="Gray"
+                   Margin="0,0,0,8" />
+        <ItemsControl ItemsSource="{Binding Phases}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="0,0,0,6"
+                            Padding="8,6"
+                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Name}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0" />
+                                    <TextBlock Text="{Binding Expression}"
+                                               FontSize="11"
+                                               Foreground="Gray"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <ui:Button Content="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}"
+                                               Appearance="Secondary"
+                                               Padding="6,4"
+                                               Margin="0,0,4,0"
+                                               Click="OnEditPhase"
+                                               Tag="{Binding}" />
+                                    <ui:Button Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                               Appearance="Caution"
+                                               Padding="6,4"
+                                               Click="OnDeletePhase"
+                                               Tag="{Binding}" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}"
+                                        Margin="0,8,0,0">
+                                <TextBlock Text="{Binding [Phase.Name], Source={x:Static loc:Loc.Instance}}"
+                                           Margin="0,0,0,4" />
+                                <ui:TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text="{Binding [Phase.Expression], Source={x:Static loc:Loc.Instance}}"
+                                           Margin="0,8,0,4" />
+                                <ui:TextBox Text="{Binding Expression, UpdateSourceTrigger=PropertyChanged}"
+                                            PlaceholderText="{Binding [Phase.ExpressionPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock Text="{Binding [Phase.KnowledgeLink], Source={x:Static loc:Loc.Instance}}"
+                                           Margin="0,8,0,4" />
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0"
+                                              ItemsSource="{Binding AvailableKnowledgeItems}"
+                                              SelectedItem="{Binding SelectedAvailableItem}"
+                                              DisplayMemberPath="DisplayWithType"
+                                              Margin="0,0,4,0" />
+                                    <ui:Button Grid.Column="1"
+                                               Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
+                                               Appearance="Primary"
+                                               Padding="12,6"
+                                               Click="OnAddPhaseKnowledge"
+                                               Tag="{Binding}" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding LinkedKnowledgeItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding DisplayWithType}"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <ui:Button Grid.Column="1"
+                                                           Content="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
+                                                           Appearance="Caution"
+                                                           Padding="6,4"
+                                                           Click="OnRemovePhaseKnowledge"
+                                                           Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding [Phase.EnterDirectives], Source={x:Static loc:Loc.Instance}}"
+                                           Margin="0,12,0,4" />
+                                <components:DirectiveInputControl DirectiveInput="{Binding EnterDirectiveInput}" />
+                                <TextBlock Text="{Binding [Phase.ExitDirectives], Source={x:Static loc:Loc.Instance}}"
+                                           Margin="0,12,0,4" />
+                                <components:DirectiveInputControl DirectiveInput="{Binding ExitDirectiveInput}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ui:Button Content="{Binding [State.Attribute.AddPhase], Source={x:Static loc:Loc.Instance}}"
+                   Icon="Add24"
+                   Appearance="Secondary"
+                   Padding="8,4"
+                   Margin="0,4,0,0"
+                   Click="OnAddPhase" />
+    </StackPanel>
+</UserControl>

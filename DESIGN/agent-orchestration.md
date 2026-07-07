@@ -107,13 +107,14 @@ PlaythroughEvent {
 
 | 事件类型 | 说明 | 数据 |
 |---------|------|------|
-| director_input | 用户指令批次 | 指令列表 (含分类、内容、顺序) |
+| director_input | 用户指令批次 | 指令列表 (含分类、内容、顺序、是否系统指令) |
 | narrative_output | AI 叙事输出 | 叙事文本 |
 | state_change | 状态变更 | 属性名、旧值、新值、来源、原因、人物ID? |
 | memory_update | 记忆更新 | 操作类型 (create/update/merge)、记忆ID、内容、tags、关联人物 |
 | character_update | 人物更新 | 操作类型 (add/remove/update/enter_scene/leave_scene/relation_change/state_change)、人物数据 |
 | scene_change | 场景切换 | 旧场景ID、新场景ID |
 | directive_change | 指令变更 | 操作类型 (add/remove/expire)、指令内容、TTL |
+| phase_transition | Phase 转换 | 当前激活的 Phase 集合 (用于下一轮进入/退出指令计算) |
 
 ### 变更追踪与回滚
 
@@ -132,6 +133,8 @@ PlaythroughEvent {
     ▼
 Orchestrator 接收并处理批次 (本地代码)
     │
+    ├─ Phase 评估: 与上一轮对比, 计算进入/退出转换
+    ├─ 注入 Phase 系统指令 (进入指令 + 退出指令, 追加到用户指令开头)
     ├─ 时间/场景变更指令 → 触发场景创建 (AI 填位置)
     ├─ 基调/临时约束指令 → 加入 Active Directives
     └─ 全部指令按序组装为 Director Input

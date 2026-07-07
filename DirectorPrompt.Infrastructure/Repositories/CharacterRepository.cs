@@ -18,6 +18,61 @@ public sealed class CharacterRepository : ICharacterRepository
         this.roundChangeRepository = roundChangeRepository;
     }
 
+    private static List<DirectiveConfig> ParseDirectiveConfigs(string json)
+    {
+        var result = new List<DirectiveConfig>();
+
+        if (string.IsNullOrWhiteSpace(json) || json == "[]")
+            return result;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                return result;
+
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null
+                                  ? t.GetString() ?? "Plot"
+                                  : "Plot";
+
+                var type = typeStr switch
+                {
+                    "Tone"                => DirectiveType.Tone,
+                    "TemporaryConstraint" => DirectiveType.TemporaryConstraint,
+                    "SceneChange"         => DirectiveType.SceneChange,
+                    _                     => DirectiveType.Plot
+                };
+
+                var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null
+                                  ? c.GetString() ?? string.Empty
+                                  : string.Empty;
+
+                var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number
+                              ? ttlEl.GetInt32()
+                              : (int?)null;
+
+                result.Add
+                (
+                    new DirectiveConfig
+                    {
+                        Type    = type,
+                        Content = content,
+                        TTL     = ttl
+                    }
+                );
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        return result;
+    }
+
     public async Task<Character?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
@@ -98,20 +153,22 @@ public sealed class CharacterRepository : ICharacterRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO characters (project_id, session_id, name, description, category_ids, status, created_at, updated_at)
-                     VALUES (@projectID, @sessionID, @name, @description, @categoryIDs, @status, @createdAt, @updatedAt);
+                     INSERT INTO characters (project_id, session_id, name, description, category_ids, status, enter_directives, exit_directives, created_at, updated_at)
+                     VALUES (@projectID, @sessionID, @name, @description, @categoryIDs, @status, @enterDirectives, @exitDirectives, @createdAt, @updatedAt);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
-                         projectID   = character.ProjectID,
-                         sessionID   = character.SessionID,
-                         name        = character.Name,
-                         description = character.Description,
-                         categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
-                         status      = character.Status.ToString().ToLowerInvariant(),
-                         createdAt   = now,
-                         updatedAt   = now
+                         projectID        = character.ProjectID,
+                         sessionID        = character.SessionID,
+                         name             = character.Name,
+                         description      = character.Description,
+                         categoryIDs      = JsonHelper.Serialize(character.CategoryIDs),
+                         status           = character.Status.ToString().ToLowerInvariant(),
+                         enterDirectives  = JsonHelper.Serialize(character.EnterDirectives),
+                         exitDirectives   = JsonHelper.Serialize(character.ExitDirectives),
+                         createdAt        = now,
+                         updatedAt        = now
                      }
                  );
 
@@ -138,17 +195,21 @@ public sealed class CharacterRepository : ICharacterRepository
                 description = @description,
                 category_ids = @categoryIDs,
                 status = @status,
+                enter_directives = @enterDirectives,
+                exit_directives = @exitDirectives,
                 updated_at = @updatedAt
             WHERE id = @id
             """,
             new
             {
-                id          = character.ID,
-                name        = character.Name,
-                description = character.Description,
-                categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
-                status      = character.Status.ToString().ToLowerInvariant(),
-                updatedAt   = DateTime.UtcNow.ToString("O")
+                id               = character.ID,
+                name             = character.Name,
+                description      = character.Description,
+                categoryIDs      = JsonHelper.Serialize(character.CategoryIDs),
+                status           = character.Status.ToString().ToLowerInvariant(),
+                enterDirectives  = JsonHelper.Serialize(character.EnterDirectives),
+                exitDirectives   = JsonHelper.Serialize(character.ExitDirectives),
+                updatedAt        = DateTime.UtcNow.ToString("O")
             }
         );
 
@@ -179,6 +240,35 @@ public sealed class CharacterRepository : ICharacterRepository
 
         if (oldRow is not null)
             await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "characters", characterID, JsonSerializer.Serialize(oldRow), cancellationToken);
+    }
+
+    public async Task UpdateDirectivesAsync
+    (
+        long                           characterID,
+        IReadOnlyList<DirectiveConfig> enterDirectives,
+        IReadOnlyList<DirectiveConfig> exitDirectives,
+        CancellationToken              cancellationToken = default
+    )
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await connection.ExecuteAsync
+        (
+            """
+            UPDATE characters
+            SET enter_directives = @enterDirectives,
+                exit_directives = @exitDirectives,
+                updated_at = @updatedAt
+            WHERE id = @id
+            """,
+            new
+            {
+                id               = characterID,
+                enterDirectives  = JsonHelper.Serialize(enterDirectives),
+                exitDirectives   = JsonHelper.Serialize(exitDirectives),
+                updatedAt        = DateTime.UtcNow.ToString("O")
+            }
+        );
     }
 
     public async Task<IReadOnlyList<CharacterCategory>> GetCategoriesAsync(long projectID, CancellationToken cancellationToken = default)
@@ -661,8 +751,8 @@ public sealed class CharacterRepository : ICharacterRepository
         await connection.ExecuteAsync
         (
             """
-            INSERT INTO characters (project_id, session_id, name, description, category_ids, status, created_at, updated_at)
-            SELECT project_id, @sessionID, name, description, category_ids, status, @now, @now
+            INSERT INTO characters (project_id, session_id, name, description, category_ids, status, enter_directives, exit_directives, created_at, updated_at)
+            SELECT project_id, @sessionID, name, description, category_ids, status, enter_directives, exit_directives, @now, @now
             FROM characters
             WHERE project_id = @projectID AND session_id IS NULL
             """,
@@ -672,33 +762,37 @@ public sealed class CharacterRepository : ICharacterRepository
 
     private sealed class CharacterRow
     {
-        public long   ID           { get; set; }
-        public long   Project_ID   { get; set; }
-        public long?  Session_ID   { get; set; }
-        public string Name         { get; set; } = string.Empty;
-        public string Description  { get; set; } = string.Empty;
-        public string Category_IDs { get; set; } = "[]";
-        public string Status       { get; set; } = "active";
-        public string Created_At   { get; set; } = string.Empty;
-        public string Updated_At   { get; set; } = string.Empty;
+        public long   ID              { get; set; }
+        public long   Project_ID      { get; set; }
+        public long?  Session_ID      { get; set; }
+        public string Name            { get; set; } = string.Empty;
+        public string Description     { get; set; } = string.Empty;
+        public string Category_IDs    { get; set; } = "[]";
+        public string Status          { get; set; } = "active";
+        public string Enter_Directives { get; set; } = "[]";
+        public string Exit_Directives  { get; set; } = "[]";
+        public string Created_At      { get; set; } = string.Empty;
+        public string Updated_At      { get; set; } = string.Empty;
 
         public Character ToCharacter() =>
             new()
             {
-                ID          = ID,
-                ProjectID   = Project_ID,
-                SessionID   = Session_ID ?? 0,
-                Name        = Name,
-                Description = Description,
-                CategoryIDs = JsonHelper.DeserializeInt64Array(Category_IDs),
+                ID              = ID,
+                ProjectID       = Project_ID,
+                SessionID       = Session_ID ?? 0,
+                Name            = Name,
+                Description     = Description,
+                CategoryIDs     = JsonHelper.DeserializeInt64Array(Category_IDs),
                 Status = Status switch
                 {
                     "left" => CharacterStatus.Left,
                     "dead" => CharacterStatus.Dead,
                     _      => CharacterStatus.Active
                 },
-                CreatedAt = DateTime.Parse(Created_At),
-                UpdatedAt = DateTime.Parse(Updated_At)
+                EnterDirectives = ParseDirectiveConfigs(Enter_Directives),
+                ExitDirectives  = ParseDirectiveConfigs(Exit_Directives),
+                CreatedAt       = DateTime.Parse(Created_At),
+                UpdatedAt       = DateTime.Parse(Updated_At)
             };
     }
 

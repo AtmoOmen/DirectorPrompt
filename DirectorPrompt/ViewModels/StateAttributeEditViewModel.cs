@@ -77,7 +77,19 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
             name              = p.Name,
             expression        = p.Expression,
             knowledgeIds      = p.GetKnowledgeIDs(),
-            knowledgeGroupIds = p.GetKnowledgeGroupIDs()
+            knowledgeGroupIds = p.GetKnowledgeGroupIDs(),
+            enterDirectives   = p.EnterDirectiveInput.Directives.Select(d => new
+            {
+                type    = d.Type.ToString(),
+                content = d.Content,
+                ttl     = d.TTL
+            }),
+            exitDirectives    = p.ExitDirectiveInput.Directives.Select(d => new
+            {
+                type    = d.Type.ToString(),
+                content = d.Content,
+                ttl     = d.TTL
+            })
         });
 
     public string BuildConfig() =>

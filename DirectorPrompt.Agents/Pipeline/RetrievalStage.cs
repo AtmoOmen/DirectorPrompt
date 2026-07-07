@@ -1,13 +1,10 @@
-using System.Globalization;
 using System.Text;
-using System.Text.Json;
 using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -24,20 +21,12 @@ public sealed class RetrievalStage
     IMemoryRepository       memoryRepository,
     KnowledgeTools          knowledgeTools,
     MemoryTools             memoryTools,
-    IConditionEngine        conditionEngine,
     OrchestratorConfig      orchestratorConfig
 )
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         Log.Information("RetrievalStage 开始: 对话={SessionID}, 轮次={RoundID}", context.SessionID, context.RoundID);
-
-        context.PhaseActivatedEntryIDs = await EvaluatePhasesAsync
-        (
-            context.DirectiveBatch.ProjectID,
-            context.SessionID,
-            cancellationToken
-        );
 
         var toolContext   = context.ToolContext;
         var knowledgeTask = RetrieveKnowledgeAsync(context, cancellationToken);
@@ -330,139 +319,5 @@ public sealed class RetrievalStage
         foreach (var item in batch.Directives)
             sb.AppendLine($"{item.Order}. [{item.Type}] {item.Content}");
         return sb.ToString();
-    }
-
-    private async Task<IReadOnlyList<long>> EvaluatePhasesAsync
-    (
-        long              projectID,
-        long              sessionID,
-        CancellationToken cancellationToken
-    )
-    {
-        var attributes = await stateRepository.GetAttributesAsync(projectID, StateScope.Global, cancellationToken);
-
-        if (attributes.Count == 0)
-            return [];
-
-        var entryIDs = new HashSet<long>();
-        var groupIDs = new HashSet<long>();
-
-        foreach (var attr in attributes)
-        {
-            var phases = ParsePhases(attr.Config);
-
-            if (phases.Count == 0)
-                continue;
-
-            var value = await stateRepository.GetStateValueAsync(attr.ID, sessionID, cancellationToken);
-            var currentValue = value?.Value ?? string.Empty;
-
-            if (string.IsNullOrEmpty(currentValue))
-                continue;
-
-            foreach (var phase in phases)
-            {
-                if (!EvaluatePhaseExpression(phase.Expression, currentValue))
-                    continue;
-
-                Log.Information
-                (
-                    "Phase 激活: {PhaseName} (属性={AttrName}, 值={Value})",
-                    phase.Name,
-                    attr.Name,
-                    currentValue
-                );
-
-                foreach (var id in phase.KnowledgeIDs)
-                    entryIDs.Add(id);
-
-                foreach (var id in phase.KnowledgeGroupIDs)
-                    groupIDs.Add(id);
-            }
-        }
-
-        foreach (var groupID in groupIDs)
-        {
-            var groupEntries = await knowledgeRepository.GetByGroupAsync(groupID, cancellationToken);
-
-            foreach (var entry in groupEntries)
-                entryIDs.Add(entry.ID);
-        }
-
-        if (entryIDs.Count > 0)
-            Log.Information("Phase 评估完成: 激活知识条目数={Count}", entryIDs.Count);
-
-        return entryIDs.ToList();
-    }
-
-    private static List<Phase> ParsePhases(string config)
-    {
-        var result = new List<Phase>();
-
-        try
-        {
-            using var doc = JsonDocument.Parse(config);
-
-            if (!doc.RootElement.TryGetProperty("phases", out var phasesEl) || phasesEl.ValueKind != JsonValueKind.Array)
-                return result;
-
-            foreach (var ph in phasesEl.EnumerateArray())
-            {
-                var name = ph.TryGetProperty("name", out var n) && n.ValueKind != JsonValueKind.Null
-                               ? n.GetString() ?? string.Empty
-                               : string.Empty;
-
-                var expression = ph.TryGetProperty("expression", out var e) && e.ValueKind != JsonValueKind.Null
-                                     ? e.GetString() ?? string.Empty
-                                     : string.Empty;
-
-                var knowledgeIds = ph.TryGetProperty("knowledgeIds", out var kid) && kid.ValueKind == JsonValueKind.Array
-                                       ? kid.EnumerateArray().Select(v => v.GetInt64()).ToList()
-                                       : new List<long>();
-
-                var knowledgeGroupIds = ph.TryGetProperty("knowledgeGroupIds", out var gid) && gid.ValueKind == JsonValueKind.Array
-                                            ? gid.EnumerateArray().Select(v => v.GetInt64()).ToList()
-                                            : new List<long>();
-
-                result.Add
-                (
-                    new Phase
-                    {
-                        Name               = name,
-                        Expression         = expression,
-                        KnowledgeIDs       = knowledgeIds,
-                        KnowledgeGroupIDs  = knowledgeGroupIds
-                    }
-                );
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "解析 Phase 配置失败");
-        }
-
-        return result;
-    }
-
-    private bool EvaluatePhaseExpression(string expression, string currentValue)
-    {
-        if (string.IsNullOrWhiteSpace(expression))
-            return false;
-
-        var isNumeric = float.TryParse(currentValue, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
-        var valReplacement = isNumeric ? currentValue : $"\"{currentValue}\"";
-
-        var expr = expression.Replace("{val}", valReplacement);
-        expr = expr.Replace(" AND ", " && ").Replace(" OR ", " || ");
-
-        try
-        {
-            return conditionEngine.Evaluate(expr, new ConditionContext(new Dictionary<string, string>()));
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Phase 表达式求值失败: {Expression}", expression);
-            return false;
-        }
     }
 }

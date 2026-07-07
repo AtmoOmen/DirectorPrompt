@@ -20,6 +20,8 @@ public sealed class Orchestrator
     IRoundChangeRepository   roundChangeRepository,
     IStateRepository         stateRepository,
     ISystemStateTransformer  systemStateTransformer,
+    PhaseEvaluator           phaseEvaluator,
+    CharacterTransitionEvaluator characterTransitionEvaluator,
     DirectiveProcessingStage directiveProcessingStage,
     RetrievalStage           retrievalStage,
     GenerationStage          generationStage,
@@ -68,6 +70,15 @@ public sealed class Orchestrator
 
             var embeddingConfig = JsonSerializer.Deserialize<ModelConfig>(project.EmbeddingConfig) ?? new ModelConfig();
 
+            var transitionResults = await EvaluateTransitionsAsync(batch.ProjectID, sessionID, roundID, cancellationToken);
+
+            batch = InjectSystemDirectives(batch, transitionResults);
+
+            var phaseResult = transitionResults
+                              .Where(t => t.Source is PhaseEvaluator)
+                              .Select(t => t.Result)
+                              .FirstOrDefault();
+
             onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
             await directiveProcessingStage.ExecuteAsync
             (
@@ -101,10 +112,11 @@ public sealed class Orchestrator
                 EmbeddingConfig         = embeddingConfig,
                 History                 = history,
                 OnStreamingUpdate       = onStreamingUpdate,
-                OnStageUpdate           = onStageUpdate
+                OnStageUpdate           = onStageUpdate,
+                PhaseActivatedEntryIDs  = (phaseResult as PhaseEvaluationResult)?.ActivatedEntryIDs ?? []
             };
 
-            var result = await RunPipelineAsync(context, cancellationToken);
+            var result = await RunPipelineAsync(context, transitionResults, cancellationToken);
 
             Log.Information
             (
@@ -198,6 +210,15 @@ public sealed class Orchestrator
 
         using (RoundContext.Enter(tempRoundID))
         {
+            var transitionResults = await EvaluateTransitionsAsync(project.ID, sessionID, tempRoundID, cancellationToken);
+
+            batch = InjectSystemDirectives(batch, transitionResults);
+
+            var phaseResult = transitionResults
+                              .Where(t => t.Source is PhaseEvaluator)
+                              .Select(t => t.Result)
+                              .FirstOrDefault();
+
             var context = new PipelineContext
             {
                 DirectiveBatch          = batch,
@@ -211,10 +232,11 @@ public sealed class Orchestrator
                 OriginalNarrative       = narrativeEvent.Data,
                 CorrectionGuidance      = correctionGuidance,
                 OnStreamingUpdate       = onStreamingUpdate,
-                OnStageUpdate           = onStageUpdate
+                OnStageUpdate           = onStageUpdate,
+                PhaseActivatedEntryIDs  = (phaseResult as PhaseEvaluationResult)?.ActivatedEntryIDs ?? []
             };
 
-            var result = await RunPipelineAsync(context, cancellationToken);
+            var result = await RunPipelineAsync(context, transitionResults, cancellationToken);
 
             Log.Information
             (
@@ -326,6 +348,7 @@ public sealed class Orchestrator
     private async Task<NarrationResult> RunPipelineAsync
     (
         PipelineContext   context,
+        IReadOnlyList<(ITransitionSource Source, TransitionResult Result)> transitionResults,
         CancellationToken cancellationToken
     )
     {
@@ -376,7 +399,8 @@ public sealed class Orchestrator
                     {
                         type    = d.Type.ToString(),
                         content = d.Content,
-                        order   = d.Order
+                        order   = d.Order,
+                        isSystem = d.IsSystem
                     }
                 )
             ),
@@ -392,6 +416,8 @@ public sealed class Orchestrator
             context.NarrativeOutput ?? string.Empty,
             cancellationToken
         );
+
+        await RecordTransitionAsync(context, transitionResults, cancellationToken);
 
         context.OnStageUpdate?.Invoke
         (
@@ -556,7 +582,9 @@ public sealed class Orchestrator
                 _                     => DirectiveType.Plot
             };
 
-            result.Add(new DirectiveItem(type, content, order++));
+            var isSystem = element.TryGetProperty("isSystem", out var sysEl) && sysEl.GetBoolean();
+
+            result.Add(new DirectiveItem(type, content, order++, IsSystem: isSystem));
         }
 
         return result;
@@ -592,5 +620,154 @@ public sealed class Orchestrator
         };
 
         await eventRepository.AppendAsync(eventItem, cancellationToken);
+    }
+
+    private async Task<List<(ITransitionSource Source, TransitionResult Result)>> EvaluateTransitionsAsync
+    (
+        long              projectID,
+        long              sessionID,
+        long              roundID,
+        CancellationToken cancellationToken
+    )
+    {
+        var sources = new List<ITransitionSource> { phaseEvaluator, characterTransitionEvaluator };
+
+        var results = new List<(ITransitionSource Source, TransitionResult Result)>();
+
+        foreach (var source in sources)
+        {
+            var previousKeys = await GetPreviousTransitionKeysAsync(sessionID, roundID, source.EventType, cancellationToken);
+            var result = await source.EvaluateAsync(projectID, sessionID, previousKeys, cancellationToken);
+            results.Add((source, result));
+        }
+
+        return results;
+    }
+
+    private async Task<IReadOnlyList<string>?> GetPreviousTransitionKeysAsync
+    (
+        long              sessionID,
+        long              currentRoundID,
+        EventType         eventType,
+        CancellationToken cancellationToken
+    )
+    {
+        var events = await eventRepository.GetBySessionAsync(sessionID, cancellationToken);
+
+        var transitionEvent = events
+                         .Where(e => e.Type == eventType && e.RoundID < currentRoundID)
+                         .OrderByDescending(e => e.RoundID)
+                         .FirstOrDefault();
+
+        if (transitionEvent is null)
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(transitionEvent.Data);
+
+            if (doc.RootElement.TryGetProperty("activeKeys", out var keysEl) && keysEl.ValueKind == JsonValueKind.Array)
+                return keysEl.EnumerateArray().Select(v => v.GetString() ?? string.Empty).ToList();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "解析上一轮 {EventType} 事件失败", eventType);
+        }
+
+        return null;
+    }
+
+    private static DirectiveBatch InjectSystemDirectives
+    (
+        DirectiveBatch                              batch,
+        IReadOnlyList<(ITransitionSource Source, TransitionResult Result)> transitionResults
+    )
+    {
+        var systemDirectives = new List<DirectiveItem>();
+
+        var order = 1;
+
+        foreach (var (_, result) in transitionResults)
+        {
+            foreach (var d in result.EnterDirectives)
+            {
+                systemDirectives.Add
+                (
+                    new DirectiveItem
+                    (
+                        d.Type,
+                        d.Content,
+                        order++,
+                        d.TTL,
+                        IsSystem: true
+                    )
+                );
+            }
+
+            foreach (var d in result.ExitDirectives)
+            {
+                systemDirectives.Add
+                (
+                    new DirectiveItem
+                    (
+                        d.Type,
+                        d.Content,
+                        order++,
+                        d.TTL,
+                        IsSystem: true
+                    )
+                );
+            }
+        }
+
+        if (systemDirectives.Count == 0)
+            return batch;
+
+        var userDirectives = batch.Directives
+                                  .Select(d => d with { Order = d.Order + systemDirectives.Count })
+                                  .ToList();
+
+        var allDirectives = systemDirectives.Concat(userDirectives).ToList();
+
+        foreach (var (source, result) in transitionResults)
+        {
+            if (result.EnterDirectives.Count > 0 || result.ExitDirectives.Count > 0)
+            {
+                Log.Information
+                (
+                    "注入 {Source} 系统指令: 进入={EnterCount}, 退出={ExitCount}",
+                    source.SourceName,
+                    result.EnterDirectives.Count,
+                    result.ExitDirectives.Count
+                );
+            }
+        }
+
+        Log.Information("系统指令注入完成: 总指令数={Total}", allDirectives.Count);
+
+        return batch with { Directives = allDirectives };
+    }
+
+    private async Task RecordTransitionAsync
+    (
+        PipelineContext   context,
+        IReadOnlyList<(ITransitionSource Source, TransitionResult Result)> transitionResults,
+        CancellationToken cancellationToken
+    )
+    {
+        foreach (var (source, result) in transitionResults)
+        {
+            var data = JsonSerializer.Serialize(new { activeKeys = result.ActiveKeys });
+
+            await RecordEventAsync
+            (
+                context.DirectiveBatch.ProjectID,
+                context.SessionID,
+                context.RoundID,
+                source.EventType,
+                data,
+                cancellationToken
+            );
+        }
     }
 }

@@ -5,7 +5,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
-using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Localization;
 using DirectorPrompt.ViewModels;
@@ -61,23 +60,6 @@ public partial class MainWindow : FluentWindow
 
     private void ScrollDialogToBottom() =>
         Dispatcher.BeginInvoke(DispatcherPriority.Background, DialogScrollViewer.ScrollToBottom);
-
-    private void OnDirectiveTypeChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (sender is not ComboBox comboBox || viewModel is null)
-            return;
-
-        var index = comboBox.SelectedIndex;
-
-        viewModel.DirectiveInput.SelectedType = index switch
-        {
-            0 => DirectiveType.Plot,
-            1 => DirectiveType.Tone,
-            2 => DirectiveType.TemporaryConstraint,
-            3 => DirectiveType.SceneChange,
-            _ => DirectiveType.Plot
-        };
-    }
 
 private void OnRollbackRound(object sender, RoutedEventArgs e)
 {

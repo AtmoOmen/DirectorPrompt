@@ -14,7 +14,8 @@ public sealed class EventTypeToDisplayConverter : IValueConverter
         [EventType.MemoryUpdate]    = "记忆更新",
         [EventType.CharacterUpdate] = "人物更新",
         [EventType.SceneChange]     = "场景切换",
-        [EventType.DirectiveChange] = "指令变更"
+        [EventType.DirectiveChange] = "指令变更",
+        [EventType.PhaseTransition] = "Phase 转换"
     };
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

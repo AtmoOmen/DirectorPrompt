@@ -21,6 +21,14 @@ public interface ICharacterRepository
 
     Task SetStatusAsync(long characterID, CharacterStatus status, CancellationToken cancellationToken = default);
 
+    Task UpdateDirectivesAsync
+    (
+        long                          characterID,
+        IReadOnlyList<DirectiveConfig> enterDirectives,
+        IReadOnlyList<DirectiveConfig> exitDirectives,
+        CancellationToken              cancellationToken = default
+    );
+
     Task<IReadOnlyList<CharacterCategory>> GetCategoriesAsync(long projectID, CancellationToken cancellationToken = default);
 
     Task<CharacterCategory> CreateCategoryAsync(CharacterCategory category, CancellationToken cancellationToken = default);

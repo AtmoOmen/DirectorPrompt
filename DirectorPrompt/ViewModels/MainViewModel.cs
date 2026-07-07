@@ -821,6 +821,11 @@ public sealed partial class MainViewModel
 
         foreach (var element in doc.RootElement.EnumerateArray())
         {
+            var isSystem = element.TryGetProperty("isSystem", out var sysEl) && sysEl.GetBoolean();
+
+            if (isSystem)
+                continue;
+
             var typeStr = element.GetProperty("type").GetString() ?? "Plot";
             var content = element.GetProperty("content").GetString() ?? string.Empty;
 
@@ -848,6 +853,11 @@ public sealed partial class MainViewModel
 
             foreach (var element in doc.RootElement.EnumerateArray())
             {
+                var isSystem = element.TryGetProperty("isSystem", out var sysEl) && sysEl.GetBoolean();
+
+                if (isSystem)
+                    continue;
+
                 var typeStr = element.GetProperty("type").GetString() ?? "Plot";
                 var content = element.GetProperty("content").GetString() ?? string.Empty;
 
@@ -966,6 +976,38 @@ public sealed partial class MainViewModel
                 Categories  = string.Join(", ", categories.Where(cat => c.CategoryIDs.Contains(cat.ID)).Select(cat => cat.Name))
             };
 
+            var order = 1;
+
+            foreach (var d in c.EnterDirectives)
+            {
+                item.EnterDirectiveInput.Directives.Add
+                (
+                    new DirectiveItemViewModel
+                    {
+                        Type    = d.Type,
+                        Content = d.Content,
+                        Order   = order++,
+                        TTL     = d.TTL
+                    }
+                );
+            }
+
+            order = 1;
+
+            foreach (var d in c.ExitDirectives)
+            {
+                item.ExitDirectiveInput.Directives.Add
+                (
+                    new DirectiveItemViewModel
+                    {
+                        Type    = d.Type,
+                        Content = d.Content,
+                        Order   = order++,
+                        TTL     = d.TTL
+                    }
+                );
+            }
+
             var stateValues = await characterRepository.GetCharacterStateValuesAsync(c.ID);
 
             foreach (var sv in stateValues)
@@ -1004,6 +1046,32 @@ public sealed partial class MainViewModel
 
             CharacterPanel.Characters.Add(item);
         }
+    }
+
+    [RelayCommand]
+    private async Task SaveCharacterDirectivesAsync(CharacterPanelItemViewModel item)
+    {
+        var enterDirectives = item.EnterDirectiveInput.Directives.Select
+        (
+            d => new DirectiveConfig
+            {
+                Type    = d.Type,
+                Content = d.Content,
+                TTL     = d.TTL
+            }
+        ).ToList();
+
+        var exitDirectives = item.ExitDirectiveInput.Directives.Select
+        (
+            d => new DirectiveConfig
+            {
+                Type    = d.Type,
+                Content = d.Content,
+                TTL     = d.TTL
+            }
+        ).ToList();
+
+        await characterRepository.UpdateDirectivesAsync(item.ID, enterDirectives, exitDirectives);
     }
 }
 

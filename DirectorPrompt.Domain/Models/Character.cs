@@ -18,6 +18,10 @@ public record Character
 
     public CharacterStatus Status { get; init; } = CharacterStatus.Active;
 
+    public IReadOnlyList<DirectiveConfig> EnterDirectives { get; init; } = [];
+
+    public IReadOnlyList<DirectiveConfig> ExitDirectives { get; init; } = [];
+
     public DateTime CreatedAt { get; init; }
 
     public DateTime UpdatedAt { get; init; }

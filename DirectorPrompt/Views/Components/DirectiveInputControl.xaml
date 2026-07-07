@@ -1,0 +1,142 @@
+<UserControl x:Class="DirectorPrompt.Views.Components.DirectiveInputControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization">
+    <StackPanel x:Name="RootPanel">
+        <ItemsControl ItemsSource="{Binding Directives}"
+                      Margin="0,0,0,8">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="0,2"
+                            Padding="10,6"
+                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding TypeDisplay}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       Margin="0,0,8,0"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding StringFormat='TTL: {0} 轮', Path=TTL}"
+                                       FontSize="11"
+                                       Foreground="Gray"
+                                       Margin="0,0,8,0"
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding HasTTL, Converter={StaticResource BoolToVisibility}}" />
+                            <ui:TextBox Grid.Column="2"
+                                        Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
+                                        TextWrapping="Wrap"
+                                        AcceptsReturn="True"
+                                        MinLines="1"
+                                        MaxLines="3"
+                                        VerticalAlignment="Center"
+                                        BorderThickness="0"
+                                        Background="Transparent" />
+                            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                <Button Padding="12,8"
+                                        MinWidth="36"
+                                        Margin="2,0"
+                                        Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}">
+                                    <TextBlock Text="↑" FontSize="14" />
+                                </Button>
+                                <Button Padding="12,8"
+                                        MinWidth="36"
+                                        Margin="2,0"
+                                        Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}">
+                                    <TextBlock Text="↓" FontSize="14" />
+                                </Button>
+                                <Button Padding="12,8"
+                                        MinWidth="36"
+                                        Margin="2,0"
+                                        Command="{Binding DataContext.RemoveDirectiveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}">
+                                    <TextBlock Text="✕" FontSize="14" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <StackPanel Margin="0,4,0,0">
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ComboBox Grid.Column="0"
+                          Width="200"
+                          SelectedIndex="0"
+                          SelectionChanged="OnDirectiveTypeChanged"
+                          Margin="0,0,4,0">
+                    <ComboBoxItem Content="{Binding [Directive.Type.Plot], Source={x:Static loc:Loc.Instance}}" />
+                    <ComboBoxItem Content="{Binding [Directive.Type.Tone], Source={x:Static loc:Loc.Instance}}" />
+                    <ComboBoxItem Content="{Binding [Directive.Type.TemporaryConstraint], Source={x:Static loc:Loc.Instance}}" />
+                    <ComboBoxItem Content="{Binding [Directive.Type.SceneChange], Source={x:Static loc:Loc.Instance}}" />
+                </ComboBox>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding InputHasTTL, Converter={StaticResource BoolToVisibility}}">
+                    <Border Width="1"
+                            Margin="8,2"
+                            Background="{DynamicResource ControlElevationBorderBrush}" />
+                    <TextBlock Text="{Binding [Navigation.InputTTL], Source={x:Static loc:Loc.Instance}}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ui:NumberBox Width="150"
+                                  Value="{Binding InputTTL, TargetNullValue=5}"
+                                  Minimum="1"
+                                  Maximum="999"
+                                  SmallChange="1"
+                                  LargeChange="5" />
+                </StackPanel>
+            </Grid>
+
+            <ui:TextBox Margin="0,0,0,4"
+                        Text="{Binding InputContent, UpdateSourceTrigger=PropertyChanged}"
+                        TextWrapping="Wrap"
+                        MaxHeight="300"
+                        AcceptsReturn="True" />
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,4,0,0">
+                <ui:Button Content="{Binding [Dialog.AddDirective], Source={x:Static loc:Loc.Instance}}"
+                           Icon="Add24"
+                           Width="150"
+                           Margin="0,0,4,0"
+                           Padding="12,6"
+                           Command="{Binding AddDirectiveCommand}" />
+                <Border Width="1"
+                        Margin="4,4"
+                        Background="{DynamicResource ControlElevationBorderBrush}"
+                        Visibility="{Binding ShowSendButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+                <ui:Button Content="{Binding [Dialog.SendDirective], Source={x:Static loc:Loc.Instance}}"
+                           Icon="Send24"
+                           Width="150"
+                           Appearance="Primary"
+                           Margin="4,0,0,0"
+                           Padding="16,6"
+                           Visibility="{Binding ShowSendButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"
+                           Command="{Binding SendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                           IsEnabled="{Binding IsProcessing, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

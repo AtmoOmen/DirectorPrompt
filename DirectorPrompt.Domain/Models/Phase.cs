@@ -9,4 +9,8 @@ public record Phase
     public IReadOnlyList<long> KnowledgeIDs { get; init; } = [];
 
     public IReadOnlyList<long> KnowledgeGroupIDs { get; init; } = [];
+
+    public IReadOnlyList<DirectiveConfig> EnterDirectives { get; init; } = [];
+
+    public IReadOnlyList<DirectiveConfig> ExitDirectives { get; init; } = [];
 }

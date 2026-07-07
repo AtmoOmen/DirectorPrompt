@@ -129,54 +129,6 @@ public partial class ProjectEditWindow : FluentWindow
             ViewModel.AddCategoryStateAttributeCommand.Execute(category);
     }
 
-    private void OnAddPhase(object sender, RoutedEventArgs e)
-    {
-        if (sender is FrameworkElement { Tag: StateAttributeEditViewModel attr })
-            ViewModel.AddPhaseCommand.Execute(attr);
-    }
-
-    private void OnEditPhase(object sender, RoutedEventArgs e)
-    {
-        if (sender is FrameworkElement { Tag: PhaseEditViewModel phase })
-            phase.IsEditing = !phase.IsEditing;
-    }
-
-    private void OnDeletePhase(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { Tag: PhaseEditViewModel phase })
-            return;
-
-        if (!PromptDialog.Confirm(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeletePhase", phase.Name), true))
-            return;
-
-        ViewModel.DeletePhaseCommand.Execute(phase);
-    }
-
-    private void OnAddPhaseKnowledge(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { Tag: PhaseEditViewModel phase })
-            return;
-
-        if (phase.SelectedAvailableItem is null)
-            return;
-
-        ViewModel.AddPhaseKnowledgeCommand.Execute((phase, phase.SelectedAvailableItem));
-    }
-
-    private void OnRemovePhaseKnowledge(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement fe)
-            return;
-
-        if (fe.Tag is not PhaseEditViewModel phase)
-            return;
-
-        if (fe.DataContext is not KnowledgeSelectionItem item)
-            return;
-
-        ViewModel.RemovePhaseKnowledgeCommand.Execute((phase, item));
-    }
-
     private static T? FindAncestor<T>(DependencyObject element) where T : DependencyObject
     {
         while (element is not null)

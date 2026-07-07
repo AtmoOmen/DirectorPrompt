@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DirectorPrompt.Agents;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -264,7 +265,10 @@ this.characterRepository = characterRepository;
                                    ? gid.EnumerateArray().Select(v => v.GetInt64()).ToArray()
                                    : [];
 
-                    phaseVM.SyncFromConfig(phName, phExpr, kIds, gIds);
+                    var enterDirs = ParsePhaseDirectives(ph, "enterDirectives");
+                    var exitDirs = ParsePhaseDirectives(ph, "exitDirectives");
+
+                    phaseVM.SyncFromConfig(phName, phExpr, kIds, gIds, enterDirs, exitDirs);
                     vm.Phases.Add(phaseVM);
                 }
             }
@@ -273,6 +277,41 @@ this.characterRepository = characterRepository;
         {
             // ignored
         }
+    }
+
+    private static List<DirectiveItem> ParsePhaseDirectives(JsonElement phaseEl, string propertyName)
+    {
+        var result = new List<DirectiveItem>();
+
+        if (!phaseEl.TryGetProperty(propertyName, out var arr) || arr.ValueKind != JsonValueKind.Array)
+            return result;
+
+        foreach (var item in arr.EnumerateArray())
+        {
+            var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null
+                              ? t.GetString() ?? "Plot"
+                              : "Plot";
+
+            var type = typeStr switch
+            {
+                "Tone"                => DirectiveType.Tone,
+                "TemporaryConstraint" => DirectiveType.TemporaryConstraint,
+                "SceneChange"         => DirectiveType.SceneChange,
+                _                     => DirectiveType.Plot
+            };
+
+            var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null
+                              ? c.GetString() ?? string.Empty
+                              : string.Empty;
+
+            var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number
+                          ? ttlEl.GetInt32()
+                          : (int?)null;
+
+            result.Add(new DirectiveItem(type, content, result.Count + 1, ttl));
+        }
+
+        return result;
     }
 
     private async Task LoadKnowledgeAsync()

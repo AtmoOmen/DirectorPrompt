@@ -8,5 +8,7 @@ public enum EventType
     MemoryUpdate,
     CharacterUpdate,
     SceneChange,
-    DirectiveChange
+    DirectiveChange,
+    PhaseTransition,
+    CharacterTransition
 }
