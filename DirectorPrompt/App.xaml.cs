@@ -129,6 +129,8 @@ public partial class App : Application
 
         services.AddSingleton<ITimelineCalculator, TimelineCalculator>();
         services.AddSingleton<IConditionEngine, ConditionEngine>();
+        services.AddSingleton<ICharacterCategoryResolver, CharacterCategoryResolver>();
+        services.AddSingleton<ISystemStateTransformer, SystemStateTransformer>();
 
         services.AddSingleton<IChatClientFactory, ChatClientFactory>();
         services.AddSingleton<IModelConnectionTester, ModelConnectionTester>();

@@ -5,6 +5,7 @@ using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -12,16 +13,17 @@ namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class RetrievalStage
 (
-    IChatClientFactory   chatClientFactory,
-    ISceneRepository     sceneRepository,
-    IStateRepository     stateRepository,
-    ICharacterRepository characterRepository,
-    IDirectiveRepository directiveRepository,
-    IKnowledgeRepository knowledgeRepository,
-    IMemoryRepository    memoryRepository,
-    KnowledgeTools       knowledgeTools,
-    MemoryTools          memoryTools,
-    OrchestratorConfig   orchestratorConfig
+    IChatClientFactory      chatClientFactory,
+    ISceneRepository        sceneRepository,
+    IStateRepository        stateRepository,
+    ICharacterRepository    characterRepository,
+    IDirectiveRepository    directiveRepository,
+    IKnowledgeRepository    knowledgeRepository,
+    IMemoryRepository       memoryRepository,
+    ISystemStateTransformer systemStateTransformer,
+    KnowledgeTools          knowledgeTools,
+    MemoryTools             memoryTools,
+    OrchestratorConfig      orchestratorConfig
 )
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
@@ -214,24 +216,112 @@ public sealed class RetrievalStage
 
         if (context.SceneID is not null)
         {
-            var presence = await characterRepository.GetPresenceAsync(context.SceneID.Value, cancellationToken);
+            var sceneCharacters = await characterRepository.GetBySceneAsync(context.SceneID.Value, cancellationToken);
 
-            if (presence.Count > 0)
+            if (sceneCharacters.Count > 0)
             {
                 sb.AppendLine("## 在场人物");
 
-                foreach (var p in presence)
-                {
-                    var character = await characterRepository.GetByIDAsync(p.CharacterID, cancellationToken);
-                    if (character is not null)
-                        sb.AppendLine($"- {character.Name}: {character.Description}");
-                }
+                foreach (var character in sceneCharacters)
+                    sb.AppendLine($"- {character.Name}: {character.Description}");
 
                 sb.AppendLine();
+
+                await InjectCharacterStateAsync(sb, context, sceneCharacters, cancellationToken);
+                await InjectCharacterRelationsAsync(sb, context, sceneCharacters, cancellationToken);
             }
         }
 
+        var injectedIDs = systemStateTransformer.ConsumeInjectedKnowledge(context.SessionID);
+
+        if (injectedIDs.Count > 0)
+        {
+            sb.AppendLine("## 注入知识");
+
+            foreach (var kid in injectedIDs)
+            {
+                var entry = await knowledgeRepository.GetByIDAsync(kid, cancellationToken);
+
+                if (entry is not null)
+                    sb.AppendLine($"- [{entry.Title}] {entry.Content}");
+            }
+
+            sb.AppendLine();
+        }
+
         return sb.ToString();
+    }
+
+    private async Task InjectCharacterStateAsync
+    (
+        StringBuilder           sb,
+        ToolExecutionContext    context,
+        IReadOnlyList<Character> characters,
+        CancellationToken       cancellationToken
+    )
+    {
+        var attributes = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category, cancellationToken);
+
+        if (attributes.Count == 0)
+            return;
+
+        sb.AppendLine("## 在场人物状态");
+
+        foreach (var character in characters)
+        {
+            var values = await characterRepository.GetCharacterStateValuesAsync(character.ID, cancellationToken);
+
+            sb.AppendLine($"{character.Name}:");
+
+            foreach (var attr in attributes)
+            {
+                var value = values.FirstOrDefault(v => v.AttributeID == attr.ID);
+                sb.AppendLine($"- {attr.DisplayName} ({attr.Name}): {value?.Value ?? "未设置"}");
+            }
+        }
+
+        sb.AppendLine();
+    }
+
+    private async Task InjectCharacterRelationsAsync
+    (
+        StringBuilder           sb,
+        ToolExecutionContext    context,
+        IReadOnlyList<Character> characters,
+        CancellationToken       cancellationToken
+    )
+    {
+        var characterIDs = characters.Select(c => c.ID).ToHashSet();
+        var merged = new Dictionary<(long Source, long Target), CharacterRelation>();
+
+        foreach (var character in characters)
+        {
+            var relations = await characterRepository.GetRelationsByCharacterAsync(character.ID, cancellationToken);
+
+            foreach (var r in relations)
+            {
+                if (characterIDs.Contains(r.SourceCharacterID) && characterIDs.Contains(r.TargetCharacterID))
+                    merged[(r.SourceCharacterID, r.TargetCharacterID)] = r;
+            }
+        }
+
+        if (merged.Count == 0)
+            return;
+
+        sb.AppendLine("## 人物关系");
+
+        var idToName = characters.ToDictionary(c => c.ID);
+
+        foreach (var r in merged.Values)
+        {
+            var sourceName = idToName.TryGetValue(r.SourceCharacterID, out var s) ? s.Name : $"ID:{r.SourceCharacterID}";
+            var targetName = idToName.TryGetValue(r.TargetCharacterID, out var t) ? t.Name : $"ID:{r.TargetCharacterID}";
+
+            var desc = string.IsNullOrWhiteSpace(r.Description) ? "" : $" ({r.Description})";
+            sb.AppendLine($"{sourceName} → {targetName}: {r.RelationType}{desc}");
+        }
+
+        sb.AppendLine();
     }
 
     private static string BuildDirectorInput(DirectiveBatch batch)

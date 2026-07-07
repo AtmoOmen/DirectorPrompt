@@ -19,6 +19,7 @@ public sealed class Orchestrator
     IDirectiveRepository     directiveRepository,
     IRoundChangeRepository   roundChangeRepository,
     IStateRepository         stateRepository,
+    ISystemStateTransformer  systemStateTransformer,
     DirectiveProcessingStage directiveProcessingStage,
     RetrievalStage           retrievalStage,
     GenerationStage          generationStage,
@@ -425,6 +426,26 @@ public sealed class Orchestrator
                 new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete)
             );
         }
+
+        context.OnStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate(PipelineStageKind.SystemState, PipelineStageStatus.Running)
+        );
+
+        await systemStateTransformer.ExecuteAsync
+        (
+            context.DirectiveBatch.ProjectID,
+            context.SessionID,
+            context.CurrentSceneID,
+            context.RoundID,
+            SystemTrigger.RoundEnd,
+            cancellationToken
+        );
+
+        context.OnStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate(PipelineStageKind.SystemState, PipelineStageStatus.Complete)
+        );
 
         await directiveRepository.DecrementTTLAsync(context.SessionID, cancellationToken);
 

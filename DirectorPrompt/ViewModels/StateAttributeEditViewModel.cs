@@ -24,6 +24,15 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     public partial Driver Driver { get; set; } = Driver.Narrative;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCategoryScope))]
+    public partial StateScope Scope { get; set; } = StateScope.Global;
+
+    [ObservableProperty]
+    public partial long? CategoryID { get; set; }
+
+    public bool IsCategoryScope => Scope == StateScope.Category;
+
+    [ObservableProperty]
     public partial string CurrentValue { get; set; } = string.Empty;
 
     [ObservableProperty]

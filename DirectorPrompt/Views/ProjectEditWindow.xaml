@@ -83,6 +83,13 @@
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
+                <ListViewItem Tag="character" Padding="12,10">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="People24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [Character.Title], Source={x:Static loc:Loc.Instance}}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
                 <ListViewItem Tag="audit" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="Shield24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
@@ -538,6 +545,250 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
+                        </StackPanel>
+
+                        <!-- 人物系统 -->
+                        <StackPanel x:Name="CharacterPanel" Visibility="Collapsed">
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{Binding [Character.Title], Source={x:Static loc:Loc.Instance}}"
+                                               FontSize="20"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding [Character.Category.Description], Source={x:Static loc:Loc.Instance}}"
+                                               FontSize="12"
+                                               Foreground="Gray"
+                                               Margin="0,2,0,0" />
+                                </StackPanel>
+                                <ui:Button Grid.Column="1"
+                                           Content="{Binding [Character.Category.Add], Source={x:Static loc:Loc.Instance}}"
+                                           Icon="Add24"
+                                           Appearance="Primary"
+                                           VerticalAlignment="Center"
+                                           Command="{Binding AddCharacterCategoryCommand}" />
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding CharacterCategories}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <ui:CardExpander Margin="0,0,0,8" IsExpanded="False">
+                                            <ui:CardExpander.Header>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding ID}"
+                                                               Foreground="Gray"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,8,0" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding Name}"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                        <ui:Button Content="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}"
+                                                                   Appearance="Secondary"
+                                                                   Padding="6,4"
+                                                                   Margin="0,0,4,0"
+                                                                   Click="OnEditCharacterCategory"
+                                                                   Tag="{Binding}" />
+                                                        <ui:Button Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                                                   Appearance="Caution"
+                                                                   Padding="6,4"
+                                                                   Click="OnDeleteCharacterCategory"
+                                                                   Tag="{Binding}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </ui:CardExpander.Header>
+
+                                            <StackPanel>
+                                                <Grid Margin="0,0,0,8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                                        <TextBlock Text="{Binding [Character.Category.Name], Source={x:Static loc:Loc.Instance}}"
+                                                                   FontWeight="SemiBold"
+                                                                   Margin="0,0,0,4" />
+                                                        <ui:TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                                    PlaceholderText="{Binding [Character.Category.NamePlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                                        <TextBlock Text="{Binding [Character.Category.ParentCategories], Source={x:Static loc:Loc.Instance}}"
+                                                                   FontWeight="SemiBold"
+                                                                   Margin="0,0,0,4" />
+                                                        <ui:TextBox Text="{Binding ParentCategoryIDsText, UpdateSourceTrigger=PropertyChanged}"
+                                                                    PlaceholderText="{Binding [Character.Category.ParentCategoriesPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <TextBlock Text="{Binding [Character.Category.DescriptionLabel], Source={x:Static loc:Loc.Instance}}"
+                                                           FontWeight="SemiBold"
+                                                           Margin="0,0,0,4" />
+                                                <ui:TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                                                            Margin="0,0,0,16" />
+
+                                                <TextBlock Text="{Binding [Character.Category.StateAttributes], Source={x:Static loc:Loc.Instance}}"
+                                                           FontWeight="SemiBold"
+                                                           Margin="0,0,0,8" />
+
+                                                <ItemsControl ItemsSource="{Binding StateAttributes}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Margin="0,0,0,6"
+                                                                    Padding="10,6"
+                                                                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="4">
+                                                                <StackPanel>
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="*" />
+                                                                            <ColumnDefinition Width="Auto" />
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                                            <TextBlock Text="{Binding DisplayName}"
+                                                                                       FontWeight="SemiBold"
+                                                                                       VerticalAlignment="Center"
+                                                                                       Margin="0,0,8,0" />
+                                                                            <TextBlock Text="{Binding Name}"
+                                                                                       Foreground="Gray"
+                                                                                       FontSize="12"
+                                                                                       VerticalAlignment="Center" />
+                                                                        </StackPanel>
+                                                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                                            <ui:Button Content="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Appearance="Secondary"
+                                                                                       Padding="6,4"
+                                                                                       Margin="0,0,4,0"
+                                                                                       Click="OnEditStateAttribute"
+                                                                                       Tag="{Binding}" />
+                                                                            <ui:Button Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Appearance="Caution"
+                                                                                       Padding="6,4"
+                                                                                       Click="OnDeleteStateAttribute"
+                                                                                       Tag="{Binding}" />
+                                                                        </StackPanel>
+                                                                    </Grid>
+
+                                                                    <StackPanel
+                                                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                                        <Grid Margin="0,8,0,4">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                                                                <TextBlock Text="{Binding [State.Attribute.Identifier], Source={x:Static loc:Loc.Instance}}"
+                                                                                           Margin="0,0,0,4" />
+                                                                                <ui:TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+                                                                            </StackPanel>
+                                                                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                                                                <TextBlock Text="{Binding [State.Attribute.DisplayName], Source={x:Static loc:Loc.Instance}}"
+                                                                                           Margin="0,0,0,4" />
+                                                                                <ui:TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                                                                            </StackPanel>
+                                                                        </Grid>
+                                                                        <Grid Margin="0,4,0,4">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                                                                <TextBlock Text="{Binding [State.Attribute.ValueType], Source={x:Static loc:Loc.Instance}}"
+                                                                                           Margin="0,0,0,4" />
+                                                                                <ComboBox ItemsSource="{Binding Source={x:Type enums:StateValueType}, Converter={StaticResource EnumDisplay}}"
+                                                                                          SelectedItem="{Binding ValueType, Converter={StaticResource EnumDisplay}}" />
+                                                                            </StackPanel>
+                                                                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                                                                <TextBlock Text="{Binding [State.Attribute.Driver], Source={x:Static loc:Loc.Instance}}"
+                                                                                           Margin="0,0,0,4" />
+                                                                                <ComboBox ItemsSource="{Binding Source={x:Type enums:Driver}, Converter={StaticResource EnumDisplay}}"
+                                                                                          SelectedItem="{Binding Driver, Converter={StaticResource EnumDisplay}}" />
+                                                                            </StackPanel>
+                                                                        </Grid>
+
+                                                                        <StackPanel Margin="0,8,0,0"
+                                                                                    Visibility="{Binding IsNumericConfig, Converter={StaticResource BoolToVisibility}}">
+                                                                            <TextBlock Text="{Binding [State.Attribute.MinValue], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Margin="0,0,0,4" />
+                                                                            <ui:NumberBox Value="{Binding MinValue}"
+                                                                                          Minimum="-999999"
+                                                                                          Maximum="999999"
+                                                                                          ClearButtonEnabled="True" />
+                                                                            <TextBlock Text="{Binding [State.Attribute.MaxValue], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Margin="0,8,0,4" />
+                                                                            <ui:NumberBox Value="{Binding MaxValue}"
+                                                                                          Minimum="-999999"
+                                                                                          Maximum="999999"
+                                                                                          ClearButtonEnabled="True" />
+                                                                            <TextBlock Text="{Binding [State.Attribute.Unit], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Margin="0,8,0,4" />
+                                                                            <ui:TextBox Text="{Binding Unit, UpdateSourceTrigger=PropertyChanged}"
+                                                                                        PlaceholderText="{Binding [State.Attribute.UnitPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                                            <TextBlock Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Margin="0,8,0,4" />
+                                                                            <ui:TextBox Text="{Binding ChangeRules, UpdateSourceTrigger=PropertyChanged}"
+                                                                                        AcceptsReturn="True"
+                                                                                        TextWrapping="Wrap"
+                                                                                        MinHeight="60"
+                                                                                        VerticalScrollBarVisibility="Auto" />
+                                                                        </StackPanel>
+
+                                                                        <StackPanel Margin="0,8,0,0"
+                                                                                    Visibility="{Binding IsEnumConfig, Converter={StaticResource BoolToVisibility}}">
+                                                                            <TextBlock Text="{Binding [State.Attribute.Options], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Margin="0,0,0,4" />
+                                                                            <ui:TextBox Text="{Binding Options, UpdateSourceTrigger=PropertyChanged}"
+                                                                                        PlaceholderText="{Binding [State.Attribute.OptionsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                                            <TextBlock Text="{Binding [State.Attribute.Trigger], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Margin="0,8,0,4" />
+                                                                            <ComboBox ItemsSource="{Binding Source={x:Type enums:SystemTrigger}, Converter={StaticResource EnumDisplay}}"
+                                                                                      SelectedItem="{Binding Trigger, Converter={StaticResource EnumDisplay}}" />
+                                                                        </StackPanel>
+
+                                                                        <StackPanel Margin="0,8,0,0"
+                                                                                    Visibility="{Binding IsCompositeConfig, Converter={StaticResource BoolToVisibility}}">
+                                                                            <TextBlock Text="{Binding [State.Attribute.GenerationGuide], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Margin="0,0,0,4" />
+                                                                            <ui:TextBox Text="{Binding GenerationGuide, UpdateSourceTrigger=PropertyChanged}"
+                                                                                        AcceptsReturn="True"
+                                                                                        TextWrapping="Wrap"
+                                                                                        MinHeight="60"
+                                                                                        VerticalScrollBarVisibility="Auto" />
+                                                                            <TextBlock Text="{Binding [State.Attribute.RegenerateTrigger], Source={x:Static loc:Loc.Instance}}"
+                                                                                       Margin="0,8,0,4" />
+                                                                            <ComboBox ItemsSource="{Binding Source={x:Type enums:SystemTrigger}, Converter={StaticResource EnumDisplay}}"
+                                                                                      SelectedItem="{Binding RegenerateTrigger, Converter={StaticResource EnumDisplay}}" />
+                                                                        </StackPanel>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <ui:Button Content="{Binding [Character.Category.AddAttribute], Source={x:Static loc:Loc.Instance}}"
+                                                           Icon="Add24"
+                                                           Appearance="Secondary"
+                                                           Padding="8,4"
+                                                           Margin="0,4,0,0"
+                                                           Click="OnAddCategoryStateAttribute"
+                                                           Tag="{Binding}" />
+                                            </StackPanel>
+                                        </ui:CardExpander>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
 
                         <!-- 审计配置 -->

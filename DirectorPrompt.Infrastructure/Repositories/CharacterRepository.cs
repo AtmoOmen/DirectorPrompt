@@ -57,6 +57,19 @@ public sealed class CharacterRepository : ICharacterRepository
         return rows.Select(r => r.ToCharacter()).ToList();
     }
 
+    public async Task<IReadOnlyList<Character>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var rows = await connection.QueryAsync<CharacterRow>
+                   (
+                       "SELECT * FROM characters WHERE project_id = @projectID ORDER BY id",
+                       new { projectID }
+                   );
+
+        return rows.Select(r => r.ToCharacter()).ToList();
+    }
+
     public async Task<IReadOnlyList<Character>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
@@ -67,6 +80,7 @@ public sealed class CharacterRepository : ICharacterRepository
                        SELECT c.* FROM characters c
                        JOIN character_scene_presence p ON p.character_id = c.id
                        WHERE p.scene_id = @sceneID
+                         AND c.status = 'active'
                        ORDER BY c.id
                        """,
                        new { sceneID }
@@ -224,6 +238,42 @@ public sealed class CharacterRepository : ICharacterRepository
         );
     }
 
+    public async Task DeleteCategoryAsync(long categoryID, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await connection.ExecuteAsync
+        (
+            "DELETE FROM character_categories WHERE id = @categoryID",
+            new { categoryID }
+        );
+    }
+
+    public async Task<IReadOnlyList<Character>> GetCharactersByCategoryAsync
+    (
+        long              projectID,
+        long              categoryID,
+        CancellationToken cancellationToken = default
+    )
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var rows = await connection.QueryAsync<CharacterRow>
+                   (
+                       """
+                       SELECT * FROM characters
+                       WHERE project_id = @projectID
+                         AND EXISTS (
+                           SELECT 1 FROM json_each(category_ids) WHERE value = @categoryID
+                         )
+                       ORDER BY id
+                       """,
+                       new { projectID, categoryID }
+                   );
+
+        return rows.Select(r => r.ToCharacter()).ToList();
+    }
+
     public async Task<IReadOnlyList<CharacterRelation>> GetRelationsAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
@@ -257,6 +307,7 @@ public sealed class CharacterRepository : ICharacterRepository
         long                 targetCharacterID,
         string               relationType,
         string?              description,
+        float?               intensity,
         RelationChangeSource source,
         string               reason,
         long                 sceneID,
@@ -281,15 +332,18 @@ public sealed class CharacterRepository : ICharacterRepository
                        );
 
         long relationID;
+        long projectID;
 
         if (existing is not null)
         {
+            projectID = existing.Project_ID;
             await connection.ExecuteAsync
             (
                 """
                 UPDATE character_relations
                 SET relation_type = @relationType,
                     description = @description,
+                    intensity = @intensity,
                     updated_at = @updatedAt
                 WHERE id = @id
                 """,
@@ -298,6 +352,7 @@ public sealed class CharacterRepository : ICharacterRepository
                     id = existing.ID,
                     relationType,
                     description,
+                    intensity,
                     updatedAt = now
                 },
                 transaction
@@ -329,7 +384,7 @@ public sealed class CharacterRepository : ICharacterRepository
         }
         else
         {
-            var projectID = await connection.QueryFirstAsync<long>
+            projectID = await connection.QueryFirstAsync<long>
                             (
                                 "SELECT project_id FROM characters WHERE id = @sourceID",
                                 new { sourceID = sourceCharacterID },
@@ -340,8 +395,8 @@ public sealed class CharacterRepository : ICharacterRepository
                          (
                              """
                              INSERT INTO character_relations
-                                 (project_id, session_id, source_character_id, target_character_id, relation_type, description, created_at, updated_at)
-                             VALUES (@projectID, @sessionID, @sourceID, @targetID, @relationType, @description, @createdAt, @updatedAt);
+                                 (project_id, session_id, source_character_id, target_character_id, relation_type, description, intensity, created_at, updated_at)
+                             VALUES (@projectID, @sessionID, @sourceID, @targetID, @relationType, @description, @intensity, @createdAt, @updatedAt);
                              SELECT last_insert_rowid();
                              """,
                              new
@@ -352,6 +407,7 @@ public sealed class CharacterRepository : ICharacterRepository
                                  targetID = targetCharacterID,
                                  relationType,
                                  description,
+                                 intensity,
                                  createdAt = now,
                                  updatedAt = now
                              },
@@ -393,24 +449,36 @@ public sealed class CharacterRepository : ICharacterRepository
             await roundChangeRepository.RecordCreateAsync(roundID, "character_relations", relationID, cancellationToken: cancellationToken);
         }
 
-        var resultProjectID = await connection.QueryFirstAsync<long>
-                              (
-                                  "SELECT project_id FROM characters WHERE id = @sourceID",
-                                  new { sourceID = sourceCharacterID }
-                              );
-
         return new CharacterRelation
         {
             ID                = relationID,
-            ProjectID         = resultProjectID,
+            ProjectID         = projectID,
             SessionID         = sessionID,
             SourceCharacterID = sourceCharacterID,
             TargetCharacterID = targetCharacterID,
             RelationType      = relationType,
             Description       = description,
+            Intensity         = intensity,
             CreatedAt         = DateTime.UtcNow,
             UpdatedAt         = DateTime.UtcNow
         };
+    }
+
+    public async Task<IReadOnlyList<CharacterRelationLog>> GetRelationLogsAsync
+    (
+        long              relationID,
+        CancellationToken cancellationToken = default
+    )
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var rows = await connection.QueryAsync<CharacterRelationLogRow>
+                   (
+                       "SELECT * FROM character_relation_logs WHERE relation_id = @relationID ORDER BY id",
+                       new { relationID }
+                   );
+
+        return rows.Select(r => r.ToCharacterRelationLog()).ToList();
     }
 
     public async Task<IReadOnlyList<CharacterScenePresence>> GetPresenceAsync(long sceneID, CancellationToken cancellationToken = default)
@@ -688,5 +756,38 @@ public sealed class CharacterRepository : ICharacterRepository
         public long   Attribute_ID { get; set; }
         public string Value        { get; set; } = string.Empty;
         public string Updated_At   { get; set; } = string.Empty;
+    }
+
+    private sealed class CharacterRelationLogRow
+    {
+        public long    ID              { get; set; }
+        public long    Relation_ID     { get; set; }
+        public string? Old_Type        { get; set; }
+        public string  New_Type        { get; set; } = string.Empty;
+        public string? Old_Description { get; set; }
+        public string? New_Description { get; set; }
+        public string  Source          { get; set; } = string.Empty;
+        public string  Reason          { get; set; } = string.Empty;
+        public long    Scene_ID        { get; set; }
+        public string  Created_At      { get; set; } = string.Empty;
+
+        public CharacterRelationLog ToCharacterRelationLog() =>
+            new()
+            {
+                ID              = ID,
+                RelationID      = Relation_ID,
+                OldType         = Old_Type,
+                NewType         = New_Type,
+                OldDescription  = Old_Description,
+                NewDescription  = New_Description,
+                Source = Source switch
+                {
+                    "director_manual" => RelationChangeSource.DirectorManual,
+                    _                 => RelationChangeSource.MemorySubAgent
+                },
+                Reason    = Reason,
+                SceneID   = Scene_ID,
+                CreatedAt = DateTime.Parse(Created_At)
+            };
     }
 }

@@ -17,6 +17,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     private readonly IProjectRepository     projectRepository;
     private readonly IKnowledgeRepository   knowledgeRepository;
     private readonly IStateRepository       stateRepository;
+    private readonly ICharacterRepository   characterRepository;
     private readonly IModelConnectionTester connectionTester;
 
     private long projectID;
@@ -43,6 +44,8 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
     public ObservableCollection<StateAttributeEditViewModel> StateAttributes { get; } = [];
 
+    public ObservableCollection<CharacterCategoryEditViewModel> CharacterCategories { get; } = [];
+
     public EmbeddingSettingViewModel Embedding { get; } = new();
 
     public AuditSettingViewModel Audit { get; } = new();
@@ -63,17 +66,19 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
     public long SavedProjectID { get; private set; }
 
-    public ProjectEditViewModel
-    (
-        IProjectRepository     projectRepository,
-        IKnowledgeRepository   knowledgeRepository,
-        IStateRepository       stateRepository,
-        IModelConnectionTester connectionTester
-    )
-    {
-        this.projectRepository   = projectRepository;
-        this.knowledgeRepository = knowledgeRepository;
-        this.stateRepository     = stateRepository;
+public ProjectEditViewModel
+(
+IProjectRepository     projectRepository,
+IKnowledgeRepository   knowledgeRepository,
+IStateRepository       stateRepository,
+ICharacterRepository   characterRepository,
+IModelConnectionTester connectionTester
+)
+{
+this.projectRepository   = projectRepository;
+this.knowledgeRepository = knowledgeRepository;
+this.stateRepository     = stateRepository;
+this.characterRepository = characterRepository;
         this.connectionTester    = connectionTester;
     }
 
@@ -279,10 +284,20 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         if (projectID <= 0)
             return;
 
-        StateAttributes.Clear();
+StateAttributes.Clear();
+CharacterCategories.Clear();
 
-        var attributes = await stateRepository.GetAttributesAsync(projectID);
-        var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
+var attributes = await stateRepository.GetAttributesAsync(projectID);
+var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
+
+        var categories = await characterRepository.GetCategoriesAsync(projectID);
+
+        foreach (var cat in categories)
+        {
+            var vm = new CharacterCategoryEditViewModel();
+            vm.SyncFromModel(cat);
+            CharacterCategories.Add(vm);
+        }
 
         foreach (var attr in attributes)
         {
@@ -295,11 +310,21 @@ public sealed partial class ProjectEditViewModel : ObservableObject
                 DisplayName  = attr.DisplayName,
                 ValueType    = attr.ValueType,
                 Driver       = attr.Driver,
+                Scope        = attr.Scope,
+                CategoryID   = attr.CategoryID,
                 CurrentValue = value?.Value ?? string.Empty
             };
 
             ParseStateConfig(attrVM, attr.Config);
             StateAttributes.Add(attrVM);
+
+            if (attr.Scope == StateScope.Category && attr.CategoryID is not null)
+            {
+                var catVM = CharacterCategories.FirstOrDefault(c => c.ID == attr.CategoryID.Value);
+
+                if (catVM is not null)
+                    catVM.StateAttributes.Add(attrVM);
+            }
         }
 
     }
@@ -370,6 +395,18 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             {
                 if (attr.ID > 0)
                     await SaveStateAttributeAsync(attr);
+            }
+
+            foreach (var category in CharacterCategories)
+            {
+                if (category.ID > 0)
+                    await SaveCharacterCategoryAsync(category);
+
+                foreach (var attr in category.StateAttributes)
+                {
+                    if (attr.ID > 0)
+                        await SaveStateAttributeAsync(attr);
+                }
             }
         }
         catch (Exception ex)
@@ -587,6 +624,8 @@ public sealed partial class ProjectEditViewModel : ObservableObject
                 DisplayName = created.DisplayName,
                 ValueType   = created.ValueType,
                 Driver      = created.Driver,
+                Scope       = created.Scope,
+                CategoryID  = created.CategoryID,
                 IsEditing   = true
             }
         );
@@ -603,7 +642,8 @@ public sealed partial class ProjectEditViewModel : ObservableObject
                 ProjectID   = projectID,
                 Name        = attribute.Name,
                 DisplayName = attribute.DisplayName,
-                Scope       = StateScope.Global,
+                Scope       = attribute.Scope,
+                CategoryID  = attribute.Scope == StateScope.Category ? attribute.CategoryID : null,
                 ValueType   = attribute.ValueType,
                 Driver      = attribute.Driver,
                 Config      = attribute.BuildConfig()
@@ -638,6 +678,117 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             Log.Error(ex, "删除状态属性失败");
             ValidationMessage = Loc.Get("Common.DeleteFailed", ex.Message);
         }
+    }
+
+    [RelayCommand]
+    private async Task AddCharacterCategoryAsync()
+    {
+        if (projectID <= 0)
+        {
+            ValidationMessage = Loc.Get("Project.SaveBasicInfoFirst");
+            return;
+        }
+
+        var category = new CharacterCategory
+        {
+            ProjectID = projectID,
+            Name      = Loc.Get("Character.Category.New")
+        };
+
+        var created = await characterRepository.CreateCategoryAsync(category);
+
+        var vm = new CharacterCategoryEditViewModel();
+        vm.SyncFromModel(created);
+        CharacterCategories.Add(vm);
+    }
+
+    [RelayCommand]
+    private async Task SaveCharacterCategoryAsync(CharacterCategoryEditViewModel category)
+    {
+        try
+        {
+            var model = category.ToModel(projectID);
+            await characterRepository.UpdateCategoryAsync(model);
+            ValidationMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "保存分类失败");
+            ValidationMessage = Loc.Get("Character.Category.SaveFailed", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteCharacterCategoryAsync(CharacterCategoryEditViewModel category)
+    {
+        if (category.ID <= 0)
+        {
+            CharacterCategories.Remove(category);
+            return;
+        }
+
+        try
+        {
+            await characterRepository.DeleteCategoryAsync(category.ID);
+            CharacterCategories.Remove(category);
+
+            var categoryAttrs = StateAttributes
+                                .Where(a => a.Scope == StateScope.Category && a.CategoryID == category.ID)
+                                .ToList();
+
+            foreach (var attr in categoryAttrs)
+                StateAttributes.Remove(attr);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "删除分类失败");
+            ValidationMessage = Loc.Get("Character.Category.DeleteFailed", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task AddCategoryStateAttributeAsync(CharacterCategoryEditViewModel? category)
+    {
+        if (projectID <= 0)
+        {
+            ValidationMessage = Loc.Get("Project.SaveBasicInfoFirst");
+            return;
+        }
+
+        if (category is null)
+        {
+            ValidationMessage = Loc.Get("Character.StateAttribute.SelectCategory");
+            return;
+        }
+
+        var attribute = new StateAttribute
+        {
+            ProjectID   = projectID,
+            Name        = "new_category_attribute",
+            DisplayName = Loc.Get("State.Attribute.New"),
+            Scope       = StateScope.Category,
+            CategoryID  = category.ID,
+            ValueType   = StateValueType.Numeric,
+            Driver      = Driver.Narrative,
+            Config      = "{}"
+        };
+
+        var created = await stateRepository.CreateAttributeAsync(attribute);
+
+        var attrVM = new StateAttributeEditViewModel
+        {
+            ID          = created.ID,
+            Name        = created.Name,
+            DisplayName = created.DisplayName,
+            ValueType   = created.ValueType,
+            Driver      = created.Driver,
+            Scope       = created.Scope,
+            CategoryID  = created.CategoryID,
+            IsEditing   = true
+        };
+
+        StateAttributes.Add(attrVM);
+        category.StateAttributes.Add(attrVM);
     }
 
     [RelayCommand]

@@ -3,6 +3,7 @@ using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
 using Serilog;
@@ -106,9 +107,76 @@ public sealed class PostProcessingStage
 
         if (characters.Count > 0)
         {
+            var sceneCharacterIDs = new HashSet<long>();
+
+            if (context.SceneID is not null)
+            {
+                var presence = await characterRepository.GetPresenceAsync(context.SceneID.Value, cancellationToken);
+                sceneCharacterIDs = presence.Select(p => p.CharacterID).ToHashSet();
+            }
+
             sb.AppendLine("## 已有人物 (不要重复添加)");
+
             foreach (var c in characters)
-                sb.AppendLine($"- {c.Name} ({c.Status}): {c.Description}");
+            {
+                var inScene = sceneCharacterIDs.Contains(c.ID) ? " [在场]" : "";
+                sb.AppendLine($"- {c.Name} ({c.Status}){inScene}: {c.Description}");
+            }
+
+            sb.AppendLine();
+        }
+
+        var categoryAttrs = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category, cancellationToken);
+
+        if (categoryAttrs.Count > 0)
+        {
+            sb.AppendLine("## 人物状态属性 (调用工具时使用 Name 字段的值)");
+            sb.AppendLine("| Name | 显示名 | 类型 | 驱动 |");
+            sb.AppendLine("|------|--------|------|------|");
+
+            foreach (var attr in categoryAttrs)
+            {
+                var driver = attr.Driver == Driver.System ? "system (不可修改)" : "narrative";
+                sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {attr.ValueType} | {driver} |");
+            }
+
+            sb.AppendLine();
+        }
+
+        if (characters.Count > 0)
+        {
+            sb.AppendLine("## 人物当前状态值");
+
+            foreach (var c in characters)
+            {
+                var values = await characterRepository.GetCharacterStateValuesAsync(c.ID, cancellationToken);
+
+                if (values.Count == 0)
+                    continue;
+
+                var parts = new List<string>();
+
+                foreach (var v in values)
+                {
+                    var attr = categoryAttrs.FirstOrDefault(a => a.ID == v.AttributeID);
+                    var name = attr?.Name ?? v.AttributeID.ToString();
+                    parts.Add($"{name}={v.Value}");
+                }
+
+                sb.AppendLine($"- {c.Name}: {string.Join(", ", parts)}");
+            }
+
+            sb.AppendLine();
+        }
+
+        var categories = await characterRepository.GetCategoriesAsync(context.ProjectID, cancellationToken);
+
+        if (categories.Count > 0)
+        {
+            sb.AppendLine("## 可用分类 (add_character 时可选用)");
+
+            foreach (var cat in categories)
+                sb.AppendLine($"- ID:{cat.ID} {cat.Name}: {cat.Description}");
 
             sb.AppendLine();
         }

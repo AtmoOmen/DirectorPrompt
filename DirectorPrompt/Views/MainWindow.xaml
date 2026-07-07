@@ -672,15 +672,83 @@ Click="OnRollbackRound"
                                             Background="{DynamicResource ControlFillColorDefaultBrush}"
                                             CornerRadius="4">
                                         <StackPanel>
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,0,8,0" />
-                                                <TextBlock Text="{Binding Status}" FontSize="11" Foreground="Gray" />
-                                            </StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,0,8,0" />
+                                                    <TextBlock Text="{Binding Status}" FontSize="11" Foreground="Gray" />
+                                                </StackPanel>
+                                                <ToggleButton Grid.Column="1"
+                                                              Content="▼"
+                                                              FontSize="10"
+                                                              Padding="6,2"
+                                                              IsChecked="{Binding IsExpanded}"
+                                                              Cursor="Hand" />
+                                            </Grid>
                                             <TextBlock Text="{Binding Description}"
                                                        TextWrapping="Wrap"
                                                        FontSize="12"
                                                        Foreground="Gray"
                                                        Margin="0,2,0,0" />
+                                            <TextBlock Text="{Binding Categories}"
+                                                       TextWrapping="Wrap"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                       Margin="0,2,0,0"
+                                                       Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}" />
+
+                                            <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}"
+                                                        Margin="0,4,0,0">
+                                                <TextBlock Text="状态"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                           Margin="0,0,0,2"
+                                                           Visibility="{Binding HasStateValues, Converter={StaticResource BoolToVisibility}}" />
+                                                <ItemsControl ItemsSource="{Binding StateValues}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid Margin="0,1">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0"
+                                                                           Text="{Binding Name}"
+                                                                           FontSize="11"
+                                                                           TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding Value}"
+                                                                           FontSize="11"
+                                                                           FontWeight="SemiBold"
+                                                                           Margin="8,0,0,0" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <TextBlock Text="关系"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                           Margin="0,6,0,2"
+                                                           Visibility="{Binding HasRelations, Converter={StaticResource BoolToVisibility}}" />
+                                                <ItemsControl ItemsSource="{Binding Relations}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock FontSize="11" TextWrapping="Wrap">
+                                                                <Run Text="{Binding Direction}" />
+                                                                <Run Text="{Binding Target}" FontWeight="SemiBold" />
+                                                                <Run Text=": " />
+                                                                <Run Text="{Binding Type}" />
+                                                            </TextBlock>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>

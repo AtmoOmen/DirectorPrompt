@@ -3,6 +3,7 @@ using System.Text.Json;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -10,8 +11,9 @@ namespace DirectorPrompt.Agents.Tools;
 
 public sealed class CharacterTools
 (
-    ICharacterRepository characterRepository,
-    IStateRepository     stateRepository
+    ICharacterRepository         characterRepository,
+    IStateRepository             stateRepository,
+    ICharacterCategoryResolver   categoryResolver
 )
 {
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -65,30 +67,32 @@ public sealed class CharacterTools
         ),
         AIFunctionFactory.Create
         (
-            (string name, string reason) => RemoveCharacterAsync(context, name, reason),
+            (string name, string reason, string? status) => RemoveCharacterAsync(context, name, reason, status),
             "remove_character",
             """
             标记人物离场或死亡
             name: 人物名
             reason: 原因
+            status: left 或 dead (可选, 默认 left)
             """
         ),
         AIFunctionFactory.Create
         (
-            (string name, string description, string reason) =>
-                UpdateCharacterAsync(context, name, description, reason),
+            (string name, string description, string? categoryIDs, string reason) =>
+                UpdateCharacterAsync(context, name, description, categoryIDs, reason),
             "update_character",
             """
-            更新人物描述
+            更新人物描述和分类
             name: 人物名
             description: 新描述
+            categoryIDs: 新分类 ID 列表 (逗号分隔, 可选)
             reason: 原因
             """
         ),
         AIFunctionFactory.Create
         (
-            (string sourceName, string targetName, string relationType, string? description, string reason) =>
-                SetRelationAsync(context, sourceName, targetName, relationType, description, reason),
+            (string sourceName, string targetName, string relationType, string? description, double? intensity, string reason) =>
+                SetRelationAsync(context, sourceName, targetName, relationType, description, intensity, reason),
             "set_relation",
             """
             设置或更新人物关系
@@ -96,6 +100,7 @@ public sealed class CharacterTools
             targetName: 客体人物
             relationType: 关系类型
             description: 关系描述 (可选)
+            intensity: 关系强度 0-1 (可选)
             reason: 原因
             """
         ),
@@ -152,14 +157,25 @@ public sealed class CharacterTools
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
 
+        var categories = await characterRepository.GetCategoriesAsync(context.ProjectID);
+        var categoryNames = categories
+                            .Where(c => character.CategoryIDs.Contains(c.ID))
+                            .Select(c => c.Name)
+                            .ToArray();
+
+        var stateValues = await GetCharacterStateValuesAsync(context, character.ID);
+        var relations   = await GetCharacterRelationsAsync(context, character.ID);
+
         return JsonSerializer.Serialize
         (
             new
             {
                 name        = character.Name,
                 description = character.Description,
-                categories  = character.CategoryIDs,
-                status      = character.Status.ToString()
+                categories  = categoryNames,
+                status      = character.Status.ToString(),
+                stateValues,
+                relations
             }
         );
     }
@@ -169,25 +185,28 @@ public sealed class CharacterTools
         if (context.SceneID is null)
             return JsonSerializer.Serialize(Array.Empty<object>());
 
-        var presence = await characterRepository.GetPresenceAsync(context.SceneID.Value);
-        var result   = new List<object>();
+        var characters = await characterRepository.GetBySceneAsync(context.SceneID.Value);
+        var categories = await characterRepository.GetCategoriesAsync(context.ProjectID);
 
-        foreach (var p in presence)
+        var result = new List<object>();
+
+        foreach (var character in characters)
         {
-            var character = await characterRepository.GetByIDAsync(p.CharacterID);
+            var categoryNames = categories
+                                .Where(c => character.CategoryIDs.Contains(c.ID))
+                                .Select(c => c.Name)
+                                .ToArray();
 
-            if (character is not null)
-            {
-                result.Add
-                (
-                    new
-                    {
-                        name        = character.Name,
-                        description = character.Description,
-                        status      = character.Status.ToString()
-                    }
-                );
-            }
+            result.Add
+            (
+                new
+                {
+                    name        = character.Name,
+                    description = character.Description,
+                    categories  = categoryNames,
+                    status      = character.Status.ToString()
+                }
+            );
         }
 
         return JsonSerializer.Serialize(result);
@@ -200,20 +219,30 @@ public sealed class CharacterTools
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {characterName} 不存在" });
 
-        var relations = await characterRepository.GetRelationsByCharacterAsync(character.ID);
-        var result = relations.Select
-        (r => new
-            {
-                target = r.TargetCharacterID == character.ID ?
-                             r.SourceCharacterID :
-                             r.TargetCharacterID,
-                type        = r.RelationType,
-                description = r.Description,
-                direction = r.SourceCharacterID == character.ID ?
-                                "outgoing" :
-                                "incoming"
-            }
-        );
+        var relations     = await characterRepository.GetRelationsByCharacterAsync(character.ID);
+        var allCharacters = await characterRepository.GetBySessionAsync(context.SessionID);
+        var charLookup    = allCharacters.ToDictionary(c => c.ID);
+
+        var result = new List<object>();
+
+        foreach (var r in relations)
+        {
+            var otherID    = r.SourceCharacterID == character.ID ? r.TargetCharacterID : r.SourceCharacterID;
+            var otherName  = charLookup.TryGetValue(otherID, out var other) ? other.Name : $"ID:{otherID}";
+            var direction  = r.SourceCharacterID == character.ID ? "outgoing" : "incoming";
+
+            result.Add
+            (
+                new
+                {
+                    target      = otherName,
+                    type        = r.RelationType,
+                    description = r.Description,
+                    intensity   = r.Intensity,
+                    direction
+                }
+            );
+        }
 
         return JsonSerializer.Serialize(result);
     }
@@ -260,6 +289,7 @@ public sealed class CharacterTools
     )
     {
         Log.Information("工具调用: add_character(name={Name}, reason={Reason})", name, reason);
+
         var existing = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (existing is not null)
@@ -283,22 +313,38 @@ public sealed class CharacterTools
 
         var created = await characterRepository.CreateAsync(character);
 
+        await categoryResolver.ResolveAndPersistAsync(created.ID);
+
         Log.Information("工具调用完成: add_character, characterID={ID}, name={Name}", created.ID, name);
 
         return JsonSerializer.Serialize(new { characterID = created.ID });
     }
 
-    private async Task<string> RemoveCharacterAsync(ToolExecutionContext context, string name, string reason)
+    private async Task<string> RemoveCharacterAsync
+    (
+        ToolExecutionContext context,
+        string               name,
+        string               reason,
+        string?              status
+    )
     {
-        Log.Information("工具调用: remove_character(name={Name}, reason={Reason})", name, reason);
+        Log.Information("工具调用: remove_character(name={Name}, reason={Reason}, status={Status})", name, reason, status);
+
         var character = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
 
-        await characterRepository.SetStatusAsync(character.ID, CharacterStatus.Left);
+        var targetStatus = status?.ToLowerInvariant() switch
+        {
+            "dead"     => CharacterStatus.Dead,
+            "left"     => CharacterStatus.Left,
+            _          => CharacterStatus.Left
+        };
 
-        return JsonSerializer.Serialize(new { name, status = "left" });
+        await characterRepository.SetStatusAsync(character.ID, targetStatus);
+
+        return JsonSerializer.Serialize(new { name, status = targetStatus.ToString().ToLowerInvariant() });
     }
 
     private async Task<string> UpdateCharacterAsync
@@ -306,6 +352,7 @@ public sealed class CharacterTools
         ToolExecutionContext context,
         string               name,
         string               description,
+        string?              categoryIDs,
         string               reason
     )
     {
@@ -314,8 +361,21 @@ public sealed class CharacterTools
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
 
-        var updated = character with { Description = description };
+        var newCategoryIDs = character.CategoryIDs;
+
+        if (!string.IsNullOrWhiteSpace(categoryIDs))
+        {
+            newCategoryIDs = categoryIDs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                        .Select(long.Parse)
+                                        .ToArray();
+        }
+
+        var updated = character with { Description = description, CategoryIDs = newCategoryIDs };
+
         await characterRepository.UpdateAsync(updated);
+
+        if (!string.IsNullOrWhiteSpace(categoryIDs))
+            await categoryResolver.ResolveAndPersistAsync(character.ID);
 
         return JsonSerializer.Serialize(new { name, success = true });
     }
@@ -327,6 +387,7 @@ public sealed class CharacterTools
         string               targetName,
         string               relationType,
         string?              description,
+        double?              intensity,
         string               reason
     )
     {
@@ -339,6 +400,8 @@ public sealed class CharacterTools
         if (target is null)
             return JsonSerializer.Serialize(new { error = $"人物 {targetName} 不存在" });
 
+        float? intensityFloat = intensity is null ? null : (float)intensity.Value;
+
         await characterRepository.SetRelationAsync
         (
             context.SessionID,
@@ -346,6 +409,7 @@ public sealed class CharacterTools
             target.ID,
             relationType,
             description,
+            intensityFloat,
             RelationChangeSource.MemorySubAgent,
             reason,
             context.SceneID ?? 0
@@ -366,6 +430,7 @@ public sealed class CharacterTools
     private async Task<string> EnterSceneAsync(ToolExecutionContext context, string name)
     {
         Log.Information("工具调用: enter_scene(name={Name})", name);
+
         if (context.SceneID is null)
             return JsonSerializer.Serialize(new { error = "当前没有活跃场景" });
 
@@ -384,6 +449,7 @@ public sealed class CharacterTools
     private async Task<string> LeaveSceneAsync(ToolExecutionContext context, string name)
     {
         Log.Information("工具调用: leave_scene(name={Name})", name);
+
         if (context.SceneID is null)
             return JsonSerializer.Serialize(new { error = "当前没有活跃场景" });
 
@@ -411,15 +477,17 @@ public sealed class CharacterTools
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {characterName} 不存在" });
 
-        var attributes = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category);
-        var attr       = attributes.FirstOrDefault(a => a.Name == attribute);
+        var (attr, error) = await ResolveCategoryAttributeAsync(context, attribute);
 
         if (attr is null)
-            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
+            return error;
+
+        if (attr.Driver == Driver.System)
+            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 为 system 驱动, AI 不可直接修改" });
 
         var values       = await characterRepository.GetCharacterStateValuesAsync(character.ID);
         var currentValue = values.FirstOrDefault(v => v.AttributeID == attr.ID);
-        var currentNum   = double.Parse(currentValue?.Value ?? "0");
+        var currentNum   = double.Parse(currentValue?.Value ?? "0", CultureInfo.InvariantCulture);
         var newValue     = currentNum + delta;
 
         await characterRepository.SetCharacterStateValueAsync(character.ID, attr.ID, newValue.ToString(CultureInfo.InvariantCulture));
@@ -448,11 +516,13 @@ public sealed class CharacterTools
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {characterName} 不存在" });
 
-        var attributes = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category);
-        var attr       = attributes.FirstOrDefault(a => a.Name == attribute);
+        var (attr, error) = await ResolveCategoryAttributeAsync(context, attribute);
 
         if (attr is null)
-            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
+            return error;
+
+        if (attr.Driver == Driver.System)
+            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 为 system 驱动, AI 不可直接修改" });
 
         await characterRepository.SetCharacterStateValueAsync(character.ID, attr.ID, value);
 
@@ -465,5 +535,74 @@ public sealed class CharacterTools
                 value
             }
         );
+    }
+
+    private async Task<List<object>> GetCharacterStateValuesAsync(ToolExecutionContext context, long characterID)
+    {
+        var values     = await characterRepository.GetCharacterStateValuesAsync(characterID);
+        var attributes = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category);
+        var attrLookup = attributes.ToDictionary(a => a.ID);
+
+        var result = new List<object>();
+
+        foreach (var v in values)
+        {
+            var name = attrLookup.TryGetValue(v.AttributeID, out var attr) ? attr.Name : v.AttributeID.ToString();
+
+            result.Add
+            (
+                new
+                {
+                    name,
+                    value = v.Value
+                }
+            );
+        }
+
+        return result;
+    }
+
+    private async Task<List<object>> GetCharacterRelationsAsync(ToolExecutionContext context, long characterID)
+    {
+        var relations     = await characterRepository.GetRelationsByCharacterAsync(characterID);
+        var allCharacters = await characterRepository.GetBySessionAsync(context.SessionID);
+        var charLookup    = allCharacters.ToDictionary(c => c.ID);
+
+        var result = new List<object>();
+
+        foreach (var r in relations)
+        {
+            var otherID   = r.SourceCharacterID == characterID ? r.TargetCharacterID : r.SourceCharacterID;
+            var otherName = charLookup.TryGetValue(otherID, out var other) ? other.Name : $"ID:{otherID}";
+            var direction = r.SourceCharacterID == characterID ? "outgoing" : "incoming";
+
+            result.Add
+            (
+                new
+                {
+                    target      = otherName,
+                    type        = r.RelationType,
+                    description = r.Description,
+                    direction
+                }
+            );
+        }
+
+        return result;
+    }
+
+    private async Task<(StateAttribute? Attr, string? Error)> ResolveCategoryAttributeAsync
+    (
+        ToolExecutionContext context,
+        string               attribute
+    )
+    {
+        var attributes = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category);
+        var attr       = attributes.FirstOrDefault(a => a.Name == attribute);
+
+        if (attr is null)
+            return (null, JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" }));
+
+        return (attr, null);
     }
 }

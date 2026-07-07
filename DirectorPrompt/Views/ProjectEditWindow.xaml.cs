@@ -40,6 +40,9 @@ public partial class ProjectEditWindow : FluentWindow
         StatePanel.Visibility = tag == "state" ?
                                     Visibility.Visible :
                                     Visibility.Collapsed;
+        CharacterPanel.Visibility = tag == "character" ?
+                                       Visibility.Visible :
+                                       Visibility.Collapsed;
         AuditPanel.Visibility = tag == "audit" ?
                                     Visibility.Visible :
                                     Visibility.Collapsed;
@@ -94,6 +97,49 @@ public partial class ProjectEditWindow : FluentWindow
             return;
 
         ViewModel.DeleteStateAttributeCommand.Execute(attr);
+    }
+
+    private void OnEditCharacterCategory(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: CharacterCategoryEditViewModel })
+        {
+            if (sender is Wpf.Ui.Controls.Button btn)
+            {
+                var expander = FindAncestor<CardExpander>(btn);
+                if (expander is not null)
+                    expander.IsExpanded = !expander.IsExpanded;
+            }
+        }
+    }
+
+    private void OnDeleteCharacterCategory(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: CharacterCategoryEditViewModel category })
+            return;
+
+        if (!PromptDialog.Confirm(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteCharacterCategory", category.Name), true))
+            return;
+
+        ViewModel.DeleteCharacterCategoryCommand.Execute(category);
+    }
+
+    private void OnAddCategoryStateAttribute(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: CharacterCategoryEditViewModel category })
+            ViewModel.AddCategoryStateAttributeCommand.Execute(category);
+    }
+
+    private static T? FindAncestor<T>(DependencyObject element) where T : DependencyObject
+    {
+        while (element is not null)
+        {
+            if (element is T target)
+                return target;
+
+            element = System.Windows.Media.VisualTreeHelper.GetParent(element);
+        }
+
+        return null;
     }
 
     private async void OnSaveClick(object sender, RoutedEventArgs e)

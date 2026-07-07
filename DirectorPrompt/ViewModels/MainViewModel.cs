@@ -9,6 +9,7 @@ using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Localization;
 using DirectorPrompt.Views;
@@ -19,16 +20,17 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed partial class MainViewModel
 (
-    Orchestrator         orchestrator,
-    IProjectRepository   projectRepository,
-    ISessionRepository   sessionRepository,
-    IEventRepository     eventRepository,
-    ISceneRepository     sceneRepository,
-    IStateRepository     stateRepository,
-    ICharacterRepository characterRepository,
-    IDirectiveRepository directiveRepository,
-    IServiceProvider     serviceProvider,
-    UserSettings         userSettings
+    Orchestrator              orchestrator,
+    IProjectRepository        projectRepository,
+    ISessionRepository        sessionRepository,
+    IEventRepository          eventRepository,
+    ISceneRepository          sceneRepository,
+    IStateRepository          stateRepository,
+    ICharacterRepository      characterRepository,
+    IDirectiveRepository      directiveRepository,
+    IServiceProvider          serviceProvider,
+    UserSettings              userSettings,
+    ICharacterCategoryResolver categoryResolver
 )
     : ObservableObject
 {
@@ -154,6 +156,11 @@ public sealed partial class MainViewModel
                           );
 
             await characterRepository.CloneProjectCharactersToSessionAsync(CurrentProject.ID, session.ID);
+
+            var clonedCharacters = await characterRepository.GetBySessionAsync(session.ID);
+
+            foreach (var c in clonedCharacters)
+                await categoryResolver.ResolveAndPersistAsync(c.ID);
 
             Log.Information("创建对话: ID={SessionID}, 项目={ProjectID}", session.ID, CurrentProject.ID);
 
@@ -916,24 +923,64 @@ public sealed partial class MainViewModel
 
     private async Task RefreshCharacterPanelAsync()
     {
-        if (CurrentSession is null)
+        if (CurrentSession is null || CurrentProject is null)
             return;
 
         CharacterPanel.Clear();
 
-        var characters = await characterRepository.GetBySessionAsync(CurrentSession.ID);
+        var characters  = await characterRepository.GetBySessionAsync(CurrentSession.ID);
+        var categories  = await characterRepository.GetCategoriesAsync(CurrentProject.ID);
+        var categoryAttrs = await stateRepository.GetAttributesAsync(CurrentProject.ID, StateScope.Category);
+        var charLookup  = characters.ToDictionary(c => c.ID);
 
         foreach (var c in characters)
         {
-            CharacterPanel.Characters.Add
-            (
-                new CharacterPanelItemViewModel
-                {
-                    Name        = c.Name,
-                    Status      = c.Status.ToString(),
-                    Description = c.Description
-                }
-            );
+            var item = new CharacterPanelItemViewModel
+            {
+                ID          = c.ID,
+                Name        = c.Name,
+                Status      = c.Status.ToString(),
+                Description = c.Description,
+                Categories  = string.Join(", ", categories.Where(cat => c.CategoryIDs.Contains(cat.ID)).Select(cat => cat.Name))
+            };
+
+            var stateValues = await characterRepository.GetCharacterStateValuesAsync(c.ID);
+
+            foreach (var sv in stateValues)
+            {
+                var attr = categoryAttrs.FirstOrDefault(a => a.ID == sv.AttributeID);
+
+                item.StateValues.Add
+                (
+                    new CharacterStateValueViewModel
+                    {
+                        Name  = attr?.DisplayName ?? attr?.Name ?? sv.AttributeID.ToString(),
+                        Value = sv.Value
+                    }
+                );
+            }
+
+            var relations = await characterRepository.GetRelationsByCharacterAsync(c.ID);
+
+            foreach (var r in relations)
+            {
+                var otherID   = r.SourceCharacterID == c.ID ? r.TargetCharacterID : r.SourceCharacterID;
+                var otherName = charLookup.TryGetValue(otherID, out var other) ? other.Name : $"ID:{otherID}";
+                var direction = r.SourceCharacterID == c.ID ? "→" : "←";
+
+                item.Relations.Add
+                (
+                    new CharacterRelationViewModel
+                    {
+                        Target      = otherName,
+                        Type        = r.RelationType,
+                        Description = r.Description ?? string.Empty,
+                        Direction   = direction
+                    }
+                );
+            }
+
+            CharacterPanel.Characters.Add(item);
         }
     }
 }

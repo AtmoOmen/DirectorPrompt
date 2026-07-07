@@ -6,7 +6,8 @@ public enum PipelineStageKind
     Retrieval,
     Generation,
     Audit,
-    PostProcessing
+    PostProcessing,
+    SystemState
 }
 
 public enum PipelineStageStatus

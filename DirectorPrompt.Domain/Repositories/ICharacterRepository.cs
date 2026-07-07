@@ -11,6 +11,8 @@ public interface ICharacterRepository
 
     Task<IReadOnlyList<Character>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Character>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Character>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default);
 
     Task<Character> CreateAsync(Character character, CancellationToken cancellationToken = default);
@@ -25,6 +27,10 @@ public interface ICharacterRepository
 
     Task UpdateCategoryAsync(CharacterCategory category, CancellationToken cancellationToken = default);
 
+    Task DeleteCategoryAsync(long categoryID, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Character>> GetCharactersByCategoryAsync(long projectID, long categoryID, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<CharacterRelation>> GetRelationsAsync(long sessionID, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<CharacterRelation>> GetRelationsByCharacterAsync(long characterID, CancellationToken cancellationToken = default);
@@ -36,11 +42,14 @@ public interface ICharacterRepository
         long                 targetCharacterID,
         string               relationType,
         string?              description,
+        float?               intensity,
         RelationChangeSource source,
         string               reason,
         long                 sceneID,
         CancellationToken    cancellationToken = default
     );
+
+    Task<IReadOnlyList<CharacterRelationLog>> GetRelationLogsAsync(long relationID, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<CharacterScenePresence>> GetPresenceAsync(long sceneID, CancellationToken cancellationToken = default);
 

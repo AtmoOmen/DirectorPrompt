@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
@@ -10,7 +11,8 @@ namespace DirectorPrompt.Agents.Tools;
 public sealed class MemoryTools
 (
     IMemoryRepository        memoryRepository,
-    IEmbeddingServiceFactory embeddingServiceFactory
+    IEmbeddingServiceFactory embeddingServiceFactory,
+    OrchestratorConfig       orchestratorConfig
 )
 {
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -28,38 +30,50 @@ public sealed class MemoryTools
         ),
         AIFunctionFactory.Create
         (
-            (long sceneID, string content, string tags) =>
-                CreateMemoryAsync(context, sceneID, content, tags),
+            (string characterIDs) => QueryMemoryByCharacterAsync(context, characterIDs),
+            "query_memory_by_character",
+            """
+            按人物 ID 查询相关记忆
+            characterIDs: 人物 ID 列表 (逗号分隔)
+            """
+        ),
+        AIFunctionFactory.Create
+        (
+            (long sceneID, string content, string tags, string? characterIDs) =>
+                CreateMemoryAsync(context, sceneID, content, tags, characterIDs),
             "create_memory",
             """
             创建新记忆
             sceneID: 归属场景 ID
             content: 记忆正文
             tags: 标签 (逗号分隔)
+            characterIDs: 涉及人物 ID 列表 (逗号分隔, 可选)
             """
         ),
         AIFunctionFactory.Create
         (
-            (long memoryID, string content, string? tags) =>
-                UpdateMemoryAsync(context, memoryID, content, tags),
+            (long memoryID, string content, string? tags, string? characterIDs) =>
+                UpdateMemoryAsync(context, memoryID, content, tags, characterIDs),
             "update_memory",
             """
             改写已有记忆
             memoryID: 记忆 ID
             content: 新内容
             tags: 新标签, 逗号分隔 (可选)
+            characterIDs: 涉及人物 ID 列表 (逗号分隔, 可选)
             """
         ),
         AIFunctionFactory.Create
         (
-            (string memoryIDs, string content, string tags) =>
-                MergeMemoriesAsync(context, memoryIDs, content, tags),
+            (string memoryIDs, string content, string tags, string? characterIDs) =>
+                MergeMemoriesAsync(context, memoryIDs, content, tags, characterIDs),
             "merge_memories",
             """
             合并多条记忆为一条
             memoryIDs: 要合并的记忆 ID 列表 (逗号分隔)
             content: 合并后的内容
             tags: 标签 (逗号分隔)
+            characterIDs: 涉及人物 ID 列表 (逗号分隔, 可选)
             """
         )
     ];
@@ -155,22 +169,35 @@ public sealed class MemoryTools
 
         var memoryMap = candidateList.ToDictionary(m => m.ID);
 
+        var lambda = orchestratorConfig.MemoryConfig.TimeDecayLambda;
+
         var result = searchResults
                      .Where(sr => memoryMap.ContainsKey(sr.entryID))
                      .Select
                      (sr =>
                          {
                              var m = memoryMap[sr.entryID];
+                             var similarity = 1f - sr.distance;
+
+                             var score = similarity;
+
+                             if (lambda > 0)
+                             {
+                                 var deltaPos = context.TimelinePosition - m.TimelinePos;
+                                 score = similarity * (float)Math.Exp(-lambda * deltaPos);
+                             }
+
                              return new
                              {
-                                 id       = m.ID,
-                                 content  = m.Content,
-                                 tags     = m.Tags,
-                                 sceneID  = m.SceneID,
-                                 relevance = Math.Round(1f - sr.distance, 4)
+                                 id        = m.ID,
+                                 content   = m.Content,
+                                 tags      = m.Tags,
+                                 sceneID   = m.SceneID,
+                                 relevance = Math.Round(score, 4)
                              };
                          }
                      )
+                     .OrderByDescending(r => r.relevance)
                      .ToList();
 
         Log.Information("工具调用完成: query_memory, 返回条目数={Count}", result.Count);
@@ -178,25 +205,74 @@ public sealed class MemoryTools
         return JsonSerializer.Serialize(result);
     }
 
+    private async Task<string> QueryMemoryByCharacterAsync
+    (
+        ToolExecutionContext context,
+        string               characterIDs
+    )
+    {
+        Log.Information("工具调用: query_memory_by_character(characterIDs={IDs})", characterIDs);
+
+        var idList = characterIDs
+                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                     .Select(long.Parse)
+                     .ToList();
+
+        var result = new List<object>();
+
+        foreach (var characterID in idList)
+        {
+            var memories = await memoryRepository.GetByCharacterAsync(characterID, context.TimelinePosition);
+
+            foreach (var m in memories)
+            {
+                result.Add
+                (
+                    new
+                    {
+                        id        = m.ID,
+                        content   = m.Content,
+                        tags      = m.Tags,
+                        sceneID   = m.SceneID,
+                        timeline  = m.TimelinePos
+                    }
+                );
+            }
+        }
+
+        var distinct = result
+                       .GroupBy(r => ((dynamic)r).id)
+                       .Select(g => g.First())
+                       .ToList();
+
+        Log.Information("工具调用完成: query_memory_by_character, 返回条目数={Count}", distinct.Count);
+
+        return JsonSerializer.Serialize(distinct);
+    }
+
     private async Task<string> CreateMemoryAsync
     (
         ToolExecutionContext context,
         long                 sceneID,
         string               content,
-        string               tags
+        string               tags,
+        string?              characterIDs
     )
     {
         Log.Information("工具调用: create_memory(sceneID={SceneID}, content={Content})", sceneID, content.Length > 100 ? content[..100] + "..." : content);
-        var tagList = ParseTags(tags);
+
+        var tagList     = ParseTags(tags);
+        var characterList = ParseCharacterIDs(characterIDs);
 
         var entry = new MemoryEntry
         {
-            ProjectID   = context.ProjectID,
-            SessionID   = context.SessionID,
-            SceneID     = sceneID,
-            TimelinePos = context.TimelinePosition,
-            Content     = content,
-            Tags        = tagList
+            ProjectID           = context.ProjectID,
+            SessionID           = context.SessionID,
+            SceneID             = sceneID,
+            TimelinePos         = context.TimelinePosition,
+            Content             = content,
+            Tags                = tagList,
+            RelatedCharacterIDs = characterList
         };
 
         var created = await memoryRepository.CreateAsync(entry);
@@ -211,10 +287,12 @@ public sealed class MemoryTools
         ToolExecutionContext context,
         long                 memoryID,
         string               content,
-        string?              tags
+        string?              tags,
+        string?              characterIDs
     )
     {
         Log.Information("工具调用: update_memory(memoryID={MemoryID})", memoryID);
+
         var existing = await memoryRepository.GetByIDAsync(memoryID);
 
         if (existing is null)
@@ -222,10 +300,9 @@ public sealed class MemoryTools
 
         var updated = existing with
         {
-            Content = content,
-            Tags = string.IsNullOrWhiteSpace(tags) ?
-                       existing.Tags :
-                       ParseTags(tags)
+            Content             = content,
+            Tags                = string.IsNullOrWhiteSpace(tags) ? existing.Tags : ParseTags(tags),
+            RelatedCharacterIDs = string.IsNullOrWhiteSpace(characterIDs) ? existing.RelatedCharacterIDs : ParseCharacterIDs(characterIDs)
         };
 
         await memoryRepository.UpdateAsync(updated);
@@ -238,21 +315,38 @@ public sealed class MemoryTools
         ToolExecutionContext context,
         string               memoryIDs,
         string               content,
-        string               tags
+        string               tags,
+        string?              characterIDs
     )
     {
         Log.Information("工具调用: merge_memories(memoryIDs={MemoryIDs})", memoryIDs);
-        var idList = memoryIDs
-                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                     .Select(long.Parse)
-                     .ToList();
 
-        var tagList = ParseTags(tags);
-        var merged  = await memoryRepository.MergeAsync(idList, context.SceneID ?? 0, content, tagList);
+        var idList   = memoryIDs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(long.Parse).ToList();
+        var tagList  = ParseTags(tags);
+        var charList = ParseCharacterIDs(characterIDs);
+
+        var merged = await memoryRepository.MergeAsync(idList, context.SceneID ?? 0, content, tagList);
+
+        if (charList.Length > 0)
+        {
+            var updated = merged with { RelatedCharacterIDs = charList };
+            await memoryRepository.UpdateAsync(updated);
+        }
 
         return JsonSerializer.Serialize(new { memoryID = merged.ID });
     }
 
     private static string[] ParseTags(string tags) =>
         tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static long[] ParseCharacterIDs(string? characterIDs)
+    {
+        if (string.IsNullOrWhiteSpace(characterIDs))
+            return [];
+
+        return characterIDs
+               .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+               .Select(long.Parse)
+               .ToArray();
+    }
 }

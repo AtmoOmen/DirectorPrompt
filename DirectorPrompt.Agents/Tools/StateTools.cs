@@ -144,6 +144,9 @@ public sealed class StateTools
         if (attr is null)
             return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
 
+        if (attr.Driver == Driver.System)
+            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 为 system 驱动, AI 不可直接修改" });
+
         var currentValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
         var currentNum   = double.Parse(currentValue?.Value ?? "0");
         var newValue     = currentNum + delta;
@@ -190,6 +193,9 @@ public sealed class StateTools
 
         if (attr is null)
             return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
+
+        if (attr.Driver == Driver.System)
+            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 为 system 驱动, AI 不可直接修改" });
 
         var oldValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
 
