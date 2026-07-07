@@ -346,12 +346,47 @@ Click="OnRollbackRound"
 
                                         <!-- 内容区域: 三种状态重叠, 同一时刻只显示一个 -->
                                         <Grid Margin="0,4,0,0">
-                                            <!-- 流式输出中: 纯文本, 不渲染 Markdown -->
-                                            <TextBlock Text="{Binding Content}"
-                                                       TextWrapping="Wrap"
-                                                       Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVisibility}}" />
+                                            <!-- 导演指令: 按指令分块渲染 Markdown -->
+                                            <ItemsControl ItemsSource="{Binding DirectorBlocks}">
+                                                <ItemsControl.Style>
+                                                    <Style TargetType="ItemsControl">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasDirectorBlocks}" Value="False">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ItemsControl.Style>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Margin="0,4"
+                                                                Padding="8,6"
+                                                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                                BorderThickness="1"
+                                                                CornerRadius="4">
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding TypeDisplay}"
+                                                                           FontWeight="SemiBold"
+                                                                           FontSize="11"
+                                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                           Margin="0,0,0,2" />
+                                                                <FlowDocumentScrollViewer Document="{Binding Document}"
+                                                                                          Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                                                          IsSelectionEnabled="True"
+                                                                                          VerticalScrollBarVisibility="Disabled"
+                                                                                          PreviewMouseWheel="OnFlowDocumentPreviewMouseWheel" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
 
-                                            <!-- 正常显示: 渲染后的 Markdown -->
+                                            <!-- 叙事输出: 渲染后的 Markdown (含流式) -->
                                             <FlowDocumentScrollViewer Document="{Binding Document}"
                                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                                                       IsSelectionEnabled="True"
@@ -361,7 +396,7 @@ Click="OnRollbackRound"
                                                     <Style TargetType="FlowDocumentScrollViewer">
                                                         <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsStreaming}" Value="True">
+                                                            <DataTrigger Binding="{Binding HasDirectorBlocks}" Value="True">
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsEditing}" Value="True">

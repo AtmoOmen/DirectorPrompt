@@ -340,8 +340,7 @@ public sealed partial class MainViewModel
                 items.Count
             );
 
-            var directorContent = string.Join("\n", items.Select(d => $"[{d.Type}] {d.Content}"));
-            Dialog.AddDirectorEntry(0, directorContent);
+            Dialog.AddDirectorEntry(0, items.Select(d => (d.Type, d.Content)).ToList());
 
             var streamingEntry = Dialog.BeginStreamingNarrative(0);
 
@@ -486,8 +485,7 @@ public sealed partial class MainViewModel
 
             Dialog.RemoveEntriesByRound(latestRound);
 
-            var directorContent = string.Join("\n", directives.Select(d => $"[{d.Type}] {d.Content}"));
-            Dialog.AddDirectorEntry(0, directorContent);
+            Dialog.AddDirectorEntry(0, directives.Select(d => (d.Type, d.Content)).ToList());
 
             var streamingEntry = Dialog.BeginStreamingNarrative(0);
 
@@ -744,8 +742,8 @@ public sealed partial class MainViewModel
             {
                 if (directorEvents.TryGetValue(roundID, out var directorEvent))
                 {
-                    var directorContent = ParseDirectorInputData(directorEvent.Data);
-                    Dialog.AddDirectorEntry(roundID, directorContent);
+                    var directorBlocks = ParseDirectorInputBlocks(directorEvent.Data);
+                    Dialog.AddDirectorEntry(roundID, directorBlocks);
                     Dialog.Entries[^1].EventID = directorEvent.ID;
                 }
 
@@ -801,27 +799,36 @@ public sealed partial class MainViewModel
         return result;
     }
 
-    private static string ParseDirectorInputData(string json)
+    private static IReadOnlyList<(DirectiveType Type, string Content)> ParseDirectorInputBlocks(string json)
     {
+        var result = new List<(DirectiveType Type, string Content)>();
+
         try
         {
             using var doc = JsonDocument.Parse(json);
 
-            var parts = new List<string>();
-
             foreach (var element in doc.RootElement.EnumerateArray())
             {
-                var type    = element.GetProperty("type").GetString();
-                var content = element.GetProperty("content").GetString();
-                parts.Add($"[{type}] {content}");
-            }
+                var typeStr = element.GetProperty("type").GetString() ?? "Plot";
+                var content = element.GetProperty("content").GetString() ?? string.Empty;
 
-            return string.Join("\n", parts);
+                var type = typeStr switch
+                {
+                    "Tone"                => DirectiveType.Tone,
+                    "TemporaryConstraint" => DirectiveType.TemporaryConstraint,
+                    "SceneChange"         => DirectiveType.SceneChange,
+                    _                     => DirectiveType.Plot
+                };
+
+                result.Add((type, content));
+            }
         }
         catch
         {
-            return json;
+            return [(DirectiveType.Plot, json)];
         }
+
+        return result;
     }
 
     private async Task RefreshSidebarAsync()

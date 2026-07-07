@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Documents;
@@ -24,6 +25,10 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
     public long? EventID { get; set; }
 
     public EventType Type { get; init; }
+
+    public ObservableCollection<DirectorContentBlockViewModel> DirectorBlocks { get; } = [];
+
+    public bool HasDirectorBlocks => IsDirector && DirectorBlocks.Count > 0;
 
     public string Content
     {
@@ -118,17 +123,39 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public DialogEntryViewModel()
+    {
+        DirectorBlocks.CollectionChanged += OnDirectorBlocksChanged;
+    }
+
+    private void OnDirectorBlocksChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDirectorBlocks)));
+    }
+
     public void RenderMarkdown()
     {
-        Document    = MarkdownRenderer.Render(Content);
+        if (HasDirectorBlocks)
+        {
+            foreach (var block in DirectorBlocks)
+                block.RenderMarkdown();
+        }
+        else
+        {
+            Document = MarkdownRenderer.Render(Content);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
+        }
+
         IsStreaming = false;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
     }
 
     public void UpdateStreamingContent(string narrative, string thinking)
     {
         Content  = narrative;
         Thinking = thinking;
+
+        Document = MarkdownRenderer.Render(narrative);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
     }
 
     public void StartEdit()
@@ -141,6 +168,7 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
     {
         Content   = EditingContent;
         IsEditing = false;
+        DirectorBlocks.Clear();
         RenderMarkdown();
     }
 
@@ -175,9 +203,11 @@ public sealed class DialogViewModel
         DeferredRender(entry);
     }
 
-    public void AddDirectorEntry(long roundID, string content)
+    public void AddDirectorEntry(long roundID, IReadOnlyList<(DirectiveType Type, string Content)> directives)
     {
         ClearLastFlag();
+
+        var content = string.Join("\n", directives.Select(d => $"[{d.Type}] {d.Content}"));
 
         var entry = new DialogEntryViewModel
         {
@@ -187,6 +217,15 @@ public sealed class DialogViewModel
             Content = content,
             IsLast  = true
         };
+
+        foreach (var d in directives)
+        {
+            entry.DirectorBlocks.Add(new DirectorContentBlockViewModel
+            {
+                Type    = d.Type,
+                Content = d.Content
+            });
+        }
 
         Entries.Add(entry);
         DeferredRender(entry);
