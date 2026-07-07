@@ -46,7 +46,7 @@ public sealed class AuditStage
         {
             Log.Information("审计循环: 尝试={Attempt}/{MaxRetries}", attempt, maxRetries);
 
-            await AuditAllDimensionsAsync(context, auditAgent, auditConfig, cancellationToken);
+            await AuditAsync(context, auditAgent, auditConfig, cancellationToken);
             context.AuditRetryCount = attempt;
 
             if (context.AuditPassed)
@@ -75,7 +75,7 @@ public sealed class AuditStage
         }
     }
 
-    private async Task AuditAllDimensionsAsync
+    private async Task AuditAsync
     (
         PipelineContext   context,
         AgentDefinition   auditAgent,
@@ -96,16 +96,40 @@ public sealed class AuditStage
             context.NarrativeOutput?.Length ?? 0
         );
 
-        var dimensionTasks = dimensions
-                             .Select(dim => AuditDimensionAsync(context, auditAgent, dim, cancellationToken))
-                             .ToList();
+        var auditTools   = new AuditTools();
+        var toolContext  = context.ToolContext;
 
-        var dimensionResults = await Task.WhenAll(dimensionTasks);
+        var tools = new List<AIFunction>();
+        tools.AddRange(knowledgeTools.Create(toolContext));
+        tools.AddRange(stateTools.Create(toolContext));
+        tools.AddRange(characterTools.Create(toolContext));
+        tools.AddRange(sceneTools.Create(toolContext));
+        tools.AddRange(memoryTools.Create(toolContext));
+        tools.AddRange(auditTools.Create());
 
-        var allViolations = dimensionResults
-                            .SelectMany(v => v)
-                            .Where(v => v.Severity != AuditSeverity.General)
-                            .ToList();
+        var dimensionList = string.Join(", ", dimensions);
+        var userContent   = $"{context.NarrativeOutput ?? string.Empty}\n\n---\n\n请审计以下维度: {dimensionList}";
+
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.System, AuditAgentPrompt.SYSTEM),
+            new(ChatRole.User, userContent)
+        };
+
+        var options = new ChatOptions
+        {
+            Temperature = auditAgent.Temperature,
+            ModelId     = auditAgent.ModelConfig.ModelName,
+            Tools       = [.. tools]
+        };
+
+        var client = chatClientFactory.Create(auditAgent.ModelConfig);
+
+        await client.GetResponseAsync(messages, options, cancellationToken);
+
+        var allViolations = auditTools.Violations
+                                      .Where(v => v.Severity != AuditSeverity.General)
+                                      .ToList();
 
         context.Violations.Clear();
         context.Violations.AddRange(allViolations);
@@ -129,71 +153,4 @@ public sealed class AuditStage
             );
         }
     }
-
-    private async Task<IReadOnlyList<Violation>> AuditDimensionAsync
-    (
-        PipelineContext   context,
-        AgentDefinition   auditAgent,
-        AuditDimension    dimension,
-        CancellationToken cancellationToken
-    )
-    {
-        Log.Information("审计维度 {Dimension} 开始", dimension);
-
-        var dimensionAuditTools = new AuditTools();
-
-        var (prompt, tools) = GetDimensionConfig(dimension, context.ToolContext, dimensionAuditTools);
-        var client = chatClientFactory.Create(auditAgent.ModelConfig);
-
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, prompt),
-            new(ChatRole.User, context.NarrativeOutput ?? string.Empty)
-        };
-
-        var options = new ChatOptions
-        {
-            Temperature = auditAgent.Temperature,
-            ModelId     = auditAgent.ModelConfig.ModelName,
-            Tools       = [.. tools]
-        };
-
-        await client.GetResponseAsync(messages, options, cancellationToken);
-
-        var violations = dimensionAuditTools.Violations;
-        Log.Information("审计维度 {Dimension} 完成: 违规数={ViolationCount}", dimension, violations.Count);
-
-        return violations;
-    }
-
-    private (string prompt, IList<AIFunction> tools) GetDimensionConfig
-    (
-        AuditDimension       dimension,
-        ToolExecutionContext context,
-        AuditTools           auditTools
-    ) =>
-        dimension switch
-        {
-            AuditDimension.Setting => (
-                                          AuditAgentPrompt.SETTING,
-                                          [..knowledgeTools.Create(context), ..auditTools.Create()]
-                                      ),
-            AuditDimension.State => (
-                                        AuditAgentPrompt.STATE,
-                                        [..stateTools.Create(context), ..characterTools.Create(context), ..auditTools.Create()]
-                                    ),
-            AuditDimension.Character => (
-                                            AuditAgentPrompt.CHARACTER,
-                                            [..characterTools.Create(context), ..auditTools.Create()]
-                                        ),
-            AuditDimension.Time => (
-                                       AuditAgentPrompt.TIME,
-                                       [..sceneTools.Create(context), ..auditTools.Create()]
-                                   ),
-            AuditDimension.Memory => (
-                                         AuditAgentPrompt.MEMORY,
-                                         [..memoryTools.Create(context), ..auditTools.Create()]
-                                     ),
-            _ => throw new ArgumentOutOfRangeException(nameof(dimension))
-        };
 }
