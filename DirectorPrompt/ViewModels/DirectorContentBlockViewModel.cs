@@ -7,8 +7,6 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed class DirectorContentBlockViewModel : INotifyPropertyChanged
 {
-    private FlowDocument? document;
-
     public DirectiveType Type { get; init; }
 
     public string Content { get; init; } = string.Empty;
@@ -24,18 +22,16 @@ public sealed class DirectorContentBlockViewModel : INotifyPropertyChanged
 
     public FlowDocument? Document
     {
-        get => document;
+        get;
         private set
         {
-            document = value;
+            field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
         }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public void RenderMarkdown()
-    {
+    public void RenderMarkdown() =>
         Document = MarkdownRenderer.Render(Content);
-    }
 }

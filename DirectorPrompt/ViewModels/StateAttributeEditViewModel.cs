@@ -9,49 +9,49 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     public long ID { get; set; }
 
     [ObservableProperty]
-    private string name = string.Empty;
+    public partial string Name { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string displayName = string.Empty;
+    public partial string DisplayName { get; set; } = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNumericConfig))]
     [NotifyPropertyChangedFor(nameof(IsEnumConfig))]
     [NotifyPropertyChangedFor(nameof(IsCompositeConfig))]
-    private StateValueType valueType = StateValueType.Numeric;
+    public partial StateValueType ValueType { get; set; } = StateValueType.Numeric;
 
     [ObservableProperty]
-    private Driver driver = Driver.Narrative;
+    public partial Driver Driver { get; set; } = Driver.Narrative;
 
     [ObservableProperty]
-    private string currentValue = string.Empty;
+    public partial string CurrentValue { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private bool isEditing;
+    public partial bool IsEditing { get; set; }
 
     [ObservableProperty]
-    private float? minValue;
+    public partial float? MinValue { get; set; }
 
     [ObservableProperty]
-    private float? maxValue;
+    public partial float? MaxValue { get; set; }
 
     [ObservableProperty]
-    private string unit = string.Empty;
+    public partial string Unit { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string changeRules = string.Empty;
+    public partial string ChangeRules { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string options = string.Empty;
+    public partial string Options { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private SystemTrigger trigger = SystemTrigger.SceneChange;
+    public partial SystemTrigger Trigger { get; set; } = SystemTrigger.SceneChange;
 
     [ObservableProperty]
-    private string generationGuide = string.Empty;
+    public partial string GenerationGuide { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private SystemTrigger regenerateTrigger = SystemTrigger.SceneChange;
+    public partial SystemTrigger RegenerateTrigger { get; set; } = SystemTrigger.SceneChange;
 
     public bool IsNumericConfig => ValueType == StateValueType.Numeric;
 

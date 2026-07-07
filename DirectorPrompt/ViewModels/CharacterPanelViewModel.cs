@@ -6,13 +6,13 @@ namespace DirectorPrompt.ViewModels;
 public sealed partial class CharacterPanelItemViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string name = string.Empty;
+    public partial string Name { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string status = string.Empty;
+    public partial string Status { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string description = string.Empty;
+    public partial string Description { get; set; } = string.Empty;
 }
 
 public sealed class CharacterPanelViewModel : ObservableObject

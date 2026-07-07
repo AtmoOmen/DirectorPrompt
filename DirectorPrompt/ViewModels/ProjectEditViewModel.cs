@@ -24,20 +24,20 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEditing))]
     [NotifyPropertyChangedFor(nameof(TitleText))]
-    private string name = string.Empty;
+    public partial string Name { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string description = string.Empty;
+    public partial string Description { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string openingMessage = string.Empty;
+    public partial string OpeningMessage { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private bool isSaving;
+    public partial bool IsSaving { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasValidationMessage))]
-    private string validationMessage = string.Empty;
+    public partial string ValidationMessage { get; set; } = string.Empty;
 
     public ObservableCollection<KnowledgeGroupEditViewModel> KnowledgeGroups { get; } = [];
 

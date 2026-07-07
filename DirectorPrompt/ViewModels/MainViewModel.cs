@@ -348,10 +348,7 @@ public sealed partial class MainViewModel
 
             var dispatcher = Application.Current.Dispatcher;
 
-            Action<string, string>      streamingUpdate = (narrative, thinking) => dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); }));
-            Action<PipelineStageUpdate> stageUpdate     = update => dispatcher.BeginInvoke(new Action(() => { UpdatePipelineStage(update.Stage, update.Status, update.Detail); }));
-
-            var result = await orchestrator.ProcessBatchAsync(batch, CurrentSession.ID, streamingUpdate, stageUpdate);
+            var result = await orchestrator.ProcessBatchAsync(batch, CurrentSession.ID, StreamingUpdate, StageUpdate);
 
             streamingEntry.RoundID  = result.RoundID;
             streamingEntry.Content  = result.Narrative;
@@ -377,6 +374,12 @@ public sealed partial class MainViewModel
             StatusMessage = result.AuditPassed ?
                                 Loc.Get("Status.Complete") :
                                 Loc.Get("Status.CompleteWithWarnings", result.Violations.Count);
+
+            void StreamingUpdate(string narrative, string thinking) =>
+                dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); }));
+
+            void StageUpdate(PipelineStageUpdate update) =>
+                dispatcher.BeginInvoke(new Action(() => { UpdatePipelineStage(update.Stage, update.Status, update.Detail); }));
         }
         catch (Exception ex)
         {
@@ -492,10 +495,7 @@ public sealed partial class MainViewModel
 
             var dispatcher = Application.Current.Dispatcher;
 
-            Action<string, string>      streamingUpdate = (narrative, thinking) => dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); }));
-            Action<PipelineStageUpdate> stageUpdate     = update => dispatcher.BeginInvoke(new Action(() => { UpdatePipelineStage(update.Stage, update.Status, update.Detail); }));
-
-            var result = await orchestrator.RewriteAsync(batch, CurrentSession.ID, streamingUpdate, stageUpdate);
+            var result = await orchestrator.RewriteAsync(batch, CurrentSession.ID, StreamingUpdate, StageUpdate);
 
             streamingEntry.RoundID  = result.RoundID;
             streamingEntry.Content  = result.Narrative;
@@ -508,6 +508,12 @@ public sealed partial class MainViewModel
             StatusMessage = result.AuditPassed ?
                                 Loc.Get("Status.Complete") :
                                 Loc.Get("Status.CompleteWithWarnings", result.Violations.Count);
+
+            void StreamingUpdate(string narrative, string thinking) =>
+                dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); }));
+
+            void StageUpdate(PipelineStageUpdate update) =>
+                dispatcher.BeginInvoke(new Action(() => { UpdatePipelineStage(update.Stage, update.Status, update.Detail); }));
         }
         catch (Exception ex)
         {
@@ -561,17 +567,14 @@ public sealed partial class MainViewModel
 
             var dispatcher = Application.Current.Dispatcher;
 
-            Action<string, string>      streamingUpdate = (narrative, thinking) => dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); }));
-            Action<PipelineStageUpdate> stageUpdate     = update => dispatcher.BeginInvoke(new Action(() => { UpdatePipelineStage(update.Stage, update.Status, update.Detail); }));
-
             var result = await orchestrator.CorrectAsync
-            (
-                CurrentSession.ID,
-                latestRound,
-                guidance,
-                streamingUpdate,
-                stageUpdate
-            );
+                         (
+                             CurrentSession.ID,
+                             latestRound,
+                             guidance,
+                             StreamingUpdate,
+                             StageUpdate
+                         );
 
             pendingCorrectionTempRoundID = result.RoundID;
 
@@ -634,6 +637,12 @@ public sealed partial class MainViewModel
             pendingCorrectionOriginalRoundID = 0;
             pendingCorrectionTempRoundID     = 0;
             pendingCorrectionOriginalNarrative = null;
+
+            void StreamingUpdate(string narrative, string thinking) =>
+                dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); }));
+
+            void StageUpdate(PipelineStageUpdate update) =>
+                dispatcher.BeginInvoke(new Action(() => { UpdatePipelineStage(update.Stage, update.Status, update.Detail); }));
         }
         catch (Exception ex)
         {
@@ -794,13 +803,13 @@ public sealed partial class MainViewModel
                 _                     => DirectiveType.Plot
             };
 
-            result.Add(new DirectiveItem(type, content, order++, null));
+            result.Add(new DirectiveItem(type, content, order++));
         }
 
         return result;
     }
 
-    private static IReadOnlyList<(DirectiveType Type, string Content)> ParseDirectorInputBlocks(string json)
+    private static List<(DirectiveType Type, string Content)> ParseDirectorInputBlocks(string json)
     {
         var result = new List<(DirectiveType Type, string Content)>();
 
@@ -852,10 +861,7 @@ public sealed partial class MainViewModel
         var scene = await sceneRepository.GetActiveSceneAsync(CurrentSession.ID);
 
         if (scene is not null)
-        {
             StatePanel.CurrentSceneLabel = scene.TimeLabel;
-            StatePanel.TimelineLabel     = scene.TimelinePosition.ToString();
-        }
 
         var values     = await stateRepository.GetAllStateValuesAsync(CurrentProject.ID, CurrentSession.ID);
         var attributes = await stateRepository.GetAttributesAsync(CurrentProject.ID);
@@ -900,7 +906,7 @@ public sealed partial class MainViewModel
                     },
                     Content = d.Content,
                     HasTTL  = d.TTL.HasValue,
-                    TtlLabel = d.TTL.HasValue ?
+                    TTLLabel = d.TTL.HasValue ?
                                    Loc.Get("Directive.Panel.RemainingRounds", d.TTL) :
                                    Loc.Get("Directive.Panel.Permanent")
                 }

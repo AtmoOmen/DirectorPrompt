@@ -6,8 +6,8 @@ namespace DirectorPrompt.ViewModels;
 public sealed partial class AuditSettingViewModel : ObservableObject
 {
     [ObservableProperty]
-    private AuditMode mode = AuditMode.Blocking;
+    public partial AuditMode Mode { get; set; } = AuditMode.Blocking;
 
     [ObservableProperty]
-    private int maxRetries = 2;
+    public partial int MaxRetries { get; set; } = 2;
 }

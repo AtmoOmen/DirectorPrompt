@@ -5,11 +5,11 @@ namespace DirectorPrompt.ViewModels;
 public sealed partial class KnowledgeSettingViewModel : ObservableObject
 {
     [ObservableProperty]
-    private int semanticTopK = 8;
+    public partial int SemanticTopK { get; set; } = 8;
 
     [ObservableProperty]
-    private int tokenBudget = 2000;
+    public partial int TokenBudget { get; set; } = 2000;
 
     [ObservableProperty]
-    private float minRelevance;
+    public partial float MinRelevance { get; set; }
 }

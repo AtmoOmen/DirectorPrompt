@@ -5,28 +5,23 @@ namespace DirectorPrompt.ViewModels;
 public sealed partial class EmbeddingSettingViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string provider = "openai";
+    public partial string Provider { get; set; } = "openai";
 
     [ObservableProperty]
-    private string endpoint = string.Empty;
-
-    private string apiKey = string.Empty;
-
-    public string APIKey
-    {
-        get => apiKey;
-        set => SetProperty(ref apiKey, value);
-    }
+    public partial string Endpoint { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string modelName = "text-embedding-3-small";
+    public partial string APIKey { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private bool isTestingConnection;
+    public partial string ModelName { get; set; } = "text-embedding-v4";
 
     [ObservableProperty]
-    private string connectionMessage = string.Empty;
+    public partial bool IsTestingConnection { get; set; }
 
     [ObservableProperty]
-    private bool? connectionSuccess;
+    public partial string ConnectionMessage { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool? ConnectionSuccess { get; set; }
 }

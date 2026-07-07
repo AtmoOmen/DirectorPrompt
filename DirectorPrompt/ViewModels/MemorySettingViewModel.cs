@@ -5,14 +5,14 @@ namespace DirectorPrompt.ViewModels;
 public sealed partial class MemorySettingViewModel : ObservableObject
 {
     [ObservableProperty]
-    private int recallTopK = 10;
+    public partial int RecallTopK { get; set; } = 10;
 
     [ObservableProperty]
-    private int tokenBudget = 1500;
+    public partial int TokenBudget { get; set; } = 1500;
 
     [ObservableProperty]
-    private float minRelevance;
+    public partial float MinRelevance { get; set; }
 
     [ObservableProperty]
-    private float timeDecayLambda;
+    public partial float TimeDecayLambda { get; set; }
 }

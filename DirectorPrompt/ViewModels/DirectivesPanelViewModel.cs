@@ -6,16 +6,16 @@ namespace DirectorPrompt.ViewModels;
 public sealed partial class DirectivePanelItemViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string type = string.Empty;
+    public partial string Type { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string content = string.Empty;
+    public partial string Content { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string ttlLabel = string.Empty;
+    public partial string TTLLabel { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private bool hasTTL;
+    public partial bool HasTTL { get; set; }
 }
 
 public sealed class DirectivesPanelViewModel : ObservableObject

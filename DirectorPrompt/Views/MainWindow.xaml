@@ -616,16 +616,6 @@ Click="OnRollbackRound"
                                            Foreground="Gray" Margin="0,0,8,0" />
                                 <TextBlock Grid.Column="1" Text="{Binding StatePanel.CurrentSceneLabel}" />
                             </Grid>
-                            <Grid Margin="0,2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0"
-                                           Text="{Binding [State.Panel.Timeline], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray" Margin="0,0,8,0" />
-                                <TextBlock Grid.Column="1" Text="{Binding StatePanel.TimelineLabel}" />
-                            </Grid>
                             <ItemsControl ItemsSource="{Binding StatePanel.StateItems}" Margin="0,4,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -660,7 +650,7 @@ Click="OnRollbackRound"
                                                 <TextBlock Text="{Binding Type}" Margin="0,0,4,0" />
                                                 <TextBlock Text="{Binding Content}" TextWrapping="Wrap" />
                                             </StackPanel>
-                                            <TextBlock Text="{Binding TtlLabel}"
+                                            <TextBlock Text="{Binding TTLLabel}"
                                                        FontSize="11"
                                                        Foreground="Gray"
                                                        Visibility="{Binding HasTTL, Converter={StaticResource BoolToVisibility}}" />

@@ -7,22 +7,19 @@ namespace DirectorPrompt.ViewModels;
 public sealed partial class StateItemViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string name = string.Empty;
+    public partial string Name { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string value = string.Empty;
+    public partial string Value { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string scope = string.Empty;
+    public partial string Scope { get; set; } = string.Empty;
 }
 
 public sealed partial class StatePanelViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string currentSceneLabel = Loc.Get("State.Panel.NotStarted");
-
-    [ObservableProperty]
-    private string timelineLabel = "—";
+    public partial string CurrentSceneLabel { get; set; } = Loc.Get("State.Panel.NotStarted");
 
     public ObservableCollection<StateItemViewModel> StateItems { get; } = [];
 
@@ -30,6 +27,5 @@ public sealed partial class StatePanelViewModel : ObservableObject
     {
         StateItems.Clear();
         CurrentSceneLabel = Loc.Get("State.Panel.NotStarted");
-        TimelineLabel     = "—";
     }
 }

@@ -8,21 +8,16 @@ namespace DirectorPrompt.ViewModels;
 public sealed partial class DirectiveItemViewModel : ObservableObject
 {
     [ObservableProperty]
-    private DirectiveType type;
+    public partial DirectiveType Type { get; set; }
 
     [ObservableProperty]
-    private string content = string.Empty;
+    public partial string Content  { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private int order;
+    public partial int Order { get; set; }
 
-    private int? ttl;
-
-    public int? TTL
-    {
-        get => ttl;
-        set => SetProperty(ref ttl, value);
-    }
+    [ObservableProperty]
+    public partial int? TTL { get; set; }
 
     public string TypeDisplay => Type switch
     {
@@ -34,33 +29,26 @@ public sealed partial class DirectiveItemViewModel : ObservableObject
     };
 
     public bool HasTTL => Type is DirectiveType.Tone or DirectiveType.TemporaryConstraint;
-
-    partial void OnTypeChanged(DirectiveType value)
-    {
-        OnPropertyChanged(nameof(HasTTL));
-
-        if (!HasTTL)
-            TTL = null;
-    }
 }
 
 public sealed partial class DirectiveInputViewModel : ObservableObject
 {
     [ObservableProperty]
-    private DirectiveType selectedType = DirectiveType.Plot;
+    public partial DirectiveType SelectedType { get; set; } = DirectiveType.Plot;
 
     [ObservableProperty]
-    private string inputContent = string.Empty;
+    public partial string InputContent { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private int? inputTTL;
+    public partial int? InputTTL { get; set; }
 
     [ObservableProperty]
-    private bool isSending;
+    public partial bool IsSending { get; set; }
 
     public ObservableCollection<DirectiveItemViewModel> Directives { get; } = [];
 
-    public bool InputHasTTL => SelectedType is DirectiveType.Tone or DirectiveType.TemporaryConstraint;
+    public bool InputHasTTL => 
+        SelectedType is DirectiveType.Tone or DirectiveType.TemporaryConstraint;
 
     partial void OnSelectedTypeChanged(DirectiveType value)
     {

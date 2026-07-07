@@ -7,22 +7,22 @@ public sealed partial class KnowledgeEntryEditViewModel : ObservableObject
     public long ID { get; set; }
 
     [ObservableProperty]
-    private string title = string.Empty;
+    public partial string Title { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string content = string.Empty;
+    public partial string Content { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string tags = string.Empty;
+    public partial string Tags { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private long? groupID;
+    public partial long? GroupID { get; set; }
 
     [ObservableProperty]
-    private bool active = true;
+    public partial bool Active { get; set; } = true;
 
     [ObservableProperty]
-    private bool isEditing;
+    public partial bool IsEditing { get; set; }
 
     public string GroupDisplay { get; set; } = string.Empty;
 }

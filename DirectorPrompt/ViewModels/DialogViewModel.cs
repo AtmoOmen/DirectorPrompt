@@ -11,12 +11,7 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed class DialogEntryViewModel : INotifyPropertyChanged
 {
-    private bool   isLast;
-    private string content  = string.Empty;
     private string thinking = string.Empty;
-    private bool   isStreaming;
-    private bool   isEditing;
-    private string editingContent = string.Empty;
 
     public long ID { get; init; }
 
@@ -32,16 +27,16 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     public string Content
     {
-        get => content;
+        get;
         set
         {
-            if (content != value)
+            if (field != value)
             {
-                content = value;
+                field = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Content)));
             }
         }
-    }
+    } = string.Empty;
 
     public string Thinking
     {
@@ -61,12 +56,12 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     public bool IsStreaming
     {
-        get => isStreaming;
+        get;
         set
         {
-            if (isStreaming != value)
+            if (field != value)
             {
-                isStreaming = value;
+                field = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsStreaming)));
             }
         }
@@ -74,12 +69,12 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     public bool IsEditing
     {
-        get => isEditing;
+        get;
         set
         {
-            if (isEditing != value)
+            if (field != value)
             {
-                isEditing = value;
+                field = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEditing)));
             }
         }
@@ -87,16 +82,16 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     public string EditingContent
     {
-        get => editingContent;
+        get;
         set
         {
-            if (editingContent != value)
+            if (field != value)
             {
-                editingContent = value;
+                field = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EditingContent)));
             }
         }
-    }
+    } = string.Empty;
 
     public FlowDocument? Document { get; private set; }
 
@@ -106,32 +101,28 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     public bool IsLast
     {
-        get => isLast;
+        get;
         set
         {
-            if (isLast != value)
+            if (field != value)
             {
-                isLast = value;
+                field = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLast)));
             }
         }
     }
 
     public string Role => IsDirector ?
-                              "导演" :
+                              "用户" :
                               "AI";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public DialogEntryViewModel()
-    {
+    public DialogEntryViewModel() =>
         DirectorBlocks.CollectionChanged += OnDirectorBlocksChanged;
-    }
 
-    private void OnDirectorBlocksChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
+    private void OnDirectorBlocksChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDirectorBlocks)));
-    }
 
     public void RenderMarkdown()
     {
@@ -220,11 +211,14 @@ public sealed class DialogViewModel
 
         foreach (var d in directives)
         {
-            entry.DirectorBlocks.Add(new DirectorContentBlockViewModel
-            {
-                Type    = d.Type,
-                Content = d.Content
-            });
+            entry.DirectorBlocks.Add
+            (
+                new DirectorContentBlockViewModel
+                {
+                    Type    = d.Type,
+                    Content = d.Content
+                }
+            );
         }
 
         Entries.Add(entry);
@@ -282,9 +276,7 @@ public sealed class DialogViewModel
         else
         {
             var lastEntry = Entries.LastOrDefault();
-
-            if (lastEntry is not null)
-                lastEntry.IsLast = true;
+            lastEntry?.IsLast = true;
         }
     }
 
