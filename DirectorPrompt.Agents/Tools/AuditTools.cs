@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using Microsoft.Extensions.AI;
@@ -7,12 +6,9 @@ namespace DirectorPrompt.Agents.Tools;
 
 public sealed class AuditTools
 {
-    private readonly ConcurrentBag<Violation> violations = new();
+    private readonly List<Violation> violations = [];
 
-    public IReadOnlyList<Violation> Violations => violations.ToList();
-
-    public void Reset() =>
-        violations.Clear();
+    public IReadOnlyList<Violation> Violations => violations;
 
     public IList<AIFunction> Create() =>
     [

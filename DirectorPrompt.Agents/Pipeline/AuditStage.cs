@@ -2,6 +2,7 @@ using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Domain.Models;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -15,7 +16,7 @@ public sealed class AuditStage
     StateTools         stateTools,
     MemoryTools        memoryTools,
     CharacterTools     characterTools,
-    AuditTools         auditTools,
+    GenerationStage    generationStage,
     OrchestratorConfig orchestratorConfig
 )
 {
@@ -39,6 +40,49 @@ public sealed class AuditStage
             return;
         }
 
+        var maxRetries = auditConfig.MaxRetries;
+
+        for (var attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            Log.Information("审计循环: 尝试={Attempt}/{MaxRetries}", attempt, maxRetries);
+
+            await AuditAllDimensionsAsync(context, auditAgent, auditConfig, cancellationToken);
+            context.AuditRetryCount = attempt;
+
+            if (context.AuditPassed)
+            {
+                Log.Information("审计通过, 退出循环");
+                return;
+            }
+
+            if (attempt < maxRetries && auditConfig.Mode == AuditMode.Blocking)
+            {
+                Log.Warning("审计未通过, 准备重试: 违规数={ViolationCount}", context.Violations.Count);
+
+                await generationStage.RetryWithFeedbackAsync
+                (
+                    context,
+                    context.Violations,
+                    cancellationToken
+                );
+            }
+            else
+            {
+                Log.Warning("达到最大重试次数或非阻塞模式, 强制通过");
+                context.AuditPassed = true;
+                return;
+            }
+        }
+    }
+
+    private async Task AuditAllDimensionsAsync
+    (
+        PipelineContext   context,
+        AgentDefinition   auditAgent,
+        AuditConfig       auditConfig,
+        CancellationToken cancellationToken
+    )
+    {
         var dimensions = auditConfig.Dimensions.Count > 0 ?
                              auditConfig.Dimensions.ToList() :
                              Enum.GetValues<AuditDimension>().ToList();
@@ -56,11 +100,12 @@ public sealed class AuditStage
                              .Select(dim => AuditDimensionAsync(context, auditAgent, dim, cancellationToken))
                              .ToList();
 
-        await Task.WhenAll(dimensionTasks);
+        var dimensionResults = await Task.WhenAll(dimensionTasks);
 
-        var allViolations = auditTools.Violations
-                                      .Where(v => v.Severity != AuditSeverity.General)
-                                      .ToList();
+        var allViolations = dimensionResults
+                            .SelectMany(v => v)
+                            .Where(v => v.Severity != AuditSeverity.General)
+                            .ToList();
 
         context.Violations.Clear();
         context.Violations.AddRange(allViolations);
@@ -85,7 +130,7 @@ public sealed class AuditStage
         }
     }
 
-    private async Task AuditDimensionAsync
+    private async Task<IReadOnlyList<Violation>> AuditDimensionAsync
     (
         PipelineContext   context,
         AgentDefinition   auditAgent,
@@ -95,9 +140,9 @@ public sealed class AuditStage
     {
         Log.Information("审计维度 {Dimension} 开始", dimension);
 
-        auditTools.Reset();
+        var dimensionAuditTools = new AuditTools();
 
-        var (prompt, tools) = GetDimensionConfig(dimension, context.ToolContext);
+        var (prompt, tools) = GetDimensionConfig(dimension, context.ToolContext, dimensionAuditTools);
         var client = chatClientFactory.Create(auditAgent.ModelConfig);
 
         var messages = new List<ChatMessage>
@@ -115,36 +160,39 @@ public sealed class AuditStage
 
         await client.GetResponseAsync(messages, options, cancellationToken);
 
-        var violations = auditTools.Violations.Count;
-        Log.Information("审计维度 {Dimension} 完成: 违规数={ViolationCount}", dimension, violations);
+        var violations = dimensionAuditTools.Violations;
+        Log.Information("审计维度 {Dimension} 完成: 违规数={ViolationCount}", dimension, violations.Count);
+
+        return violations;
     }
 
     private (string prompt, IList<AIFunction> tools) GetDimensionConfig
     (
         AuditDimension       dimension,
-        ToolExecutionContext context
+        ToolExecutionContext context,
+        AuditTools           auditTools
     ) =>
         dimension switch
         {
             AuditDimension.Setting => (
-                                          Setting: AuditAgentPrompt.SETTING,
-                                          knowledgeTools.Create(context)
+                                          AuditAgentPrompt.SETTING,
+                                          [..knowledgeTools.Create(context), ..auditTools.Create()]
                                       ),
             AuditDimension.State => (
-                                        State: AuditAgentPrompt.STATE,
-                                        [.. stateTools.Create(context), .. characterTools.Create(context)]
+                                        AuditAgentPrompt.STATE,
+                                        [..stateTools.Create(context), ..characterTools.Create(context), ..auditTools.Create()]
                                     ),
             AuditDimension.Character => (
-                                            Character: AuditAgentPrompt.CHARACTER,
-                                            characterTools.Create(context)
+                                            AuditAgentPrompt.CHARACTER,
+                                            [..characterTools.Create(context), ..auditTools.Create()]
                                         ),
             AuditDimension.Time => (
-                                       Time: AuditAgentPrompt.TIME,
-                                       sceneTools.Create(context)
+                                       AuditAgentPrompt.TIME,
+                                       [..sceneTools.Create(context), ..auditTools.Create()]
                                    ),
             AuditDimension.Memory => (
-                                         Memory: AuditAgentPrompt.MEMORY,
-                                         memoryTools.Create(context)
+                                         AuditAgentPrompt.MEMORY,
+                                         [..memoryTools.Create(context), ..auditTools.Create()]
                                      ),
             _ => throw new ArgumentOutOfRangeException(nameof(dimension))
         };

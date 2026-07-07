@@ -1,133 +1,31 @@
 using System.Text;
 using System.Text.Json;
 using DirectorPrompt.Agents.Pipeline;
-using DirectorPrompt.Agents.Prompts;
-using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
-using Microsoft.Extensions.AI;
 using Serilog;
 
 namespace DirectorPrompt.Agents;
 
 public sealed class Orchestrator
+(
+    IProjectRepository       projectRepository,
+    ISessionRepository       sessionRepository,
+    IEventRepository         eventRepository,
+    ISceneRepository         sceneRepository,
+    IDirectiveRepository     directiveRepository,
+    IRoundChangeRepository   roundChangeRepository,
+    IStateRepository         stateRepository,
+    DirectiveProcessingStage directiveProcessingStage,
+    RetrievalStage           retrievalStage,
+    GenerationStage          generationStage,
+    AuditStage               auditStage,
+    PostProcessingStage      postProcessingStage
+)
 {
-    private readonly IChatClientFactory       chatClientFactory;
-    private readonly ISceneRepository         sceneRepository;
-    private readonly IStateRepository         stateRepository;
-    private readonly ICharacterRepository     characterRepository;
-    private readonly IDirectiveRepository     directiveRepository;
-    private readonly IEventRepository         eventRepository;
-    private readonly IProjectRepository       projectRepository;
-    private readonly ISessionRepository       sessionRepository;
-    private readonly IKnowledgeRepository     knowledgeRepository;
-    private readonly IMemoryRepository        memoryRepository;
-    private readonly IEmbeddingServiceFactory embeddingServiceFactory;
-    private readonly ITimelineCalculator      timelineCalculator;
-    private readonly IRoundChangeRepository   roundChangeRepository;
-    private readonly OrchestratorConfig       config;
-
-    private readonly SceneTools     sceneTools;
-    private readonly KnowledgeTools knowledgeTools;
-    private readonly StateTools     stateTools;
-    private readonly MemoryTools    memoryTools;
-    private readonly CharacterTools characterTools;
-    private readonly AuditTools     auditTools;
-
-    private readonly RetrievalStage      retrievalStage;
-    private readonly GenerationStage     generationStage;
-    private readonly AuditStage          auditStage;
-    private readonly PostProcessingStage postProcessingStage;
-
-    public Orchestrator
-    (
-        IChatClientFactory       chatClientFactory,
-        ISceneRepository         sceneRepository,
-        IStateRepository         stateRepository,
-        ICharacterRepository     characterRepository,
-        IDirectiveRepository     directiveRepository,
-        IEventRepository         eventRepository,
-        IProjectRepository       projectRepository,
-        ISessionRepository       sessionRepository,
-        IKnowledgeRepository     knowledgeRepository,
-        IMemoryRepository        memoryRepository,
-        IEmbeddingServiceFactory embeddingServiceFactory,
-        ITimelineCalculator      timelineCalculator,
-        IRoundChangeRepository   roundChangeRepository,
-        OrchestratorConfig       config
-    )
-    {
-        this.chatClientFactory       = chatClientFactory;
-        this.sceneRepository         = sceneRepository;
-        this.stateRepository         = stateRepository;
-        this.characterRepository     = characterRepository;
-        this.directiveRepository     = directiveRepository;
-        this.eventRepository         = eventRepository;
-        this.projectRepository       = projectRepository;
-        this.sessionRepository       = sessionRepository;
-        this.knowledgeRepository     = knowledgeRepository;
-        this.memoryRepository        = memoryRepository;
-        this.embeddingServiceFactory = embeddingServiceFactory;
-        this.timelineCalculator      = timelineCalculator;
-        this.roundChangeRepository   = roundChangeRepository;
-        this.config                  = config;
-
-        sceneTools     = new SceneTools(sceneRepository, timelineCalculator);
-        knowledgeTools = new KnowledgeTools(knowledgeRepository, embeddingServiceFactory);
-        stateTools     = new StateTools(stateRepository);
-        memoryTools    = new MemoryTools(memoryRepository, embeddingServiceFactory);
-        characterTools = new CharacterTools(characterRepository, stateRepository);
-        auditTools     = new AuditTools();
-
-        retrievalStage = new RetrievalStage
-        (
-            chatClientFactory,
-            sceneRepository,
-            stateRepository,
-            characterRepository,
-            directiveRepository,
-            knowledgeRepository,
-            memoryRepository,
-            knowledgeTools,
-            memoryTools,
-            config
-        );
-
-        generationStage = new GenerationStage
-        (
-            chatClientFactory,
-            knowledgeTools,
-            config
-        );
-
-        auditStage = new AuditStage
-        (
-            chatClientFactory,
-            sceneTools,
-            knowledgeTools,
-            stateTools,
-            memoryTools,
-            characterTools,
-            auditTools,
-            config
-        );
-
-        postProcessingStage = new PostProcessingStage
-        (
-            chatClientFactory,
-            memoryTools,
-            stateTools,
-            characterTools,
-            config,
-            stateRepository,
-            characterRepository,
-            sceneRepository
-        );
-    }
-
     public async Task<NarrationResult> ProcessBatchAsync
     (
         DirectiveBatch               batch,
@@ -167,9 +65,17 @@ public sealed class Orchestrator
             foreach (var d in batch.Directives)
                 Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
 
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
             var embeddingConfig = JsonSerializer.Deserialize<ModelConfig>(project.EmbeddingConfig) ?? new ModelConfig();
-            await ProcessDirectivesAsync(batch, sessionID, activeScene, embeddingConfig, cancellationToken);
+
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
+            await directiveProcessingStage.ExecuteAsync
+            (
+                batch,
+                sessionID,
+                activeScene,
+                embeddingConfig,
+                cancellationToken
+            );
             onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Complete));
 
             activeScene = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
@@ -197,82 +103,7 @@ public sealed class Orchestrator
                 OnStageUpdate           = onStageUpdate
             };
 
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Retrieval, PipelineStageStatus.Running));
-            await retrievalStage.ExecuteAsync(context, cancellationToken);
-            onStageUpdate?.Invoke
-            (
-                new PipelineStageUpdate
-                (
-                    PipelineStageKind.Retrieval,
-                    PipelineStageStatus.Complete,
-                    $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}"
-                )
-            );
-
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Generation, PipelineStageStatus.Running));
-            await generationStage.ExecuteAsync(context, cancellationToken);
-            onStageUpdate?.Invoke
-            (
-                new PipelineStageUpdate
-                (
-                    PipelineStageKind.Generation,
-                    PipelineStageStatus.Complete,
-                    $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
-                )
-            );
-
-            await RecordEventAsync
-            (
-                batch.ProjectID,
-                sessionID,
-                roundID,
-                EventType.DirectorInput,
-                JsonSerializer.Serialize
-                (
-                    batch.Directives.Select
-                    (d => new
-                        {
-                            type    = d.Type.ToString(),
-                            content = d.Content,
-                            order   = d.Order
-                        }
-                    )
-                ),
-                cancellationToken
-            );
-
-            await RecordEventAsync
-            (
-                batch.ProjectID,
-                sessionID,
-                roundID,
-                EventType.NarrativeOutput,
-                context.NarrativeOutput ?? string.Empty,
-                cancellationToken
-            );
-
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Audit, PipelineStageStatus.Running));
-            await RunAuditLoopAsync(context, cancellationToken);
-            onStageUpdate?.Invoke
-            (
-                new PipelineStageUpdate
-                (
-                    PipelineStageKind.Audit,
-                    PipelineStageStatus.Complete,
-                    context.AuditPassed ?
-                        "通过" :
-                        $"违规数={context.Violations.Count}"
-                )
-            );
-
-            if (context.AuditPassed)
-            {
-                onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Running));
-                await postProcessingStage.ExecuteAsync(context, cancellationToken);
-                onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete));
-            }
-
-            await directiveRepository.DecrementTTLAsync(sessionID, cancellationToken);
+            var result = await RunPipelineAsync(context, cancellationToken);
 
             Log.Information
             (
@@ -284,14 +115,7 @@ public sealed class Orchestrator
                 context.NarrativeOutput?.Length ?? 0
             );
 
-            return new NarrationResult
-            (
-                context.NarrativeOutput ?? string.Empty,
-                context.ThinkingOutput  ?? string.Empty,
-                roundID,
-                context.Violations,
-                context.AuditPassed
-            );
+            return result;
         }
     }
 
@@ -332,11 +156,12 @@ public sealed class Orchestrator
         CancellationToken            cancellationToken = default
     )
     {
-        var project = await projectRepository.GetByIDAsync
-                      (
-                          (await sessionRepository.GetByIDAsync(sessionID, cancellationToken))?.ProjectID ?? 0,
-                          cancellationToken
-                      );
+        var session = await sessionRepository.GetByIDAsync(sessionID, cancellationToken);
+
+        if (session is null)
+            throw new ArgumentException($"对话 {sessionID} 不存在");
+
+        var project = await projectRepository.GetByIDAsync(session.ProjectID, cancellationToken);
 
         if (project is null)
             throw new ArgumentException("项目不存在");
@@ -359,6 +184,7 @@ public sealed class Orchestrator
 
         var timelinePosition = activeScene.TimelinePosition;
         var history          = await BuildHistoryAsync(sessionID, tempRoundID, cancellationToken);
+        var embeddingConfig  = JsonSerializer.Deserialize<ModelConfig>(project.EmbeddingConfig) ?? new ModelConfig();
 
         Log.Information
         (
@@ -368,8 +194,6 @@ public sealed class Orchestrator
             tempRoundID,
             correctionGuidance
         );
-
-        var embeddingConfig = JsonSerializer.Deserialize<ModelConfig>(project.EmbeddingConfig) ?? new ModelConfig();
 
         using (RoundContext.Enter(tempRoundID))
         {
@@ -389,72 +213,7 @@ public sealed class Orchestrator
                 OnStageUpdate           = onStageUpdate
             };
 
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Retrieval, PipelineStageStatus.Running));
-            await retrievalStage.ExecuteAsync(context, cancellationToken);
-            onStageUpdate?.Invoke
-            (
-                new PipelineStageUpdate
-                (
-                    PipelineStageKind.Retrieval,
-                    PipelineStageStatus.Complete,
-                    $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}"
-                )
-            );
-
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Generation, PipelineStageStatus.Running));
-            await generationStage.ExecuteAsync(context, cancellationToken);
-            onStageUpdate?.Invoke
-            (
-                new PipelineStageUpdate
-                (
-                    PipelineStageKind.Generation,
-                    PipelineStageStatus.Complete,
-                    $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
-                )
-            );
-
-            await RecordEventAsync
-            (
-                project.ID,
-                sessionID,
-                tempRoundID,
-                EventType.DirectorInput,
-                directorEvent.Data,
-                cancellationToken
-            );
-
-            await RecordEventAsync
-            (
-                project.ID,
-                sessionID,
-                tempRoundID,
-                EventType.NarrativeOutput,
-                context.NarrativeOutput ?? string.Empty,
-                cancellationToken
-            );
-
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Audit, PipelineStageStatus.Running));
-            await RunAuditLoopAsync(context, cancellationToken);
-            onStageUpdate?.Invoke
-            (
-                new PipelineStageUpdate
-                (
-                    PipelineStageKind.Audit,
-                    PipelineStageStatus.Complete,
-                    context.AuditPassed ?
-                        "通过" :
-                        $"违规数={context.Violations.Count}"
-                )
-            );
-
-            if (context.AuditPassed)
-            {
-                onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Running));
-                await postProcessingStage.ExecuteAsync(context, cancellationToken);
-                onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete));
-            }
-
-            await directiveRepository.DecrementTTLAsync(sessionID, cancellationToken);
+            var result = await RunPipelineAsync(context, cancellationToken);
 
             Log.Information
             (
@@ -464,14 +223,7 @@ public sealed class Orchestrator
                 context.AuditPassed
             );
 
-            return new NarrationResult
-            (
-                context.NarrativeOutput ?? string.Empty,
-                context.ThinkingOutput  ?? string.Empty,
-                tempRoundID,
-                context.Violations,
-                context.AuditPassed
-            );
+            return result;
         }
     }
 
@@ -570,247 +322,120 @@ public sealed class Orchestrator
         Log.Information("修正已拒绝, 临时轮次 {TempRoundID} 已删除", tempRoundID);
     }
 
-    private static IReadOnlyList<DirectiveItem> ParseOriginalDirectives(string jsonData)
-    {
-        var result = new List<DirectiveItem>();
-
-        using var doc = JsonDocument.Parse(jsonData);
-
-        var order = 1;
-
-        foreach (var element in doc.RootElement.EnumerateArray())
-        {
-            var typeStr = element.GetProperty("type").GetString() ?? "Plot";
-            var content = element.GetProperty("content").GetString() ?? string.Empty;
-
-            var type = typeStr switch
-            {
-                "Tone"                => DirectiveType.Tone,
-                "TemporaryConstraint" => DirectiveType.TemporaryConstraint,
-                "SceneChange"         => DirectiveType.SceneChange,
-                _                     => DirectiveType.Plot
-            };
-
-            result.Add(new DirectiveItem(type, content, order++, null));
-        }
-
-        return result;
-    }
-
-    private async Task ProcessDirectivesAsync
+    private async Task<NarrationResult> RunPipelineAsync
     (
-        DirectiveBatch    batch,
-        long              sessionID,
-        Scene?            activeScene,
-        ModelConfig       embeddingConfig,
+        PipelineContext   context,
         CancellationToken cancellationToken
     )
     {
-        if (activeScene is null)
-        {
-            var sceneChangeDirective = batch.Directives.FirstOrDefault(d => d.Type == DirectiveType.SceneChange);
+        context.OnStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate(PipelineStageKind.Retrieval, PipelineStageStatus.Running)
+        );
 
-            if (sceneChangeDirective is not null)
-            {
-                Log.Information("无活跃场景, 通过 Scene Agent 创建: {Description}", sceneChangeDirective.Content);
-                await CreateSceneViaAgentAsync(batch.ProjectID, sessionID, sceneChangeDirective.Content, activeScene, embeddingConfig, cancellationToken);
-            }
-            else
-            {
-                Log.Information("无活跃场景且无 SceneChange 指令, 直接创建初始场景");
+        await retrievalStage.ExecuteAsync(context, cancellationToken);
 
-                var existingScenes = await sceneRepository.GetOrderedByTimelineAsync(sessionID, cancellationToken);
-                var position       = timelineCalculator.CalculatePosition(null, null, existingScenes);
+        context.OnStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate
+            (
+                PipelineStageKind.Retrieval,
+                PipelineStageStatus.Complete,
+                $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}"
+            )
+        );
 
-                await sceneRepository.CreateAsync
-                (
-                    new Scene
+        context.OnStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate(PipelineStageKind.Generation, PipelineStageStatus.Running)
+        );
+
+        await generationStage.ExecuteAsync(context, cancellationToken);
+
+        context.OnStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate
+            (
+                PipelineStageKind.Generation,
+                PipelineStageStatus.Complete,
+                $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
+            )
+        );
+
+        await RecordEventAsync
+        (
+            context.DirectiveBatch.ProjectID,
+            context.SessionID,
+            context.RoundID,
+            EventType.DirectorInput,
+            JsonSerializer.Serialize
+            (
+                context.DirectiveBatch.Directives.Select
+                (d => new
                     {
-                        ProjectID        = batch.ProjectID,
-                        SessionID        = sessionID,
-                        TimelinePosition = position,
-                        TimeLabel        = "初始场景",
-                        Status           = SceneStatus.Active
-                    },
-                    cancellationToken
-                );
-            }
-        }
-
-        foreach (var directive in batch.Directives)
-        {
-            switch (directive.Type)
-            {
-                case DirectiveType.Tone or DirectiveType.TemporaryConstraint:
-                    Log.Information
-                    (
-                        "添加生效指令: 类型={Type}, 内容={Content}, TTL={TTL}",
-                        directive.Type,
-                        directive.Content,
-                        directive.TTL?.ToString() ?? "永久"
-                    );
-
-                    await directiveRepository.AddAsync
-                    (
-                        new ActiveDirective
-                        {
-                            ProjectID = batch.ProjectID,
-                            SessionID = sessionID,
-                            Type      = directive.Type,
-                            Content   = directive.Content,
-                            TTL       = directive.TTL,
-                            CreatedAt = DateTime.UtcNow
-                        },
-                        cancellationToken
-                    );
-                    break;
-                case DirectiveType.SceneChange:
-                    await CreateSceneViaAgentAsync(batch.ProjectID, sessionID, directive.Content, activeScene, embeddingConfig, cancellationToken);
-                    break;
-            }
-
-        }
-    }
-
-    private async Task CreateSceneViaAgentAsync
-    (
-        long              projectID,
-        long              sessionID,
-        string            description,
-        Scene?            currentScene,
-        ModelConfig       embeddingConfig,
-        CancellationToken cancellationToken
-    )
-    {
-        var sceneAgent = config.Agents.FirstOrDefault(a => a.Role == AgentRole.Scene);
-
-        if (sceneAgent is null)
-        {
-            Log.Debug("Scene Agent 为空, 跳过场景创建");
-            return;
-        }
-
-        Log.Information
-        (
-            "场景创建: 模型={Model}, 描述={Description}",
-            sceneAgent.ModelConfig.ModelName,
-            description
+                        type    = d.Type.ToString(),
+                        content = d.Content,
+                        order   = d.Order
+                    }
+                )
+            ),
+            cancellationToken
         );
 
-        var toolContext = new ToolExecutionContext
+        await RecordEventAsync
         (
-            projectID,
-            sessionID,
-            currentScene?.ID,
-            currentScene?.TimelinePosition ?? 0,
-            0,
-            embeddingConfig
+            context.DirectiveBatch.ProjectID,
+            context.SessionID,
+            context.RoundID,
+            EventType.NarrativeOutput,
+            context.NarrativeOutput ?? string.Empty,
+            cancellationToken
         );
 
-        var client = chatClientFactory.Create(sceneAgent.ModelConfig);
-        var tools  = sceneTools.Create(toolContext);
+        context.OnStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate(PipelineStageKind.Audit, PipelineStageStatus.Running)
+        );
 
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, SceneAgentPrompt.SYSTEM),
-            new(ChatRole.User, description)
-        };
+        await auditStage.ExecuteAsync(context, cancellationToken);
 
-        var options = new ChatOptions
-        {
-            Temperature = sceneAgent.Temperature,
-            ModelId     = sceneAgent.ModelConfig.ModelName,
-            Tools       = [.. tools]
-        };
-
-        const int maxSceneRetries = 5;
-
-        for (var attempt = 1; attempt <= maxSceneRetries; attempt++)
-        {
-            var response = await client.GetResponseAsync(messages, options, cancellationToken);
-
-            var responseText = response.Messages.FirstOrDefault()?.Text ?? "(空)";
-
-            Log.Information
+        context.OnStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate
             (
-                "Scene Agent 返回 (尝试 {Attempt}/{MaxRetries}): {Text}",
-                attempt,
-                maxSceneRetries,
-                responseText.Length > 200 ?
-                    responseText[..200] + "..." :
-                    responseText
+                PipelineStageKind.Audit,
+                PipelineStageStatus.Complete,
+                context.AuditPassed ?
+                    "通过" :
+                    $"违规数={context.Violations.Count}"
+            )
+        );
+
+        if (context.AuditPassed)
+        {
+            context.OnStageUpdate?.Invoke
+            (
+                new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Running)
             );
 
-            var sceneAfterAgent = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
+            await postProcessingStage.ExecuteAsync(context, cancellationToken);
 
-            if (sceneAfterAgent is not null)
-            {
-                Log.Information("场景创建完成: sceneID={SceneID}", sceneAfterAgent.ID);
-                return;
-            }
-
-            Log.Warning
+            context.OnStageUpdate?.Invoke
             (
-                "Scene Agent 未调用 create_scene 工具, 重试 {Attempt}/{MaxRetries}",
-                attempt,
-                maxSceneRetries
+                new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete)
             );
-
-            if (attempt < maxSceneRetries)
-            {
-                messages =
-                [
-                    new
-                    (
-                        ChatRole.System,
-                        SceneAgentPrompt.SYSTEM + "\n\n注意: 你之前没有调用 create_scene 工具, 这是强制要求。请立即调用 create_scene 工具创建场景, 不要只回复文本。"
-                    ),
-
-                    new(ChatRole.User, description)
-                ];
-            }
         }
-    }
 
-    private async Task RunAuditLoopAsync(PipelineContext context, CancellationToken cancellationToken)
-    {
-        var maxRetries = config.AuditConfig.MaxRetries;
+        await directiveRepository.DecrementTTLAsync(context.SessionID, cancellationToken);
 
-        for (var attempt = 0; attempt <= maxRetries; attempt++)
-        {
-            Log.Information
-            (
-                "审计循环: 尝试={Attempt}/{MaxRetries}",
-                attempt,
-                maxRetries
-            );
-
-            await auditStage.ExecuteAsync(context, cancellationToken);
-            context.AuditRetryCount = attempt;
-
-            if (context.AuditPassed)
-            {
-                Log.Information("审计通过, 退出循环");
-                return;
-            }
-
-            if (attempt < maxRetries && config.AuditConfig.Mode == AuditMode.Blocking)
-            {
-                Log.Warning
-                (
-                    "审计未通过, 准备重试: 违规数={ViolationCount}",
-                    context.Violations.Count
-                );
-
-                await generationStage.RetryWithFeedbackAsync(context, context.Violations, cancellationToken);
-            }
-            else
-            {
-                Log.Warning("达到最大重试次数或非阻塞模式, 强制通过");
-                context.AuditPassed = true;
-                return;
-            }
-        }
+        return new NarrationResult
+        (
+            context.NarrativeOutput ?? string.Empty,
+            context.ThinkingOutput  ?? string.Empty,
+            context.RoundID,
+            context.Violations,
+            context.AuditPassed
+        );
     }
 
     private async Task<IReadOnlyList<ChatHistoryEntry>> BuildHistoryAsync
@@ -887,6 +512,33 @@ public sealed class Orchestrator
         {
             return json;
         }
+    }
+
+    private static IReadOnlyList<DirectiveItem> ParseOriginalDirectives(string jsonData)
+    {
+        var result = new List<DirectiveItem>();
+
+        using var doc = JsonDocument.Parse(jsonData);
+
+        var order = 1;
+
+        foreach (var element in doc.RootElement.EnumerateArray())
+        {
+            var typeStr = element.GetProperty("type").GetString() ?? "Plot";
+            var content = element.GetProperty("content").GetString() ?? string.Empty;
+
+            var type = typeStr switch
+            {
+                "Tone"                => DirectiveType.Tone,
+                "TemporaryConstraint" => DirectiveType.TemporaryConstraint,
+                "SceneChange"         => DirectiveType.SceneChange,
+                _                     => DirectiveType.Plot
+            };
+
+            result.Add(new DirectiveItem(type, content, order++));
+        }
+
+        return result;
     }
 
     private async Task RecordEventAsync

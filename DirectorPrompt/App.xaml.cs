@@ -2,6 +2,8 @@
 using System.Windows;
 using System.Windows.Threading;
 using DirectorPrompt.Agents;
+using DirectorPrompt.Agents.Pipeline;
+using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
@@ -140,6 +142,18 @@ public partial class App : Application
         services.AddSingleton<IEmbeddingServiceFactory, EmbeddingServiceFactory>();
 
         RegisterLocalization(services, configuration);
+
+        services.AddSingleton<SceneTools>();
+        services.AddSingleton<KnowledgeTools>();
+        services.AddSingleton<StateTools>();
+        services.AddSingleton<MemoryTools>();
+        services.AddSingleton<CharacterTools>();
+
+        services.AddSingleton<DirectiveProcessingStage>();
+        services.AddSingleton<RetrievalStage>();
+        services.AddSingleton<GenerationStage>();
+        services.AddSingleton<AuditStage>();
+        services.AddSingleton<PostProcessingStage>();
 
         services.AddSingleton<Orchestrator>();
 
