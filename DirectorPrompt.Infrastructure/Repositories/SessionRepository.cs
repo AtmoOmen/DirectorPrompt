@@ -64,9 +64,56 @@ public sealed class SessionRepository : ISessionRepository
 
     public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
-        await connection.ExecuteAsync("DELETE FROM sessions WHERE id = @id", new { id });
+        try
+        {
+            await connection.ExecuteAsync
+            (
+                """
+                DELETE FROM round_changes
+                WHERE round_id IN (SELECT id FROM rounds WHERE scene_id IN (SELECT id FROM scenes WHERE session_id = @id));
+
+                DELETE FROM character_relation_logs
+                WHERE relation_id IN (SELECT id FROM character_relations WHERE session_id = @id);
+
+                DELETE FROM character_state_values
+                WHERE character_id IN (SELECT id FROM characters WHERE session_id = @id);
+
+                DELETE FROM character_category_resolutions
+                WHERE character_id IN (SELECT id FROM characters WHERE session_id = @id);
+
+                DELETE FROM character_scene_presence
+                WHERE character_id IN (SELECT id FROM characters WHERE session_id = @id)
+                   OR scene_id IN (SELECT id FROM scenes WHERE session_id = @id);
+
+                DELETE FROM character_relations WHERE session_id = @id;
+                DELETE FROM characters WHERE session_id = @id;
+                DELETE FROM memory_entries WHERE session_id = @id;
+                DELETE FROM active_directives WHERE session_id = @id;
+                DELETE FROM playthrough_events WHERE session_id = @id;
+                DELETE FROM state_change_logs WHERE session_id = @id;
+                DELETE FROM state_values WHERE session_id = @id;
+                DELETE FROM composite_items WHERE session_id = @id;
+
+                DELETE FROM rounds
+                WHERE scene_id IN (SELECT id FROM scenes WHERE session_id = @id);
+
+                DELETE FROM scenes WHERE session_id = @id;
+                DELETE FROM sessions WHERE id = @id;
+                """,
+                new { id },
+                transaction
+            );
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task UpdateAsync(Session session, CancellationToken cancellationToken = default)
