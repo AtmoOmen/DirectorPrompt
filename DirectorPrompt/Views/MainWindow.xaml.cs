@@ -1,4 +1,4 @@
-﻿using System.Collections.Specialized;
+﻿﻿using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls.Primitives;
@@ -146,5 +146,22 @@ public partial class MainWindow : FluentWindow
     {
         DialogScrollViewer.ScrollToVerticalOffset(DialogScrollViewer.VerticalOffset - e.Delta);
         e.Handled = true;
+    }
+
+    private void OnEditMemory(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: MemoryPanelItemViewModel item })
+            item.StartEdit();
+    }
+
+    private void OnDeleteMemory(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: MemoryPanelItemViewModel item })
+            return;
+
+        var message = Loc.Get("Dialog.ConfirmDeleteMemory");
+
+        if (PromptDialog.Confirm(this, Loc.Get("Common.Delete"), message, true))
+            _ = viewModel.DeleteMemoryCommand.ExecuteAsync(item);
     }
 }

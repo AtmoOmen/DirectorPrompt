@@ -646,6 +646,104 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ui:CardExpander>
+
+                    <ui:CardExpander Header="{Binding [Memory.Panel.Title], Source={x:Static loc:Loc.Instance}}"
+                                     IsExpanded="True"
+                                     Margin="0,0,0,8">
+                        <ItemsControl ItemsSource="{Binding MemoryPanel.Memories}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,2"
+                                            Padding="8,4"
+                                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                            CornerRadius="4">
+                                        <StackPanel>
+                                            <!-- 非编辑模式 -->
+                                            <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding SceneLabel}"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <ui:Button Appearance="Secondary"
+                                                                   Padding="6,2"
+                                                                   Margin="2,0,0,0"
+                                                                   Click="OnEditMemory"
+                                                                   Tag="{Binding}"
+                                                                   ToolTip="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}">
+                                                            <ui:SymbolIcon Symbol="Edit24" FontSize="12" />
+                                                        </ui:Button>
+                                                        <ui:Button Appearance="Secondary"
+                                                                   Padding="6,2"
+                                                                   Margin="2,0,0,0"
+                                                                   Click="OnDeleteMemory"
+                                                                   Tag="{Binding}"
+                                                                   ToolTip="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}">
+                                                            <ui:SymbolIcon Symbol="Delete24" FontSize="12" />
+                                                        </ui:Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <TextBlock Text="{Binding Content}"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,2,0,0" />
+                                                <TextBlock Text="{Binding TagsDisplay}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,2,0,0"
+                                                           Visibility="{Binding HasTags, Converter={StaticResource BoolToVisibility}}" />
+                                                <TextBlock Text="{Binding RelatedCharacters}"
+                                                           FontSize="11"
+                                                           Foreground="Gray"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,2,0,0"
+                                                           Visibility="{Binding HasRelatedCharacters, Converter={StaticResource BoolToVisibility}}" />
+                                                <TextBlock Text="{Binding UpdatedAtDisplay}"
+                                                           FontSize="10"
+                                                           Foreground="Gray"
+                                                           Margin="0,2,0,0" />
+                                            </StackPanel>
+
+                                            <!-- 编辑模式 -->
+                                            <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                <ui:TextBox Text="{Binding EditingContent, UpdateSourceTrigger=PropertyChanged}"
+                                                            AcceptsReturn="True"
+                                                            TextWrapping="Wrap"
+                                                            MinHeight="80" />
+                                                <ui:TextBox Text="{Binding EditingTags, UpdateSourceTrigger=PropertyChanged}"
+                                                            Margin="0,4,0,0"
+                                                            PlaceholderText="{Binding [Memory.Panel.TagsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                                                    <ui:Button
+                                                        Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
+                                                        Icon="Save24"
+                                                        Appearance="Primary"
+                                                        Padding="12,6"
+                                                        Margin="0,0,4,0"
+                                                        Command="{Binding DataContext.SaveMemoryEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                        CommandParameter="{Binding}" />
+                                                    <ui:Button
+                                                        Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
+                                                        Icon="Dismiss24"
+                                                        Appearance="Secondary"
+                                                        Padding="12,6"
+                                                        Command="{Binding DataContext.CancelMemoryEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                        CommandParameter="{Binding}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ui:CardExpander>
                 </StackPanel>
             </ScrollViewer>
 

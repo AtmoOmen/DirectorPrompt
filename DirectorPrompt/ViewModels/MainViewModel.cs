@@ -28,6 +28,7 @@ public sealed partial class MainViewModel
     IStateRepository           stateRepository,
     ICharacterRepository       characterRepository,
     IDirectiveRepository       directiveRepository,
+    IMemoryRepository          memoryRepository,
     IServiceProvider           serviceProvider,
     UserSettings               userSettings,
     ICharacterCategoryResolver categoryResolver
@@ -68,6 +69,8 @@ public sealed partial class MainViewModel
     public DirectivesPanelViewModel DirectivesPanel { get; } = new();
 
     public CharacterPanelViewModel CharacterPanel { get; } = new();
+
+    public MemoryPanelViewModel MemoryPanel { get; } = new();
 
     public ObservableCollection<Project> Projects { get; } = [];
 
@@ -887,6 +890,7 @@ public sealed partial class MainViewModel
         await RefreshStatePanelAsync();
         await RefreshDirectivesPanelAsync();
         await RefreshCharacterPanelAsync();
+        await RefreshMemoryPanelAsync();
     }
 
     private async Task RefreshStatePanelAsync()
@@ -1050,6 +1054,107 @@ public sealed partial class MainViewModel
             }
 
             CharacterPanel.Characters.Add(item);
+        }
+    }
+
+    private async Task RefreshMemoryPanelAsync()
+    {
+        if (CurrentSession is null || CurrentProject is null)
+            return;
+
+        MemoryPanel.Clear();
+
+        var memories   = await memoryRepository.GetBySessionAsync(CurrentSession.ID, long.MaxValue);
+        var scenes     = await sceneRepository.GetBySessionAsync(CurrentSession.ID);
+        var characters = await characterRepository.GetBySessionAsync(CurrentSession.ID);
+
+        var sceneLookup = scenes.ToDictionary(s => s.ID);
+        var charLookup  = characters.ToDictionary(c => c.ID);
+
+        foreach (var m in memories)
+        {
+            var sceneLabel = sceneLookup.TryGetValue(m.SceneID, out var scene) ?
+                                 scene.TimeLabel :
+                                 $"ID:{m.SceneID}";
+
+            var charNames = m.RelatedCharacterIDs
+                             .Where(id => charLookup.ContainsKey(id))
+                             .Select(id => charLookup[id].Name)
+                             .ToList();
+
+            MemoryPanel.Memories.Add
+            (
+                new MemoryPanelItemViewModel
+                {
+                    ID                    = m.ID,
+                    Content               = m.Content,
+                    TagsDisplay           = string.Join(", ", m.Tags),
+                    SceneLabel            = sceneLabel,
+                    TimelinePos           = m.TimelinePos,
+                    RelatedCharacters     = string.Join(", ", charNames),
+                    HasRelatedCharacters  = charNames.Count > 0,
+                    UpdatedAtDisplay      = m.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm")
+                }
+            );
+        }
+
+        Log.Information
+        (
+            "记忆面板刷新完成: 对话={SessionID}, 记忆数={Count}",
+            CurrentSession.ID,
+            MemoryPanel.Memories.Count
+        );
+    }
+
+    [RelayCommand]
+    private async Task SaveMemoryEditAsync(MemoryPanelItemViewModel item)
+    {
+        item.CommitEdit();
+
+        try
+        {
+            var existing = await memoryRepository.GetByIDAsync(item.ID);
+
+            if (existing is null)
+                return;
+
+            var tags = item.TagsDisplay
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .ToArray();
+
+            var updated = existing with { Content = item.Content, Tags = tags };
+
+            await memoryRepository.UpdateAsync(updated);
+
+            Log.Information("记忆编辑已保存: ID={MemoryID}", item.ID);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "保存记忆编辑失败: ID={MemoryID}", item.ID);
+            StatusMessage = Loc.Get("Status.SaveMemoryFailed");
+        }
+    }
+
+    [RelayCommand]
+    private void CancelMemoryEdit(MemoryPanelItemViewModel item) =>
+        item.CancelEdit();
+
+    [RelayCommand]
+    private async Task DeleteMemoryAsync(MemoryPanelItemViewModel item)
+    {
+        try
+        {
+            await memoryRepository.DeleteAsync(item.ID);
+
+            MemoryPanel.Memories.Remove(item);
+
+            Log.Information("记忆已删除: ID={MemoryID}", item.ID);
+            StatusMessage = Loc.Get("Status.MemoryDeleted");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "删除记忆失败: ID={MemoryID}", item.ID);
+            StatusMessage = Loc.Get("Status.DeleteMemoryFailed", ex.Message);
         }
     }
 
