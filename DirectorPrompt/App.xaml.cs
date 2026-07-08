@@ -1,4 +1,4 @@
-﻿﻿using System.IO;
+﻿﻿﻿﻿using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using DirectorPrompt.Agents;
@@ -109,11 +109,19 @@ public partial class App : Application
         {
             var orchestrator = new UpdateOrchestrator();
 
-            return await orchestrator.RunAsync
+            var (shouldContinue, errorMessage) = await orchestrator.RunAsync
             (
                 status   => updateWindow.UpdateStatus(status),
                 progress => updateWindow.UpdateProgress(progress)
             );
+
+            if (errorMessage is not null)
+            {
+                updateWindow.ShowError(errorMessage);
+                await updateWindow.WaitForCloseAsync();
+            }
+
+            return shouldContinue;
         }
         finally
         {

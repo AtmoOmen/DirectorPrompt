@@ -219,7 +219,7 @@
     "Agent.Role.State": "状态管理",
     "Agent.Role.Audit": "内容审计",
     "Agent.Role.Scene": "场景管理",
-    "Update.Title": "DirectorPrompt 更新",
+    "Update.Title": "软件更新",
     "Update.Checking": "正在检查更新…",
     "Update.Downloading": "正在下载更新…",
     "Update.Installing": "正在安装更新…",

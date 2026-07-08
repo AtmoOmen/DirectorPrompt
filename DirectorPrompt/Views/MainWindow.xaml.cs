@@ -1,5 +1,6 @@
-﻿﻿using System.Collections.Specialized;
+﻿﻿﻿﻿using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -21,6 +22,9 @@ public partial class MainWindow : FluentWindow
         this.viewModel = viewModel;
         DataContext    = viewModel;
         InitializeComponent();
+
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        WindowTitleBar.Title = $"DirectorPrompt {version}";
 
         viewModel.Dialog.Entries.CollectionChanged += OnDialogEntriesChanged;
         Loaded                                     += OnLoaded;

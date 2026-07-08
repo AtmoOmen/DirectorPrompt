@@ -1,4 +1,3 @@
-using System.Windows;
 using DirectorPrompt.Localization;
 using Serilog;
 using Velopack;
@@ -10,7 +9,7 @@ internal class UpdateOrchestrator
 {
     private const string DISTRIBUTE_BASE_URL = "https://dp-distribute.atmoomen.top";
 
-    public async Task<bool> RunAsync
+    public async Task<(bool ShouldContinue, string? ErrorMessage)> RunAsync
     (
         Action<string>? onStatus  = null,
         Action<int>?    onProgress = null
@@ -33,7 +32,7 @@ internal class UpdateOrchestrator
             var newRelease = await updateManager.CheckForUpdatesAsync();
 
             if (newRelease == null)
-                return true;
+                return (true, null);
 
             onStatus?.Invoke(Loc.Get("Update.Downloading"));
             onProgress?.Invoke(0);
@@ -53,21 +52,15 @@ internal class UpdateOrchestrator
 
             updateManager.ApplyUpdatesAndRestart(newRelease);
 
-            return false;
+            return (false, null);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "更新失败");
 
-            MessageBox.Show
-            (
-                $"{Loc.Get("Update.FailedMessage", GetUpdateFailureMessage(ex))}{Environment.NewLine}{Environment.NewLine}{Loc.Get("Update.FailedHint")}",
-                Loc.Get("Update.FailedTitle"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
+            var message = $"{Loc.Get("Update.FailedMessage", GetUpdateFailureMessage(ex))}{Environment.NewLine}{Environment.NewLine}{Loc.Get("Update.FailedHint")}";
 
-            return true;
+            return (true, message);
         }
     }
 

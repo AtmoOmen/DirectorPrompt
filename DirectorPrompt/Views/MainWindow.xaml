@@ -85,7 +85,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="DirectorPrompt">
+        <ui:TitleBar x:Name="WindowTitleBar"
+             Grid.Row="0"
+             Title="DirectorPrompt">
             <ui:TitleBar.Icon>
                 <ui:ImageIcon Source="pack://application:,,,/Assets/Images/Icon-NoBackground.png" />
             </ui:TitleBar.Icon>
