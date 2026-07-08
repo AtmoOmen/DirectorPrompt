@@ -15,6 +15,12 @@ public sealed class SchemaMigrator
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
+        await using (var fkCommand = connection.CreateCommand())
+        {
+            fkCommand.CommandText = "PRAGMA foreign_keys = OFF;";
+            await fkCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         var currentVersion = await GetCurrentVersionAsync(connection, cancellationToken);
         var scripts        = GetMigrationScripts();
 

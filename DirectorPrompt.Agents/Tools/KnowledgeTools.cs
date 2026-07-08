@@ -41,11 +41,13 @@ public sealed class KnowledgeTools
 
         var embeddingService = embeddingServiceFactory.Create(context.EmbeddingConfig);
 
+        var fingerprint = context.EmbeddingConfig.Fingerprint;
+
         var needsRegeneration = entries
                                 .Where
                                 (e =>
                                     {
-                                        var currentHash = EmbeddingConversions.ComputeHash($"{e.Title}\n{e.Content}");
+                                        var currentHash = EmbeddingConversions.ComputeHash($"{e.Title}\n{e.Content}", fingerprint);
                                         return e.ContentHash != currentHash;
                                     }
                                 )
@@ -64,7 +66,7 @@ public sealed class KnowledgeTools
             {
                 var text     = $"{entry.Title}\n{entry.Content}";
                 var emb      = await embeddingService.GenerateEmbeddingAsync(text);
-                var hash     = EmbeddingConversions.ComputeHash(text);
+                var hash     = EmbeddingConversions.ComputeHash(text, fingerprint);
                 var embBytes = EmbeddingConversions.FloatsToBytes(emb);
 
                 await knowledgeRepository.SaveEmbeddingAsync(context.ProjectID, entry.ID, embBytes, hash);

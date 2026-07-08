@@ -26,6 +26,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public ObservableCollection<AgentSettingViewModel> Agents { get; } = [];
 
+    public EmbeddingSettingViewModel Embedding { get; } = new();
+
     public IReadOnlyDictionary<string, string> AvailableLanguages =>
         localizationService.AvailableLanguages;
 
@@ -51,6 +53,15 @@ public sealed partial class SettingsViewModel : ObservableObject
             SelectedLanguage = localizationService.CurrentLanguage;
 
         LoadAgents(userSettings.Orchestrator.Agents);
+        LoadEmbeddingConfig(userSettings.EmbeddingConfig);
+    }
+
+    private void LoadEmbeddingConfig(ModelConfig config)
+    {
+        Embedding.Provider  = config.Provider;
+        Embedding.Endpoint  = config.Endpoint;
+        Embedding.APIKey    = config.APIKey ?? string.Empty;
+        Embedding.ModelName = config.ModelName;
     }
 
     private void LoadAgents(List<AgentDefinition> agents)
@@ -110,6 +121,14 @@ public sealed partial class SettingsViewModel : ObservableObject
                 }
             ).ToList();
 
+            userSettings.EmbeddingConfig = new ModelConfig
+            {
+                Provider  = Embedding.Provider,
+                Endpoint  = Embedding.Endpoint,
+                APIKey    = Embedding.APIKey,
+                ModelName = Embedding.ModelName
+            };
+
             userSettings.Localization.Language = SelectedLanguage;
 
             await userSettings.SaveAsync();
@@ -152,6 +171,31 @@ public sealed partial class SettingsViewModel : ObservableObject
         finally
         {
             agent.IsTestingConnection = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task TestEmbeddingConnectionAsync()
+    {
+        Embedding.IsTestingConnection = true;
+        Embedding.ConnectionSuccess   = null;
+        Embedding.ConnectionMessage   = Loc.Get("Settings.TestingConnection");
+
+        try
+        {
+            await connectionTester.TestEmbeddingAsync(Embedding.Provider, Embedding.Endpoint, Embedding.APIKey, Embedding.ModelName);
+
+            Embedding.ConnectionSuccess = true;
+            Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", Embedding.ModelName);
+        }
+        catch (Exception ex)
+        {
+            Embedding.ConnectionSuccess = false;
+            Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionFailed", ex.Message);
+        }
+        finally
+        {
+            Embedding.IsTestingConnection = false;
         }
     }
 }

@@ -33,9 +33,6 @@ public partial class ProjectEditWindow : FluentWindow
         BasicPanel.Visibility = tag == "basic" ?
                                     Visibility.Visible :
                                     Visibility.Collapsed;
-        EmbeddingPanel.Visibility = tag == "embedding" ?
-                                        Visibility.Visible :
-                                        Visibility.Collapsed;
         KnowledgePanel.Visibility = tag == "knowledge" ?
                                         Visibility.Visible :
                                         Visibility.Collapsed;

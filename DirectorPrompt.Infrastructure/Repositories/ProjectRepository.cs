@@ -44,23 +44,22 @@ public sealed class ProjectRepository : IProjectRepository
 
         var id = await connection.ExecuteScalarAsync<long>
                  (
-                     """
-                     INSERT INTO projects (name, description, opening_message, embedding_config, audit_config, memory_config, knowledge_config, created_at, updated_at)
-                     VALUES (@name, @description, @openingMessage, @embeddingConfig, @auditConfig, @memoryConfig, @knowledgeConfig, @createdAt, @updatedAt);
-                     SELECT last_insert_rowid();
-                     """,
-                     new
-                     {
-                         name            = project.Name,
-                         description     = project.Description,
-                         openingMessage  = project.OpeningMessage,
-                         embeddingConfig = project.EmbeddingConfig,
-                         auditConfig     = project.AuditConfig,
-                         memoryConfig    = project.MemoryConfig,
-                         knowledgeConfig = project.KnowledgeConfig,
-                         createdAt       = now,
-                         updatedAt       = now
-                     }
+                    """
+                    INSERT INTO projects (name, description, opening_message, audit_config, memory_config, knowledge_config, created_at, updated_at)
+                    VALUES (@name, @description, @openingMessage, @auditConfig, @memoryConfig, @knowledgeConfig, @createdAt, @updatedAt);
+                    SELECT last_insert_rowid();
+                    """,
+                    new
+                    {
+                        name            = project.Name,
+                        description     = project.Description,
+                        openingMessage  = project.OpeningMessage,
+                        auditConfig     = project.AuditConfig,
+                        memoryConfig    = project.MemoryConfig,
+                        knowledgeConfig = project.KnowledgeConfig,
+                        createdAt       = now,
+                        updatedAt       = now
+                    }
                  );
 
         return project with { ID = id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
@@ -77,7 +76,6 @@ public sealed class ProjectRepository : IProjectRepository
             SET name = @name,
                 description = @description,
                 opening_message = @openingMessage,
-                embedding_config = @embeddingConfig,
                 audit_config = @auditConfig,
                 memory_config = @memoryConfig,
                 knowledge_config = @knowledgeConfig,
@@ -90,7 +88,6 @@ public sealed class ProjectRepository : IProjectRepository
                 name            = project.Name,
                 description     = project.Description,
                 openingMessage  = project.OpeningMessage,
-                embeddingConfig = project.EmbeddingConfig,
                 auditConfig     = project.AuditConfig,
                 memoryConfig    = project.MemoryConfig,
                 knowledgeConfig = project.KnowledgeConfig,
@@ -116,8 +113,6 @@ public sealed class ProjectRepository : IProjectRepository
 
         public string Opening_Message { get; set; } = string.Empty;
 
-        public string Embedding_Config { get; set; } = "{}";
-
         public string Audit_Config { get; set; } = "{}";
 
         public string Memory_Config { get; set; } = "{}";
@@ -135,7 +130,6 @@ public sealed class ProjectRepository : IProjectRepository
                 Name            = Name,
                 Description     = Description,
                 OpeningMessage  = Opening_Message,
-                EmbeddingConfig = Embedding_Config,
                 AuditConfig     = Audit_Config,
                 MemoryConfig    = Memory_Config,
                 KnowledgeConfig = Knowledge_Config,

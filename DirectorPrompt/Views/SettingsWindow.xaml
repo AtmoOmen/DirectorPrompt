@@ -59,6 +59,13 @@
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
+                <ListViewItem Tag="embedding" Padding="12,10">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="DataLine24" Margin="0,0,12,0" />
+                        <TextBlock Text="{Binding [Settings.Embedding.Title], Source={x:Static loc:Loc.Instance}}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
                 <ListViewItem Tag="language" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="LocalLanguage24" Margin="0,0,12,0" />
@@ -217,6 +224,101 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel x:Name="EmbeddingPanel" Visibility="Collapsed">
+                            <TextBlock Text="{Binding [Settings.Embedding.Title], Source={x:Static loc:Loc.Instance}}"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,4" />
+                            <TextBlock
+                                Text="{Binding [Settings.Embedding.Description], Source={x:Static loc:Loc.Instance}}"
+                                FontSize="12"
+                                Foreground="Gray"
+                                Margin="0,0,0,16" />
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Agent.Provider], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{x:Static vm:AgentSettingViewModel.AvailableProviders}"
+                                          SelectedItem="{Binding Embedding.Provider}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Agent.Endpoint], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <ui:TextBox Grid.Column="1"
+                                            Text="{Binding Embedding.Endpoint, UpdateSourceTrigger=PropertyChanged}"
+                                            PlaceholderText="{Binding [Settings.Agent.Placeholder.Endpoint], Source={x:Static loc:Loc.Instance}}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Agent.APIKey], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <ui:TextBox Grid.Column="1"
+                                            Text="{Binding Embedding.APIKey, UpdateSourceTrigger=PropertyChanged}"
+                                            PlaceholderText="{Binding [Settings.Agent.Placeholder.APIKey], Source={x:Static loc:Loc.Instance}}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Agent.ModelName], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <ui:TextBox Grid.Column="1"
+                                            Text="{Binding Embedding.ModelName, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ui:Button Grid.Column="0"
+                                           Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
+                                           Icon="PlugConnected24"
+                                           Appearance="Secondary"
+                                           Command="{Binding TestEmbeddingConnectionCommand}"
+                                           IsEnabled="{Binding Embedding.IsTestingConnection, Converter={StaticResource InverseBool}}" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Embedding.ConnectionMessage}"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"
+                                           FontSize="12">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="Gray" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Embedding.ConnectionSuccess}" Value="True">
+                                                    <Setter Property="Foreground" Value="#107C10" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Embedding.ConnectionSuccess}" Value="False">
+                                                    <Setter Property="Foreground" Value="OrangeRed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
                         </StackPanel>
 
                         <StackPanel x:Name="LanguagePanel" Visibility="Collapsed">

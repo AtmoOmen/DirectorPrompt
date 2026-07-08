@@ -26,7 +26,8 @@ public sealed class Orchestrator
     RetrievalStage               retrievalStage,
     GenerationStage              generationStage,
     AuditStage                   auditStage,
-    PostProcessingStage          postProcessingStage
+    PostProcessingStage          postProcessingStage,
+    UserSettings                 userSettings
 )
 {
     public async Task<NarrationResult> ProcessBatchAsync
@@ -68,7 +69,7 @@ public sealed class Orchestrator
             foreach (var d in batch.Directives)
                 Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
 
-            var embeddingConfig = JsonSerializer.Deserialize<ModelConfig>(project.EmbeddingConfig) ?? new ModelConfig();
+            var embeddingConfig = userSettings.EmbeddingConfig;
 
             var transitionResults = await EvaluateTransitionsAsync(batch.ProjectID, sessionID, roundID, cancellationToken);
 
@@ -197,7 +198,7 @@ public sealed class Orchestrator
 
         var timelinePosition = activeScene.TimelinePosition;
         var history          = await BuildHistoryAsync(sessionID, tempRoundID, cancellationToken);
-        var embeddingConfig  = JsonSerializer.Deserialize<ModelConfig>(project.EmbeddingConfig) ?? new ModelConfig();
+        var embeddingConfig = userSettings.EmbeddingConfig;
 
         Log.Information
         (

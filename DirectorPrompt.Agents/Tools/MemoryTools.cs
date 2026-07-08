@@ -114,11 +114,13 @@ public sealed class MemoryTools
 
         var embeddingService = embeddingServiceFactory.Create(context.EmbeddingConfig);
 
+        var fingerprint = context.EmbeddingConfig.Fingerprint;
+
         var needsRegeneration = candidateList
                                 .Where
                                 (m =>
                                     {
-                                        var currentHash = EmbeddingConversions.ComputeHash(m.Content);
+                                        var currentHash = EmbeddingConversions.ComputeHash(m.Content, fingerprint);
                                         return m.ContentHash != currentHash;
                                     }
                                 )
@@ -136,7 +138,7 @@ public sealed class MemoryTools
             foreach (var memory in needsRegeneration)
             {
                 var emb      = await embeddingService.GenerateEmbeddingAsync(memory.Content);
-                var hash     = EmbeddingConversions.ComputeHash(memory.Content);
+                var hash     = EmbeddingConversions.ComputeHash(memory.Content, fingerprint);
                 var embBytes = EmbeddingConversions.FloatsToBytes(emb);
 
                 await memoryRepository.SaveEmbeddingAsync(context.ProjectID, memory.ID, embBytes, hash);

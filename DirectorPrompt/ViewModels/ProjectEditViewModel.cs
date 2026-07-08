@@ -7,7 +7,6 @@ using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Localization;
 using Serilog;
 
@@ -19,7 +18,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     private readonly IKnowledgeRepository   knowledgeRepository;
     private readonly IStateRepository       stateRepository;
     private readonly ICharacterRepository   characterRepository;
-    private readonly IModelConnectionTester connectionTester;
 
     private long projectID;
 
@@ -45,8 +43,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
     public ObservableCollection<CharacterCategoryEditViewModel> CharacterCategories { get; } = [];
 
-    public EmbeddingSettingViewModel Embedding { get; } = new();
-
     public AuditSettingViewModel Audit { get; } = new();
 
     public MemorySettingViewModel Memory { get; } = new();
@@ -68,15 +64,13 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         IProjectRepository     projectRepository,
         IKnowledgeRepository   knowledgeRepository,
         IStateRepository       stateRepository,
-        ICharacterRepository   characterRepository,
-        IModelConnectionTester connectionTester
+        ICharacterRepository   characterRepository
     )
     {
         this.projectRepository   = projectRepository;
         this.knowledgeRepository = knowledgeRepository;
         this.stateRepository     = stateRepository;
         this.characterRepository = characterRepository;
-        this.connectionTester    = connectionTester;
     }
 
     public async Task LoadFromProjectAsync(Project project)
@@ -86,7 +80,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         Description    = project.Description;
         OpeningMessage = project.OpeningMessage;
 
-        LoadEmbeddingConfig(project.EmbeddingConfig);
         LoadAuditConfig(project.AuditConfig);
         LoadMemoryConfig(project.MemoryConfig);
         LoadKnowledgeConfig(project.KnowledgeConfig);
@@ -96,16 +89,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
         await LoadKnowledgeAsync();
         await LoadStateSystemAsync();
-    }
-
-    private void LoadEmbeddingConfig(string json)
-    {
-        var config = JsonSerializer.Deserialize<ModelConfig>(json) ?? new ModelConfig();
-
-        Embedding.Provider  = config.Provider;
-        Embedding.Endpoint  = config.Endpoint;
-        Embedding.APIKey    = config.APIKey ?? string.Empty;
-        Embedding.ModelName = config.ModelName;
     }
 
     private void LoadAuditConfig(string json)
@@ -133,19 +116,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         Knowledge.SemanticTopK = config.SemanticTopK;
         Knowledge.TokenBudget  = config.TokenBudget;
         Knowledge.MinRelevance = config.MinRelevance;
-    }
-
-    private string BuildEmbeddingConfig()
-    {
-        var config = new ModelConfig
-        {
-            Provider  = Embedding.Provider,
-            Endpoint  = Embedding.Endpoint,
-            APIKey    = Embedding.APIKey,
-            ModelName = Embedding.ModelName
-        };
-
-        return JsonSerializer.Serialize(config);
     }
 
     private string BuildAuditConfig()
@@ -420,7 +390,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
                 Name            = Name.Trim(),
                 Description     = Description,
                 OpeningMessage  = OpeningMessage,
-                EmbeddingConfig = BuildEmbeddingConfig(),
                 AuditConfig     = BuildAuditConfig(),
                 MemoryConfig    = BuildMemoryConfig(),
                 KnowledgeConfig = BuildKnowledgeConfig()
@@ -894,29 +863,4 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     [RelayCommand]
     private void RemovePhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args) =>
         args.phase.RemoveLinkedItem(args.item);
-
-    [RelayCommand]
-    private async Task TestEmbeddingConnectionAsync()
-    {
-        Embedding.IsTestingConnection = true;
-        Embedding.ConnectionSuccess   = null;
-        Embedding.ConnectionMessage   = Loc.Get("Settings.TestingConnection");
-
-        try
-        {
-            await connectionTester.TestEmbeddingAsync(Embedding.Provider, Embedding.Endpoint, Embedding.APIKey, Embedding.ModelName);
-
-            Embedding.ConnectionSuccess = true;
-            Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", Embedding.ModelName);
-        }
-        catch (Exception ex)
-        {
-            Embedding.ConnectionSuccess = false;
-            Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionFailed", ex.Message);
-        }
-        finally
-        {
-            Embedding.IsTestingConnection = false;
-        }
-    }
 }

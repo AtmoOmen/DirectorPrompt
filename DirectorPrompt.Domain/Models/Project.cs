@@ -10,8 +10,6 @@ public record Project
 
     public string OpeningMessage { get; init; } = string.Empty;
 
-    public string EmbeddingConfig { get; init; } = "{}";
-
     public string AuditConfig { get; init; } = "{}";
 
     public string MemoryConfig { get; init; } = "{}";

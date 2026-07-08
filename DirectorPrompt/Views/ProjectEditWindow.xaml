@@ -62,13 +62,6 @@
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
-                <ListViewItem Tag="embedding" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="DataLine24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding [Project.Embedding.Title], Source={x:Static loc:Loc.Instance}}"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-                </ListViewItem>
                 <ListViewItem Tag="knowledge" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="Book24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
@@ -147,66 +140,6 @@
                                         TextWrapping="Wrap"
                                         MinHeight="80"
                                         VerticalScrollBarVisibility="Auto" />
-                        </StackPanel>
-
-                        <!-- Embedding 配置 -->
-                        <StackPanel x:Name="EmbeddingPanel" Visibility="Collapsed">
-                            <TextBlock Text="{Binding [Project.Embedding.Title], Source={x:Static loc:Loc.Instance}}"
-                                       FontSize="20"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,4" />
-                            <TextBlock
-                                Text="{Binding [Project.Embedding.Description], Source={x:Static loc:Loc.Instance}}"
-                                FontSize="12"
-                                Foreground="Gray"
-                                Margin="0,0,0,16" />
-                            <TextBlock Text="{Binding [Settings.Agent.Provider], Source={x:Static loc:Loc.Instance}}"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,4" />
-                            <ComboBox ItemsSource="{x:Static vm:AgentSettingViewModel.AvailableProviders}"
-                                      SelectedItem="{Binding Embedding.Provider}"
-                                      Margin="0,0,0,12" />
-                            <TextBlock Text="{Binding [Settings.Agent.Endpoint], Source={x:Static loc:Loc.Instance}}"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,4" />
-                            <ui:TextBox Text="{Binding Embedding.Endpoint, UpdateSourceTrigger=PropertyChanged}"
-                                        PlaceholderText="留空使用默认值"
-                                        Margin="0,0,0,12" />
-                            <TextBlock Text="{Binding [Settings.Agent.APIKey], Source={x:Static loc:Loc.Instance}}"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,4" />
-                            <ui:TextBox Text="{Binding Embedding.APIKey, UpdateSourceTrigger=PropertyChanged}"
-                                        PlaceholderText="本地模型可留空"
-                                        Margin="0,0,0,12" />
-                            <TextBlock Text="模型名" FontWeight="SemiBold" Margin="0,0,0,4" />
-                            <ui:TextBox Text="{Binding Embedding.ModelName, UpdateSourceTrigger=PropertyChanged}" />
-
-                            <ui:Button
-                                Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
-                                Icon="PlugConnected24"
-                                Appearance="Secondary"
-                                Margin="0,12,0,0"
-                                Command="{Binding TestEmbeddingConnectionCommand}"
-                                IsEnabled="{Binding Embedding.IsTestingConnection, Converter={StaticResource InverseBool}}" />
-
-                            <TextBlock Text="{Binding Embedding.ConnectionMessage}"
-                                       Margin="0,4,0,0"
-                                       TextWrapping="Wrap"
-                                       FontSize="12">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="Gray" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Embedding.ConnectionSuccess}" Value="True">
-                                                <Setter Property="Foreground" Value="#107C10" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Embedding.ConnectionSuccess}" Value="False">
-                                                <Setter Property="Foreground" Value="OrangeRed" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
                         </StackPanel>
 
                         <!-- 知识系统 (树状) -->

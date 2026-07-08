@@ -19,7 +19,7 @@ public partial class SettingsWindow : FluentWindow
 
     private void OnNavSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (AgentsPanel is null || LanguagePanel is null)
+        if (AgentsPanel is null || EmbeddingPanel is null || LanguagePanel is null)
             return;
 
         if (NavList.SelectedItem is not ListViewItem item)
@@ -30,6 +30,9 @@ public partial class SettingsWindow : FluentWindow
         AgentsPanel.Visibility = tag == "agents" ?
                                      Visibility.Visible :
                                      Visibility.Collapsed;
+        EmbeddingPanel.Visibility = tag == "embedding" ?
+                                        Visibility.Visible :
+                                        Visibility.Collapsed;
         LanguagePanel.Visibility = tag == "language" ?
                                        Visibility.Visible :
                                        Visibility.Collapsed;
