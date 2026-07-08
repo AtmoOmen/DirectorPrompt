@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DirectorPrompt.Agents;
-using DirectorPrompt.Domain.Enums;
 
 namespace DirectorPrompt.ViewModels;
 
@@ -11,7 +10,7 @@ public enum KnowledgeSelectionKind
     Entry
 }
 
-public sealed partial class KnowledgeSelectionItem : ObservableObject
+public sealed class KnowledgeSelectionItem : ObservableObject
 {
     public long ID { get; set; }
 
@@ -19,9 +18,9 @@ public sealed partial class KnowledgeSelectionItem : ObservableObject
 
     public string Display { get; set; } = string.Empty;
 
-    public string DisplayWithType => Kind == KnowledgeSelectionKind.Group
-        ? $"[分组] {Display}"
-        : Display;
+    public string DisplayWithType => Kind == KnowledgeSelectionKind.Group ?
+                                         $"[分组] {Display}" :
+                                         Display;
 }
 
 public sealed partial class PhaseEditViewModel : ObservableObject
@@ -63,6 +62,7 @@ public sealed partial class PhaseEditViewModel : ObservableObject
         AvailableKnowledgeItems.Clear();
 
         foreach (var group in groups.Where(g => !g.Active))
+        {
             AvailableKnowledgeItems.Add
             (
                 new KnowledgeSelectionItem
@@ -72,6 +72,7 @@ public sealed partial class PhaseEditViewModel : ObservableObject
                     Display = group.Name
                 }
             );
+        }
 
         foreach (var group in groups)
         {
@@ -108,10 +109,10 @@ public sealed partial class PhaseEditViewModel : ObservableObject
 
     public void SyncFromConfig
     (
-        string name,
-        string expression,
-        long[] knowledgeIds,
-        long[] knowledgeGroupIds,
+        string                       name,
+        string                       expression,
+        long[]                       knowledgeIds,
+        long[]                       knowledgeGroupIds,
         IReadOnlyList<DirectiveItem> enterDirectives,
         IReadOnlyList<DirectiveItem> exitDirectives
     )
@@ -124,12 +125,14 @@ public sealed partial class PhaseEditViewModel : ObservableObject
         var gidSet = new HashSet<long>(knowledgeGroupIds);
 
         var toLink = AvailableKnowledgeItems
-                     .Where(i => i.Kind switch
-                     {
-                         KnowledgeSelectionKind.Group => gidSet.Contains(i.ID),
-                         KnowledgeSelectionKind.Entry => kidSet.Contains(i.ID),
-                         _                            => false
-                     })
+                     .Where
+                     (i => i.Kind switch
+                         {
+                             KnowledgeSelectionKind.Group => gidSet.Contains(i.ID),
+                             KnowledgeSelectionKind.Entry => kidSet.Contains(i.ID),
+                             _                            => false
+                         }
+                     )
                      .ToList();
 
         foreach (var item in toLink)

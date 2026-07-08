@@ -11,7 +11,7 @@ public sealed partial class DirectiveItemViewModel : ObservableObject
     public partial DirectiveType Type { get; set; }
 
     [ObservableProperty]
-    public partial string Content  { get; set; } = string.Empty;
+    public partial string Content { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial int Order { get; set; }
@@ -47,7 +47,7 @@ public sealed partial class DirectiveInputViewModel : ObservableObject
 
     public ObservableCollection<DirectiveItemViewModel> Directives { get; } = [];
 
-    public bool InputHasTTL => 
+    public bool InputHasTTL =>
         SelectedType is DirectiveType.Tone or DirectiveType.TemporaryConstraint;
 
     partial void OnSelectedTypeChanged(DirectiveType value)
@@ -73,7 +73,9 @@ public sealed partial class DirectiveInputViewModel : ObservableObject
                 Type    = SelectedType,
                 Content = InputContent.Trim(),
                 Order   = Directives.Count + 1,
-                TTL     = InputHasTTL ? InputTTL : null
+                TTL = InputHasTTL ?
+                          InputTTL :
+                          null
             }
         );
 

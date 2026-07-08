@@ -113,15 +113,15 @@ public sealed class EventRepository : IEventRepository
         {
             var type = Type switch
             {
-                "director_input"    => EventType.DirectorInput,
-                "narrative_output"  => EventType.NarrativeOutput,
-                "state_change"      => EventType.StateChange,
-                "memory_update"     => EventType.MemoryUpdate,
-                "character_update"  => EventType.CharacterUpdate,
-                "scene_change"      => EventType.SceneChange,
-                "directive_change"  => EventType.DirectiveChange,
-                "phase_transition"  => EventType.PhaseTransition,
-                _                   => EventType.DirectorInput
+                "director_input"   => EventType.DirectorInput,
+                "narrative_output" => EventType.NarrativeOutput,
+                "state_change"     => EventType.StateChange,
+                "memory_update"    => EventType.MemoryUpdate,
+                "character_update" => EventType.CharacterUpdate,
+                "scene_change"     => EventType.SceneChange,
+                "directive_change" => EventType.DirectiveChange,
+                "phase_transition" => EventType.PhaseTransition,
+                _                  => EventType.DirectorInput
             };
 
             return new PlaythroughEvent

@@ -37,14 +37,14 @@ public partial class App : Application
             host = Host.CreateDefaultBuilder()
                        .UseContentRoot(AppContext.BaseDirectory)
                        .UseSerilog()
-                        .ConfigureAppConfiguration
-                        (config =>
-                            {
-                                config.SetBasePath(AppContext.BaseDirectory);
-                                config.AddJsonFile("appsettings.json", false, true);
-                                config.AddJsonFile(AppPaths.UserSettingsPath, true, true);
-                            }
-                        )
+                       .ConfigureAppConfiguration
+                       (config =>
+                           {
+                               config.SetBasePath(AppContext.BaseDirectory);
+                               config.AddJsonFile("appsettings.json",        false, true);
+                               config.AddJsonFile(AppPaths.UserSettingsPath, true,  true);
+                           }
+                       )
                        .ConfigureServices(ConfigureServices)
                        .Build();
 

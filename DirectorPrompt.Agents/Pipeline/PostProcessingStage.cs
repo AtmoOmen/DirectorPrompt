@@ -3,7 +3,6 @@ using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
-using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
 using Serilog;
@@ -119,7 +118,9 @@ public sealed class PostProcessingStage
 
             foreach (var c in characters)
             {
-                var inScene = sceneCharacterIDs.Contains(c.ID) ? " [在场]" : "";
+                var inScene = sceneCharacterIDs.Contains(c.ID) ?
+                                  " [在场]" :
+                                  "";
                 sb.AppendLine($"- {c.Name} ({c.Status}){inScene}: {c.Description}");
             }
 
@@ -136,7 +137,9 @@ public sealed class PostProcessingStage
 
             foreach (var attr in categoryAttrs)
             {
-                var driver = attr.Driver == Driver.System ? "system (不可修改)" : "narrative";
+                var driver = attr.Driver == Driver.System ?
+                                 "system (不可修改)" :
+                                 "narrative";
                 sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {attr.ValueType} | {driver} |");
             }
 

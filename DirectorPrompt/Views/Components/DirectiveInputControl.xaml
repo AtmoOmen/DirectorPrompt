@@ -86,7 +86,8 @@
                           Margin="0,0,4,0">
                     <ComboBoxItem Content="{Binding [Directive.Type.Plot], Source={x:Static loc:Loc.Instance}}" />
                     <ComboBoxItem Content="{Binding [Directive.Type.Tone], Source={x:Static loc:Loc.Instance}}" />
-                    <ComboBoxItem Content="{Binding [Directive.Type.TemporaryConstraint], Source={x:Static loc:Loc.Instance}}" />
+                    <ComboBoxItem
+                        Content="{Binding [Directive.Type.TemporaryConstraint], Source={x:Static loc:Loc.Instance}}" />
                     <ComboBoxItem Content="{Binding [Directive.Type.SceneChange], Source={x:Static loc:Loc.Instance}}" />
                 </ComboBox>
                 <StackPanel Grid.Column="1"

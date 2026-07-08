@@ -22,4 +22,3 @@ public record KnowledgeEntry
 
     public DateTime UpdatedAt { get; init; }
 }
-

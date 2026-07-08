@@ -12,21 +12,21 @@ namespace DirectorPrompt.Agents;
 
 public sealed class Orchestrator
 (
-    IProjectRepository       projectRepository,
-    ISessionRepository       sessionRepository,
-    IEventRepository         eventRepository,
-    ISceneRepository         sceneRepository,
-    IDirectiveRepository     directiveRepository,
-    IRoundChangeRepository   roundChangeRepository,
-    IStateRepository         stateRepository,
-    ISystemStateTransformer  systemStateTransformer,
-    PhaseEvaluator           phaseEvaluator,
+    IProjectRepository           projectRepository,
+    ISessionRepository           sessionRepository,
+    IEventRepository             eventRepository,
+    ISceneRepository             sceneRepository,
+    IDirectiveRepository         directiveRepository,
+    IRoundChangeRepository       roundChangeRepository,
+    IStateRepository             stateRepository,
+    ISystemStateTransformer      systemStateTransformer,
+    PhaseEvaluator               phaseEvaluator,
     CharacterTransitionEvaluator characterTransitionEvaluator,
-    DirectiveProcessingStage directiveProcessingStage,
-    RetrievalStage           retrievalStage,
-    GenerationStage          generationStage,
-    AuditStage               auditStage,
-    PostProcessingStage      postProcessingStage
+    DirectiveProcessingStage     directiveProcessingStage,
+    RetrievalStage               retrievalStage,
+    GenerationStage              generationStage,
+    AuditStage                   auditStage,
+    PostProcessingStage          postProcessingStage
 )
 {
     public async Task<NarrationResult> ProcessBatchAsync
@@ -189,8 +189,8 @@ public sealed class Orchestrator
         var originalDirectives = ParseOriginalDirectives(directorEvent.Data);
         var batch              = new DirectiveBatch(project.ID, originalDirectives);
 
-        var tempRoundID     = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken) + 1;
-        var activeScene     = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
+        var tempRoundID = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken) + 1;
+        var activeScene = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
 
         if (activeScene is null)
             throw new InvalidOperationException("修正需要已有活跃场景");
@@ -267,7 +267,7 @@ public sealed class Orchestrator
         );
 
         var capturedChanges      = await roundChangeRepository.CaptureRoundDataAsync(tempRoundID, cancellationToken);
-        var tempStateChanges     = await stateRepository.CaptureStateChangesAsync(sessionID, tempRoundID, cancellationToken);
+        var tempStateChanges     = await stateRepository.CaptureStateChangesAsync(sessionID, tempRoundID,     cancellationToken);
         var originalStateChanges = await stateRepository.CaptureStateChangesAsync(sessionID, originalRoundID, cancellationToken);
 
         Log.Information
@@ -347,9 +347,9 @@ public sealed class Orchestrator
 
     private async Task<NarrationResult> RunPipelineAsync
     (
-        PipelineContext   context,
+        PipelineContext                                                    context,
         IReadOnlyList<(ITransitionSource Source, TransitionResult Result)> transitionResults,
-        CancellationToken cancellationToken
+        CancellationToken                                                  cancellationToken
     )
     {
         context.OnStageUpdate?.Invoke
@@ -397,9 +397,9 @@ public sealed class Orchestrator
                 context.DirectiveBatch.Directives.Select
                 (d => new
                     {
-                        type    = d.Type.ToString(),
-                        content = d.Content,
-                        order   = d.Order,
+                        type     = d.Type.ToString(),
+                        content  = d.Content,
+                        order    = d.Order,
                         isSystem = d.IsSystem
                     }
                 )
@@ -571,7 +571,7 @@ public sealed class Orchestrator
 
         foreach (var element in doc.RootElement.EnumerateArray())
         {
-            var typeStr = element.GetProperty("type").GetString() ?? "Plot";
+            var typeStr = element.GetProperty("type").GetString()    ?? "Plot";
             var content = element.GetProperty("content").GetString() ?? string.Empty;
 
             var type = typeStr switch
@@ -637,7 +637,7 @@ public sealed class Orchestrator
         foreach (var source in sources)
         {
             var previousKeys = await GetPreviousTransitionKeysAsync(sessionID, roundID, source.EventType, cancellationToken);
-            var result = await source.EvaluateAsync(projectID, sessionID, previousKeys, cancellationToken);
+            var result       = await source.EvaluateAsync(projectID, sessionID, previousKeys, cancellationToken);
             results.Add((source, result));
         }
 
@@ -655,9 +655,9 @@ public sealed class Orchestrator
         var events = await eventRepository.GetBySessionAsync(sessionID, cancellationToken);
 
         var transitionEvent = events
-                         .Where(e => e.Type == eventType && e.RoundID < currentRoundID)
-                         .OrderByDescending(e => e.RoundID)
-                         .FirstOrDefault();
+                              .Where(e => e.Type == eventType && e.RoundID < currentRoundID)
+                              .OrderByDescending(e => e.RoundID)
+                              .FirstOrDefault();
 
         if (transitionEvent is null)
             return null;
@@ -679,7 +679,7 @@ public sealed class Orchestrator
 
     private static DirectiveBatch InjectSystemDirectives
     (
-        DirectiveBatch                              batch,
+        DirectiveBatch                                                     batch,
         IReadOnlyList<(ITransitionSource Source, TransitionResult Result)> transitionResults
     )
     {
@@ -699,7 +699,7 @@ public sealed class Orchestrator
                         d.Content,
                         order++,
                         d.TTL,
-                        IsSystem: true
+                        true
                     )
                 );
             }
@@ -714,7 +714,7 @@ public sealed class Orchestrator
                         d.Content,
                         order++,
                         d.TTL,
-                        IsSystem: true
+                        true
                     )
                 );
             }
@@ -750,9 +750,9 @@ public sealed class Orchestrator
 
     private async Task RecordTransitionAsync
     (
-        PipelineContext   context,
+        PipelineContext                                                    context,
         IReadOnlyList<(ITransitionSource Source, TransitionResult Result)> transitionResults,
-        CancellationToken cancellationToken
+        CancellationToken                                                  cancellationToken
     )
     {
         foreach (var (source, result) in transitionResults)

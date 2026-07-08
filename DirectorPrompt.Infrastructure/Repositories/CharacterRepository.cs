@@ -9,8 +9,8 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class CharacterRepository : ICharacterRepository
 {
-    private readonly SqliteConnectionFactory   connectionFactory;
-    private readonly IRoundChangeRepository   roundChangeRepository;
+    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly IRoundChangeRepository  roundChangeRepository;
 
     public CharacterRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository)
     {
@@ -34,9 +34,9 @@ public sealed class CharacterRepository : ICharacterRepository
 
             foreach (var item in doc.RootElement.EnumerateArray())
             {
-                var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null
-                                  ? t.GetString() ?? "Plot"
-                                  : "Plot";
+                var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null ?
+                                  t.GetString() ?? "Plot" :
+                                  "Plot";
 
                 var type = typeStr switch
                 {
@@ -46,13 +46,13 @@ public sealed class CharacterRepository : ICharacterRepository
                     _                     => DirectiveType.Plot
                 };
 
-                var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null
-                                  ? c.GetString() ?? string.Empty
-                                  : string.Empty;
+                var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null ?
+                                  c.GetString() ?? string.Empty :
+                                  string.Empty;
 
-                var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number
-                              ? ttlEl.GetInt32()
-                              : (int?)null;
+                var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number ?
+                              ttlEl.GetInt32() :
+                              (int?)null;
 
                 result.Add
                 (
@@ -159,16 +159,16 @@ public sealed class CharacterRepository : ICharacterRepository
                      """,
                      new
                      {
-                         projectID        = character.ProjectID,
-                         sessionID        = character.SessionID,
-                         name             = character.Name,
-                         description      = character.Description,
-                         categoryIDs      = JsonHelper.Serialize(character.CategoryIDs),
-                         status           = character.Status.ToString().ToLowerInvariant(),
-                         enterDirectives  = JsonHelper.Serialize(character.EnterDirectives),
-                         exitDirectives   = JsonHelper.Serialize(character.ExitDirectives),
-                         createdAt        = now,
-                         updatedAt        = now
+                         projectID       = character.ProjectID,
+                         sessionID       = character.SessionID,
+                         name            = character.Name,
+                         description     = character.Description,
+                         categoryIDs     = JsonHelper.Serialize(character.CategoryIDs),
+                         status          = character.Status.ToString().ToLowerInvariant(),
+                         enterDirectives = JsonHelper.Serialize(character.EnterDirectives),
+                         exitDirectives  = JsonHelper.Serialize(character.ExitDirectives),
+                         createdAt       = now,
+                         updatedAt       = now
                      }
                  );
 
@@ -202,19 +202,20 @@ public sealed class CharacterRepository : ICharacterRepository
             """,
             new
             {
-                id               = character.ID,
-                name             = character.Name,
-                description      = character.Description,
-                categoryIDs      = JsonHelper.Serialize(character.CategoryIDs),
-                status           = character.Status.ToString().ToLowerInvariant(),
-                enterDirectives  = JsonHelper.Serialize(character.EnterDirectives),
-                exitDirectives   = JsonHelper.Serialize(character.ExitDirectives),
-                updatedAt        = DateTime.UtcNow.ToString("O")
+                id              = character.ID,
+                name            = character.Name,
+                description     = character.Description,
+                categoryIDs     = JsonHelper.Serialize(character.CategoryIDs),
+                status          = character.Status.ToString().ToLowerInvariant(),
+                enterDirectives = JsonHelper.Serialize(character.EnterDirectives),
+                exitDirectives  = JsonHelper.Serialize(character.ExitDirectives),
+                updatedAt       = DateTime.UtcNow.ToString("O")
             }
         );
 
         if (oldRow is not null)
-            await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "characters", character.ID, JsonSerializer.Serialize(oldRow), cancellationToken);
+            await roundChangeRepository.RecordUpdateAsync
+                (RoundContext.Current ?? 0, "characters", character.ID, JsonSerializer.Serialize(oldRow), cancellationToken);
     }
 
     public async Task SetStatusAsync(long characterID, CharacterStatus status, CancellationToken cancellationToken = default)
@@ -263,10 +264,10 @@ public sealed class CharacterRepository : ICharacterRepository
             """,
             new
             {
-                id               = characterID,
-                enterDirectives  = JsonHelper.Serialize(enterDirectives),
-                exitDirectives   = JsonHelper.Serialize(exitDirectives),
-                updatedAt        = DateTime.UtcNow.ToString("O")
+                id              = characterID,
+                enterDirectives = JsonHelper.Serialize(enterDirectives),
+                exitDirectives  = JsonHelper.Serialize(exitDirectives),
+                updatedAt       = DateTime.UtcNow.ToString("O")
             }
         );
     }
@@ -475,11 +476,11 @@ public sealed class CharacterRepository : ICharacterRepository
         else
         {
             projectID = await connection.QueryFirstAsync<long>
-                            (
-                                "SELECT project_id FROM characters WHERE id = @sourceID",
-                                new { sourceID = sourceCharacterID },
-                                transaction
-                            );
+                        (
+                            "SELECT project_id FROM characters WHERE id = @sourceID",
+                            new { sourceID = sourceCharacterID },
+                            transaction
+                        );
 
             relationID = await connection.ExecuteScalarAsync<long>
                          (
@@ -535,9 +536,7 @@ public sealed class CharacterRepository : ICharacterRepository
             await roundChangeRepository.RecordUpdateAsync(roundID, "character_relations", relationID, oldData, cancellationToken);
         }
         else
-        {
             await roundChangeRepository.RecordCreateAsync(roundID, "character_relations", relationID, cancellationToken: cancellationToken);
-        }
 
         return new CharacterRelation
         {
@@ -722,19 +721,20 @@ public sealed class CharacterRepository : ICharacterRepository
 
         if (oldRow is null)
         {
-            var rowData = JsonSerializer.Serialize(new
-            {
-                character_id = characterID,
-                attribute_id = attributeID,
-                value,
-                updated_at   = DateTime.UtcNow.ToString("O")
-            });
+            var rowData = JsonSerializer.Serialize
+            (
+                new
+                {
+                    character_id = characterID,
+                    attribute_id = attributeID,
+                    value,
+                    updated_at = DateTime.UtcNow.ToString("O")
+                }
+            );
             await roundChangeRepository.RecordCreateAsync(roundID, "character_state_values", 0, rowData, cancellationToken);
         }
         else
-        {
             await roundChangeRepository.RecordUpdateAsync(roundID, "character_state_values", 0, JsonSerializer.Serialize(oldRow), cancellationToken);
-        }
     }
 
     public async Task CloneProjectCharactersToSessionAsync
@@ -762,27 +762,27 @@ public sealed class CharacterRepository : ICharacterRepository
 
     private sealed class CharacterRow
     {
-        public long   ID              { get; set; }
-        public long   Project_ID      { get; set; }
-        public long?  Session_ID      { get; set; }
-        public string Name            { get; set; } = string.Empty;
-        public string Description     { get; set; } = string.Empty;
-        public string Category_IDs    { get; set; } = "[]";
-        public string Status          { get; set; } = "active";
+        public long   ID               { get; set; }
+        public long   Project_ID       { get; set; }
+        public long?  Session_ID       { get; set; }
+        public string Name             { get; set; } = string.Empty;
+        public string Description      { get; set; } = string.Empty;
+        public string Category_IDs     { get; set; } = "[]";
+        public string Status           { get; set; } = "active";
         public string Enter_Directives { get; set; } = "[]";
         public string Exit_Directives  { get; set; } = "[]";
-        public string Created_At      { get; set; } = string.Empty;
-        public string Updated_At      { get; set; } = string.Empty;
+        public string Created_At       { get; set; } = string.Empty;
+        public string Updated_At       { get; set; } = string.Empty;
 
         public Character ToCharacter() =>
             new()
             {
-                ID              = ID,
-                ProjectID       = Project_ID,
-                SessionID       = Session_ID ?? 0,
-                Name            = Name,
-                Description     = Description,
-                CategoryIDs     = JsonHelper.DeserializeInt64Array(Category_IDs),
+                ID          = ID,
+                ProjectID   = Project_ID,
+                SessionID   = Session_ID ?? 0,
+                Name        = Name,
+                Description = Description,
+                CategoryIDs = JsonHelper.DeserializeInt64Array(Category_IDs),
                 Status = Status switch
                 {
                     "left" => CharacterStatus.Left,
@@ -868,12 +868,12 @@ public sealed class CharacterRepository : ICharacterRepository
         public CharacterRelationLog ToCharacterRelationLog() =>
             new()
             {
-                ID              = ID,
-                RelationID      = Relation_ID,
-                OldType         = Old_Type,
-                NewType         = New_Type,
-                OldDescription  = Old_Description,
-                NewDescription  = New_Description,
+                ID             = ID,
+                RelationID     = Relation_ID,
+                OldType        = Old_Type,
+                NewType        = New_Type,
+                OldDescription = Old_Description,
+                NewDescription = New_Description,
                 Source = Source switch
                 {
                     "director_manual" => RelationChangeSource.DirectorManual,

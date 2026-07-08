@@ -23,7 +23,7 @@ public interface ICharacterRepository
 
     Task UpdateDirectivesAsync
     (
-        long                          characterID,
+        long                           characterID,
         IReadOnlyList<DirectiveConfig> enterDirectives,
         IReadOnlyList<DirectiveConfig> exitDirectives,
         CancellationToken              cancellationToken = default

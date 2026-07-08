@@ -11,9 +11,9 @@ namespace DirectorPrompt.Agents.Tools;
 
 public sealed class CharacterTools
 (
-    ICharacterRepository         characterRepository,
-    IStateRepository             stateRepository,
-    ICharacterCategoryResolver   categoryResolver
+    ICharacterRepository       characterRepository,
+    IStateRepository           stateRepository,
+    ICharacterCategoryResolver categoryResolver
 )
 {
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -227,9 +227,15 @@ public sealed class CharacterTools
 
         foreach (var r in relations)
         {
-            var otherID    = r.SourceCharacterID == character.ID ? r.TargetCharacterID : r.SourceCharacterID;
-            var otherName  = charLookup.TryGetValue(otherID, out var other) ? other.Name : $"ID:{otherID}";
-            var direction  = r.SourceCharacterID == character.ID ? "outgoing" : "incoming";
+            var otherID = r.SourceCharacterID == character.ID ?
+                              r.TargetCharacterID :
+                              r.SourceCharacterID;
+            var otherName = charLookup.TryGetValue(otherID, out var other) ?
+                                other.Name :
+                                $"ID:{otherID}";
+            var direction = r.SourceCharacterID == character.ID ?
+                                "outgoing" :
+                                "incoming";
 
             result.Add
             (
@@ -337,9 +343,9 @@ public sealed class CharacterTools
 
         var targetStatus = status?.ToLowerInvariant() switch
         {
-            "dead"     => CharacterStatus.Dead,
-            "left"     => CharacterStatus.Left,
-            _          => CharacterStatus.Left
+            "dead" => CharacterStatus.Dead,
+            "left" => CharacterStatus.Left,
+            _      => CharacterStatus.Left
         };
 
         await characterRepository.SetStatusAsync(character.ID, targetStatus);
@@ -400,7 +406,9 @@ public sealed class CharacterTools
         if (target is null)
             return JsonSerializer.Serialize(new { error = $"人物 {targetName} 不存在" });
 
-        float? intensityFloat = intensity is null ? null : (float)intensity.Value;
+        float? intensityFloat = intensity is null ?
+                                    null :
+                                    (float)intensity.Value;
 
         await characterRepository.SetRelationAsync
         (
@@ -547,7 +555,9 @@ public sealed class CharacterTools
 
         foreach (var v in values)
         {
-            var name = attrLookup.TryGetValue(v.AttributeID, out var attr) ? attr.Name : v.AttributeID.ToString();
+            var name = attrLookup.TryGetValue(v.AttributeID, out var attr) ?
+                           attr.Name :
+                           v.AttributeID.ToString();
 
             result.Add
             (
@@ -572,9 +582,15 @@ public sealed class CharacterTools
 
         foreach (var r in relations)
         {
-            var otherID   = r.SourceCharacterID == characterID ? r.TargetCharacterID : r.SourceCharacterID;
-            var otherName = charLookup.TryGetValue(otherID, out var other) ? other.Name : $"ID:{otherID}";
-            var direction = r.SourceCharacterID == characterID ? "outgoing" : "incoming";
+            var otherID = r.SourceCharacterID == characterID ?
+                              r.TargetCharacterID :
+                              r.SourceCharacterID;
+            var otherName = charLookup.TryGetValue(otherID, out var other) ?
+                                other.Name :
+                                $"ID:{otherID}";
+            var direction = r.SourceCharacterID == characterID ?
+                                "outgoing" :
+                                "incoming";
 
             result.Add
             (

@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Services;
-using DirectorPrompt.Infrastructure;
 using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Localization;
 using Serilog;
@@ -72,7 +71,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                     ModelName    = agent.ModelConfig.ModelName,
                     SystemPrompt = agent.SystemPrompt,
                     Temperature  = agent.Temperature,
-                    Tools        = agent.Tools,
+                    Tools        = agent.Tools
                 }
             );
         }
@@ -95,10 +94,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             userSettings.Orchestrator.Agents = Agents.Select
-            (
-                a => new AgentDefinition
+            (a => new AgentDefinition
                 {
-                    Role         = a.Role,
+                    Role = a.Role,
                     ModelConfig = new ModelConfig
                     {
                         Provider  = a.Provider,
@@ -108,7 +106,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                     },
                     SystemPrompt = a.SystemPrompt,
                     Temperature  = a.Temperature,
-                    Tools        = a.Tools,
+                    Tools        = a.Tools
                 }
             ).ToList();
 

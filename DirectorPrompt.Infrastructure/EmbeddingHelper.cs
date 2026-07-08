@@ -13,8 +13,6 @@ internal static class EmbeddingHelper
         return bytes;
     }
 
-    public static string ComputeHash(string content)
-    {
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content)));
-    }
+    public static string ComputeHash(string content) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content)));
 }

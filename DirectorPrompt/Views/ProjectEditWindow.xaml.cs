@@ -1,8 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using DirectorPrompt.Localization;
 using DirectorPrompt.ViewModels;
 using Wpf.Ui.Controls;
+using Button = Wpf.Ui.Controls.Button;
 using ListViewItem = System.Windows.Controls.ListViewItem;
 
 namespace DirectorPrompt.Views;
@@ -41,8 +43,8 @@ public partial class ProjectEditWindow : FluentWindow
                                     Visibility.Visible :
                                     Visibility.Collapsed;
         CharacterPanel.Visibility = tag == "character" ?
-                                       Visibility.Visible :
-                                       Visibility.Collapsed;
+                                        Visibility.Visible :
+                                        Visibility.Collapsed;
         AuditPanel.Visibility = tag == "audit" ?
                                     Visibility.Visible :
                                     Visibility.Collapsed;
@@ -103,7 +105,7 @@ public partial class ProjectEditWindow : FluentWindow
     {
         if (sender is FrameworkElement { Tag: CharacterCategoryEditViewModel })
         {
-            if (sender is Wpf.Ui.Controls.Button btn)
+            if (sender is Button btn)
             {
                 var expander = FindAncestor<CardExpander>(btn);
                 if (expander is not null)
@@ -136,7 +138,7 @@ public partial class ProjectEditWindow : FluentWindow
             if (element is T target)
                 return target;
 
-            element = System.Windows.Media.VisualTreeHelper.GetParent(element);
+            element = VisualTreeHelper.GetParent(element);
         }
 
         return null;

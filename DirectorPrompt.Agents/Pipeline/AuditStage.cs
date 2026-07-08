@@ -2,7 +2,6 @@ using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
-using DirectorPrompt.Domain.Models;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -96,8 +95,8 @@ public sealed class AuditStage
             context.NarrativeOutput?.Length ?? 0
         );
 
-        var auditTools   = new AuditTools();
-        var toolContext  = context.ToolContext;
+        var auditTools  = new AuditTools();
+        var toolContext = context.ToolContext;
 
         var tools = new List<AIFunction>();
         tools.AddRange(knowledgeTools.Create(toolContext));

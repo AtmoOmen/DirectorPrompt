@@ -9,8 +9,8 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class DirectiveRepository : IDirectiveRepository
 {
-    private readonly SqliteConnectionFactory   connectionFactory;
-    private readonly IRoundChangeRepository   roundChangeRepository;
+    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly IRoundChangeRepository  roundChangeRepository;
 
     public DirectiveRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository)
     {
@@ -94,7 +94,7 @@ public sealed class DirectiveRepository : IDirectiveRepository
 
         foreach (var row in affectedRows)
         {
-            var oldTTL = (long)row.ttl;
+            var oldTTL  = (long)row.ttl;
             var oldData = JsonSerializer.Serialize(new { id = (long)row.id, ttl = oldTTL });
 
             await connection.ExecuteAsync

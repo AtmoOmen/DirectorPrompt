@@ -35,17 +35,17 @@ public sealed class PhaseEvaluator
 
     public async Task<PhaseEvaluationResult> EvaluateAsync
     (
-        long              projectID,
-        long              sessionID,
+        long                   projectID,
+        long                   sessionID,
         IReadOnlyList<string>? previousActivePhaseKeys,
-        CancellationToken cancellationToken = default
+        CancellationToken      cancellationToken = default
     )
     {
         var attributes = await stateRepository.GetAttributesAsync(projectID, StateScope.Global, cancellationToken);
 
-        var entryIDs = new HashSet<long>();
-        var groupIDs = new HashSet<long>();
-        var allPhases = new List<(Phase Phase, long AttributeID)>();
+        var entryIDs     = new HashSet<long>();
+        var groupIDs     = new HashSet<long>();
+        var allPhases    = new List<(Phase Phase, long AttributeID)>();
         var activePhases = new List<(Phase Phase, long AttributeID)>();
 
         foreach (var attr in attributes)
@@ -55,7 +55,7 @@ public sealed class PhaseEvaluator
             if (phases.Count == 0)
                 continue;
 
-            var value = await stateRepository.GetStateValueAsync(attr.ID, sessionID, cancellationToken);
+            var value        = await stateRepository.GetStateValueAsync(attr.ID, sessionID, cancellationToken);
             var currentValue = value?.Value ?? string.Empty;
 
             foreach (var phase in phases)
@@ -98,9 +98,9 @@ public sealed class PhaseEvaluator
                               .Select(p => $"{p.AttributeID}:{p.Phase.Name}")
                               .ToList();
 
-        var previousSet = previousActivePhaseKeys is not null
-                              ? new HashSet<string>(previousActivePhaseKeys)
-                              : [];
+        var previousSet = previousActivePhaseKeys is not null ?
+                              new HashSet<string>(previousActivePhaseKeys) :
+                              [];
 
         var currentSet = new HashSet<string>(activePhaseKeys);
 
@@ -109,13 +109,12 @@ public sealed class PhaseEvaluator
                               .SelectMany(p => p.Phase.EnterDirectives)
                               .ToList();
 
-        var exitDirectives = previousActivePhaseKeys is not null
-                                  ? allPhases
-                                    .Where(p => previousSet.Contains($"{p.AttributeID}:{p.Phase.Name}")
-                                                && !currentSet.Contains($"{p.AttributeID}:{p.Phase.Name}"))
-                                    .SelectMany(p => p.Phase.ExitDirectives)
-                                    .ToList()
-                                  : [];
+        var exitDirectives = previousActivePhaseKeys is not null ?
+                                 allPhases
+                                     .Where(p => previousSet.Contains($"{p.AttributeID}:{p.Phase.Name}") && !currentSet.Contains($"{p.AttributeID}:{p.Phase.Name}"))
+                                     .SelectMany(p => p.Phase.ExitDirectives)
+                                     .ToList() :
+                                 [];
 
         if (enterDirectives.Count > 0 || exitDirectives.Count > 0)
         {
@@ -128,9 +127,7 @@ public sealed class PhaseEvaluator
             );
         }
         else if (entryIDs.Count > 0)
-        {
             Log.Information("Phase 评估完成: 激活知识条目数={Count}", entryIDs.Count);
-        }
 
         return new PhaseEvaluationResult
         {
@@ -154,24 +151,24 @@ public sealed class PhaseEvaluator
 
             foreach (var ph in phasesEl.EnumerateArray())
             {
-                var name = ph.TryGetProperty("name", out var n) && n.ValueKind != JsonValueKind.Null
-                               ? n.GetString() ?? string.Empty
-                               : string.Empty;
+                var name = ph.TryGetProperty("name", out var n) && n.ValueKind != JsonValueKind.Null ?
+                               n.GetString() ?? string.Empty :
+                               string.Empty;
 
-                var expression = ph.TryGetProperty("expression", out var e) && e.ValueKind != JsonValueKind.Null
-                                     ? e.GetString() ?? string.Empty
-                                     : string.Empty;
+                var expression = ph.TryGetProperty("expression", out var e) && e.ValueKind != JsonValueKind.Null ?
+                                     e.GetString() ?? string.Empty :
+                                     string.Empty;
 
-                var knowledgeIds = ph.TryGetProperty("knowledgeIds", out var kid) && kid.ValueKind == JsonValueKind.Array
-                                       ? kid.EnumerateArray().Select(v => v.GetInt64()).ToList()
-                                       : new List<long>();
+                var knowledgeIds = ph.TryGetProperty("knowledgeIds", out var kid) && kid.ValueKind == JsonValueKind.Array ?
+                                       kid.EnumerateArray().Select(v => v.GetInt64()).ToList() :
+                                       new List<long>();
 
-                var knowledgeGroupIds = ph.TryGetProperty("knowledgeGroupIds", out var gid) && gid.ValueKind == JsonValueKind.Array
-                                            ? gid.EnumerateArray().Select(v => v.GetInt64()).ToList()
-                                            : new List<long>();
+                var knowledgeGroupIds = ph.TryGetProperty("knowledgeGroupIds", out var gid) && gid.ValueKind == JsonValueKind.Array ?
+                                            gid.EnumerateArray().Select(v => v.GetInt64()).ToList() :
+                                            new List<long>();
 
                 var enterDirectives = ParseDirectiveConfigs(ph, "enterDirectives");
-                var exitDirectives = ParseDirectiveConfigs(ph, "exitDirectives");
+                var exitDirectives  = ParseDirectiveConfigs(ph, "exitDirectives");
 
                 result.Add
                 (
@@ -204,9 +201,9 @@ public sealed class PhaseEvaluator
 
         foreach (var item in arr.EnumerateArray())
         {
-            var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null
-                              ? t.GetString() ?? "Plot"
-                              : "Plot";
+            var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null ?
+                              t.GetString() ?? "Plot" :
+                              "Plot";
 
             var type = typeStr switch
             {
@@ -216,13 +213,13 @@ public sealed class PhaseEvaluator
                 _                     => DirectiveType.Plot
             };
 
-            var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null
-                              ? c.GetString() ?? string.Empty
-                              : string.Empty;
+            var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null ?
+                              c.GetString() ?? string.Empty :
+                              string.Empty;
 
-            var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number
-                          ? ttlEl.GetInt32()
-                          : (int?)null;
+            var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number ?
+                          ttlEl.GetInt32() :
+                          (int?)null;
 
             result.Add
             (
@@ -244,7 +241,9 @@ public sealed class PhaseEvaluator
             return false;
 
         var isNumeric = float.TryParse(currentValue, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
-        var valReplacement = isNumeric ? currentValue : $"\"{currentValue}\"";
+        var valReplacement = isNumeric ?
+                                 currentValue :
+                                 $"\"{currentValue}\"";
 
         var expr = expression.Replace("{val}", valReplacement);
         expr = expr.Replace(" AND ", " && ").Replace(" OR ", " || ");

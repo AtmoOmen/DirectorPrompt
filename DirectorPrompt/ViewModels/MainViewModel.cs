@@ -20,22 +20,22 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed partial class MainViewModel
 (
-    Orchestrator              orchestrator,
-    IProjectRepository        projectRepository,
-    ISessionRepository        sessionRepository,
-    IEventRepository          eventRepository,
-    ISceneRepository          sceneRepository,
-    IStateRepository          stateRepository,
-    ICharacterRepository      characterRepository,
-    IDirectiveRepository      directiveRepository,
-    IServiceProvider          serviceProvider,
-    UserSettings              userSettings,
+    Orchestrator               orchestrator,
+    IProjectRepository         projectRepository,
+    ISessionRepository         sessionRepository,
+    IEventRepository           eventRepository,
+    ISceneRepository           sceneRepository,
+    IStateRepository           stateRepository,
+    ICharacterRepository       characterRepository,
+    IDirectiveRepository       directiveRepository,
+    IServiceProvider           serviceProvider,
+    UserSettings               userSettings,
     ICharacterCategoryResolver categoryResolver
 )
     : ObservableObject
 {
-    private long pendingCorrectionOriginalRoundID;
-    private long pendingCorrectionTempRoundID;
+    private long    pendingCorrectionOriginalRoundID;
+    private long    pendingCorrectionTempRoundID;
     private string? pendingCorrectionOriginalNarrative;
 
     [ObservableProperty]
@@ -497,7 +497,7 @@ public sealed partial class MainViewModel
                 return;
             }
 
-            var events = await eventRepository.GetByRoundAsync(latestRound);
+            var events        = await eventRepository.GetByRoundAsync(latestRound);
             var directorEvent = events.FirstOrDefault(e => e.Type == EventType.DirectorInput);
 
             if (directorEvent is null)
@@ -586,10 +586,10 @@ public sealed partial class MainViewModel
 
         try
         {
-            var events = await eventRepository.GetByRoundAsync(latestRound);
+            var events         = await eventRepository.GetByRoundAsync(latestRound);
             var narrativeEvent = events.FirstOrDefault(e => e.Type == EventType.NarrativeOutput);
 
-            pendingCorrectionOriginalRoundID = latestRound;
+            pendingCorrectionOriginalRoundID   = latestRound;
             pendingCorrectionOriginalNarrative = narrativeEvent?.Data;
 
             var streamingEntry = Dialog.BeginStreamingNarrative(0);
@@ -635,8 +635,7 @@ public sealed partial class MainViewModel
                 );
 
                 var originalNarrativeEntry = Dialog.Entries.FirstOrDefault
-                (
-                    e => e.RoundID == pendingCorrectionOriginalRoundID && e.IsNarrative
+                (e => e.RoundID == pendingCorrectionOriginalRoundID && e.IsNarrative
                 );
 
                 if (originalNarrativeEntry is not null)
@@ -663,8 +662,8 @@ public sealed partial class MainViewModel
                 StatusMessage = Loc.Get("Status.CorrectionRejected");
             }
 
-            pendingCorrectionOriginalRoundID = 0;
-            pendingCorrectionTempRoundID     = 0;
+            pendingCorrectionOriginalRoundID   = 0;
+            pendingCorrectionTempRoundID       = 0;
             pendingCorrectionOriginalNarrative = null;
 
             void StreamingUpdate(string narrative, string thinking) =>
@@ -826,7 +825,7 @@ public sealed partial class MainViewModel
             if (isSystem)
                 continue;
 
-            var typeStr = element.GetProperty("type").GetString() ?? "Plot";
+            var typeStr = element.GetProperty("type").GetString()    ?? "Plot";
             var content = element.GetProperty("content").GetString() ?? string.Empty;
 
             var type = typeStr switch
@@ -858,7 +857,7 @@ public sealed partial class MainViewModel
                 if (isSystem)
                     continue;
 
-                var typeStr = element.GetProperty("type").GetString() ?? "Plot";
+                var typeStr = element.GetProperty("type").GetString()    ?? "Plot";
                 var content = element.GetProperty("content").GetString() ?? string.Empty;
 
                 var type = typeStr switch
@@ -960,10 +959,10 @@ public sealed partial class MainViewModel
 
         CharacterPanel.Clear();
 
-        var characters  = await characterRepository.GetBySessionAsync(CurrentSession.ID);
-        var categories  = await characterRepository.GetCategoriesAsync(CurrentProject.ID);
+        var characters    = await characterRepository.GetBySessionAsync(CurrentSession.ID);
+        var categories    = await characterRepository.GetCategoriesAsync(CurrentProject.ID);
         var categoryAttrs = await stateRepository.GetAttributesAsync(CurrentProject.ID, StateScope.Category);
-        var charLookup  = characters.ToDictionary(c => c.ID);
+        var charLookup    = characters.ToDictionary(c => c.ID);
 
         foreach (var c in characters)
         {
@@ -1028,9 +1027,15 @@ public sealed partial class MainViewModel
 
             foreach (var r in relations)
             {
-                var otherID   = r.SourceCharacterID == c.ID ? r.TargetCharacterID : r.SourceCharacterID;
-                var otherName = charLookup.TryGetValue(otherID, out var other) ? other.Name : $"ID:{otherID}";
-                var direction = r.SourceCharacterID == c.ID ? "→" : "←";
+                var otherID = r.SourceCharacterID == c.ID ?
+                                  r.TargetCharacterID :
+                                  r.SourceCharacterID;
+                var otherName = charLookup.TryGetValue(otherID, out var other) ?
+                                    other.Name :
+                                    $"ID:{otherID}";
+                var direction = r.SourceCharacterID == c.ID ?
+                                    "→" :
+                                    "←";
 
                 item.Relations.Add
                 (
@@ -1052,8 +1057,7 @@ public sealed partial class MainViewModel
     private async Task SaveCharacterDirectivesAsync(CharacterPanelItemViewModel item)
     {
         var enterDirectives = item.EnterDirectiveInput.Directives.Select
-        (
-            d => new DirectiveConfig
+        (d => new DirectiveConfig
             {
                 Type    = d.Type,
                 Content = d.Content,
@@ -1062,8 +1066,7 @@ public sealed partial class MainViewModel
         ).ToList();
 
         var exitDirectives = item.ExitDirectiveInput.Directives.Select
-        (
-            d => new DirectiveConfig
+        (d => new DirectiveConfig
             {
                 Type    = d.Type,
                 Content = d.Content,

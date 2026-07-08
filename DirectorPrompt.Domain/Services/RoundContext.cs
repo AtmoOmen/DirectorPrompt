@@ -14,7 +14,10 @@ public static class RoundContext
         return new Scope(() => current.Value = previous);
     }
 
-    private sealed class Scope(Action onDispose) : IDisposable
+    private sealed class Scope
+    (
+        Action onDispose
+    ) : IDisposable
     {
         public void Dispose() => onDispose();
     }

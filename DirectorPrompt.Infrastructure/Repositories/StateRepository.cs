@@ -501,12 +501,12 @@ public sealed class StateRepository : IStateRepository
             if (!firstPerAttribute.ContainsKey(attrID))
             {
                 firstPerAttribute[attrID] = (
-                    (string)log.old_value,
-                    (string)log.new_value,
-                    (long)log.scene_id,
-                    (string)log.source,
-                    (string)log.reason ?? string.Empty
-                );
+                                                (string)log.old_value,
+                                                (string)log.new_value,
+                                                (long)log.scene_id,
+                                                (string)log.source,
+                                                (string)log.reason ?? string.Empty
+                                            );
             }
             else
             {
@@ -516,8 +516,7 @@ public sealed class StateRepository : IStateRepository
         }
 
         return firstPerAttribute.Select
-        (
-            kvp => new StateChangeCapture
+        (kvp => new StateChangeCapture
             {
                 AttributeID = kvp.Key,
                 SceneID     = kvp.Value.SceneID,
@@ -547,9 +546,9 @@ public sealed class StateRepository : IStateRepository
         {
             foreach (var change in tempChanges)
             {
-                var oldValue = originalOldValues.TryGetValue(change.AttributeID, out var origOld)
-                               ? origOld
-                               : change.OldValue;
+                var oldValue = originalOldValues.TryGetValue(change.AttributeID, out var origOld) ?
+                                   origOld :
+                                   change.OldValue;
 
                 await connection.ExecuteAsync
                 (
@@ -561,7 +560,7 @@ public sealed class StateRepository : IStateRepository
                     """,
                     new
                     {
-                        attrID    = change.AttributeID,
+                        attrID = change.AttributeID,
                         sessionID,
                         newValue  = change.NewValue,
                         updatedAt = DateTime.UtcNow.ToString("O")
@@ -578,10 +577,10 @@ public sealed class StateRepository : IStateRepository
                     """,
                     new
                     {
-                        attrID    = change.AttributeID,
+                        attrID = change.AttributeID,
                         sessionID,
-                        sceneID   = change.SceneID,
-                        roundID   = targetRoundID,
+                        sceneID = change.SceneID,
+                        roundID = targetRoundID,
                         oldValue,
                         newValue  = change.NewValue,
                         source    = change.Source,

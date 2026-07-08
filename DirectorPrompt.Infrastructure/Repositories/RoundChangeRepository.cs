@@ -1,10 +1,8 @@
-using System.Data;
 using System.Data.Common;
 using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using Microsoft.Data.Sqlite;
 using Serilog;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
@@ -24,7 +22,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static readonly Dictionary<string, string[]> CompositeKeys = new()
     {
-        ["character_state_values"]    = ["character_id", "attribute_id"],
+        ["character_state_values"]   = ["character_id", "attribute_id"],
         ["character_scene_presence"] = ["character_id", "scene_id"]
     };
 
@@ -38,7 +36,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         long              roundID,
         string            tableName,
         long              recordID,
-        string?           oldDataJSON = null,
+        string?           oldDataJSON       = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -55,7 +53,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
                 roundID,
                 tableName,
                 recordID,
-                oldData = oldDataJSON,
+                oldData   = oldDataJSON,
                 createdAt = DateTime.UtcNow.ToString("O")
             }
         );
@@ -83,7 +81,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
                 roundID,
                 tableName,
                 recordID,
-                oldData = oldDataJSON,
+                oldData   = oldDataJSON,
                 createdAt = DateTime.UtcNow.ToString("O")
             }
         );
@@ -111,7 +109,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
                 roundID,
                 tableName,
                 recordID,
-                oldData = oldDataJSON,
+                oldData   = oldDataJSON,
                 createdAt = DateTime.UtcNow.ToString("O")
             }
         );
@@ -177,8 +175,8 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task CleanupUntrackedDependentsAsync
     (
-        DbConnection       connection,
-        DbTransaction      transaction,
+        DbConnection               connection,
+        DbTransaction              transaction,
         IReadOnlyList<RoundChange> changes
     )
     {
@@ -270,9 +268,9 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     public async Task ReplayChangesAsync
     (
-        long                         targetRoundID,
+        long                          targetRoundID,
         IReadOnlyList<CapturedChange> changes,
-        CancellationToken            cancellationToken = default
+        CancellationToken             cancellationToken = default
     )
     {
         await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
@@ -302,9 +300,9 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task<string?> ReadCurrentRowDataAsync
     (
-        DbConnection       connection,
-        RoundChange         change,
-        CancellationToken   cancellationToken
+        DbConnection      connection,
+        RoundChange       change,
+        CancellationToken cancellationToken
     )
     {
         if (CompositeKeys.TryGetValue(change.TableName, out var keyColumns))
@@ -356,11 +354,11 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task ReplaySimpleChangeAsync
     (
-        DbConnection       connection,
-        DbTransaction      transaction,
-        long               targetRoundID,
-        CapturedChange     change,
-        CancellationToken  cancellationToken
+        DbConnection      connection,
+        DbTransaction     transaction,
+        long              targetRoundID,
+        CapturedChange    change,
+        CancellationToken cancellationToken
     )
     {
         switch (change.Operation)
@@ -434,12 +432,12 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task ReplayCompositeKeyChangeAsync
     (
-        DbConnection       connection,
-        DbTransaction      transaction,
-        long               targetRoundID,
-        CapturedChange     change,
-        string[]           keyColumns,
-        CancellationToken  cancellationToken
+        DbConnection      connection,
+        DbTransaction     transaction,
+        long              targetRoundID,
+        CapturedChange    change,
+        string[]          keyColumns,
+        CancellationToken cancellationToken
     )
     {
         switch (change.Operation)
@@ -527,10 +525,10 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task InsertRowAsync
     (
-        DbConnection      connection,
-        DbTransaction     transaction,
-        string            tableName,
-        string?           dataJSON
+        DbConnection  connection,
+        DbTransaction transaction,
+        string        tableName,
+        string?       dataJSON
     )
     {
         var data = ParseOldData(dataJSON);
@@ -538,9 +536,9 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         if (data is null || data.Count == 0)
             return;
 
-        var columns     = data.Keys.ToList();
+        var columns      = data.Keys.ToList();
         var placeholders = columns.Select(c => $"@{c}").ToList();
-        var parameters  = new DynamicParameters();
+        var parameters   = new DynamicParameters();
 
         foreach (var (key, value) in data)
             parameters.Add(key, value);
@@ -555,11 +553,11 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task UpsertRowAsync
     (
-        DbConnection      connection,
-        DbTransaction     transaction,
-        string            tableName,
-        long              recordID,
-        string?           dataJSON
+        DbConnection  connection,
+        DbTransaction transaction,
+        string        tableName,
+        long          recordID,
+        string?       dataJSON
     )
     {
         var data = ParseOldData(dataJSON);
@@ -587,8 +585,10 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
             var parameters = new DynamicParameters();
 
             foreach (var (key, value) in data)
+            {
                 if (key != "id")
                     parameters.Add(key, value);
+            }
 
             parameters.Add("id", recordID);
 
@@ -600,18 +600,16 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
             );
         }
         else
-        {
             await InsertRowAsync(connection, transaction, tableName, dataJSON);
-        }
     }
 
     private static async Task UpsertCompositeRowAsync
     (
-        DbConnection      connection,
-        DbTransaction     transaction,
-        string            tableName,
-        string?           dataJSON,
-        string[]          keyColumns
+        DbConnection  connection,
+        DbTransaction transaction,
+        string        tableName,
+        string?       dataJSON,
+        string[]      keyColumns
     )
     {
         var data = ParseOldData(dataJSON);
@@ -645,8 +643,10 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
             var parameters = new DynamicParameters();
 
             foreach (var (key, value) in data)
+            {
                 if (!keyColumns.Contains(key))
                     parameters.Add(key, value);
+            }
 
             for (var i = 0; i < keyColumns.Length; i++)
                 parameters.Add($"wkey{i}", data[keyColumns[i]]);
@@ -660,17 +660,15 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
             );
         }
         else
-        {
             await InsertRowAsync(connection, transaction, tableName, dataJSON);
-        }
     }
 
     private static async Task CleanupUntrackedDependentsForRecordAsync
     (
-        DbConnection      connection,
-        DbTransaction     transaction,
-        string            tableName,
-        long              recordID
+        DbConnection  connection,
+        DbTransaction transaction,
+        string        tableName,
+        long          recordID
     )
     {
         if (tableName == "character_relations")
@@ -695,10 +693,10 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task ReverseSimpleChangeAsync
     (
-        DbConnection       connection,
-        DbTransaction      transaction,
-        RoundChange         change,
-        CancellationToken   cancellationToken
+        DbConnection      connection,
+        DbTransaction     transaction,
+        RoundChange       change,
+        CancellationToken cancellationToken
     )
     {
         switch (change.Operation)
@@ -724,11 +722,11 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task ReverseCompositeKeyChangeAsync
     (
-        DbConnection       connection,
-        DbTransaction      transaction,
-        RoundChange         change,
-        string[]            keyColumns,
-        CancellationToken   cancellationToken
+        DbConnection      connection,
+        DbTransaction     transaction,
+        RoundChange       change,
+        string[]          keyColumns,
+        CancellationToken cancellationToken
     )
     {
         var oldData = ParseOldData(change.OldData);
@@ -743,7 +741,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
             case "create":
             {
                 var whereClause = string.Join(" AND ", keyColumns.Select((c, i) => $"{c} = @key{i}"));
-                var parameters = new DynamicParameters();
+                var parameters  = new DynamicParameters();
                 for (var i = 0; i < keyColumns.Length; i++)
                     parameters.Add($"key{i}", keyValues[i]);
 
@@ -762,9 +760,9 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
             case "delete":
             {
-                var columns = oldData.Keys.ToList();
+                var columns      = oldData.Keys.ToList();
                 var placeholders = columns.Select(c => $"@{c}").ToList();
-                var parameters = new DynamicParameters();
+                var parameters   = new DynamicParameters();
                 foreach (var (key, value) in oldData)
                     parameters.Add(key, value);
 
@@ -781,12 +779,12 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task ReverseUpdateAsync
     (
-        DbConnection       connection,
-        DbTransaction      transaction,
-        RoundChange         change,
-        string?             keyColumn,
-        object[]?           keyValues,
-        CancellationToken   cancellationToken
+        DbConnection      connection,
+        DbTransaction     transaction,
+        RoundChange       change,
+        string?           keyColumn,
+        object[]?         keyValues,
+        CancellationToken cancellationToken
     )
     {
         var oldData = ParseOldData(change.OldData);
@@ -799,14 +797,14 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task ReverseUpdateAsync
     (
-        DbConnection                  connection,
-        DbTransaction                 transaction,
-        RoundChange                   change,
-        string?                       keyColumn,
-        object[]?                     keyValues,
-        Dictionary<string, object?>   oldData,
-        string[]?                     compositeKeyColumns,
-        CancellationToken             cancellationToken
+        DbConnection                connection,
+        DbTransaction               transaction,
+        RoundChange                 change,
+        string?                     keyColumn,
+        object[]?                   keyValues,
+        Dictionary<string, object?> oldData,
+        string[]?                   compositeKeyColumns,
+        CancellationToken           cancellationToken
     )
     {
         var setClauses = new List<string>();
@@ -834,11 +832,13 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         else if (compositeKeyColumns is not null)
         {
             var whereParts = new List<string>();
+
             for (var i = 0; i < compositeKeyColumns.Length; i++)
             {
                 whereParts.Add($"{compositeKeyColumns[i]} = @wkey{i}");
                 parameters.Add($"wkey{i}", oldData[compositeKeyColumns[i]]);
             }
+
             whereClause = string.Join(" AND ", whereParts);
         }
         else
@@ -857,10 +857,10 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private static async Task ReverseDeleteAsync
     (
-        DbConnection       connection,
-        DbTransaction      transaction,
-        RoundChange         change,
-        CancellationToken   cancellationToken
+        DbConnection      connection,
+        DbTransaction     transaction,
+        RoundChange       change,
+        CancellationToken cancellationToken
     )
     {
         var oldData = ParseOldData(change.OldData);
@@ -868,9 +868,9 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         if (oldData is null)
             return;
 
-        var columns = oldData.Keys.ToList();
+        var columns      = oldData.Keys.ToList();
         var placeholders = columns.Select(c => $"@{c}").ToList();
-        var parameters = new DynamicParameters();
+        var parameters   = new DynamicParameters();
 
         foreach (var (key, value) in oldData)
             parameters.Add(key, value);
@@ -888,19 +888,21 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         if (string.IsNullOrWhiteSpace(jsonData))
             return null;
 
-        var doc = JsonDocument.Parse(jsonData);
+        var doc    = JsonDocument.Parse(jsonData);
         var result = new Dictionary<string, object?>();
 
         foreach (var prop in doc.RootElement.EnumerateObject())
         {
             result[prop.Name] = prop.Value.ValueKind switch
             {
-                JsonValueKind.String  => prop.Value.GetString(),
-                JsonValueKind.Number  => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
-                JsonValueKind.True    => 1L,
-                JsonValueKind.False   => 0L,
-                JsonValueKind.Null    => null,
-                _                     => prop.Value.GetRawText()
+                JsonValueKind.String => prop.Value.GetString(),
+                JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ?
+                                            l :
+                                            prop.Value.GetDouble(),
+                JsonValueKind.True  => 1L,
+                JsonValueKind.False => 0L,
+                JsonValueKind.Null  => null,
+                _                   => prop.Value.GetRawText()
             };
         }
 
@@ -909,10 +911,10 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     public static async Task<string> ReadRowAsJSONAsync
     (
-        DbConnection       connection,
-        string             tableName,
-        long               recordID,
-        CancellationToken  cancellationToken = default
+        DbConnection      connection,
+        string            tableName,
+        long              recordID,
+        CancellationToken cancellationToken = default
     )
     {
         var row = await connection.QueryFirstOrDefaultAsync<Dictionary<string, object>>
@@ -933,13 +935,13 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     private sealed class RoundChangeRow
     {
-        public long   ID         { get; set; }
-        public long   Round_ID   { get; set; }
-        public string Table_Name { get; set; } = string.Empty;
-        public long   Record_ID  { get; set; }
-        public string Operation  { get; set; } = string.Empty;
-        public string? Old_Data  { get; set; }
-        public string Created_At { get; set; } = string.Empty;
+        public long    ID         { get; set; }
+        public long    Round_ID   { get; set; }
+        public string  Table_Name { get; set; } = string.Empty;
+        public long    Record_ID  { get; set; }
+        public string  Operation  { get; set; } = string.Empty;
+        public string? Old_Data   { get; set; }
+        public string  Created_At { get; set; } = string.Empty;
 
         public RoundChange ToRoundChange() =>
             new()

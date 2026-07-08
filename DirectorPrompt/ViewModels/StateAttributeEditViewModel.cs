@@ -72,25 +72,31 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     public bool IsCompositeConfig => ValueType == StateValueType.Composite;
 
     private object BuildPhasesPayload() =>
-        Phases.Select(p => new
-        {
-            name              = p.Name,
-            expression        = p.Expression,
-            knowledgeIds      = p.GetKnowledgeIDs(),
-            knowledgeGroupIds = p.GetKnowledgeGroupIDs(),
-            enterDirectives   = p.EnterDirectiveInput.Directives.Select(d => new
+        Phases.Select
+        (p => new
             {
-                type    = d.Type.ToString(),
-                content = d.Content,
-                ttl     = d.TTL
-            }),
-            exitDirectives    = p.ExitDirectiveInput.Directives.Select(d => new
-            {
-                type    = d.Type.ToString(),
-                content = d.Content,
-                ttl     = d.TTL
-            })
-        });
+                name              = p.Name,
+                expression        = p.Expression,
+                knowledgeIds      = p.GetKnowledgeIDs(),
+                knowledgeGroupIds = p.GetKnowledgeGroupIDs(),
+                enterDirectives = p.EnterDirectiveInput.Directives.Select
+                (d => new
+                    {
+                        type    = d.Type.ToString(),
+                        content = d.Content,
+                        ttl     = d.TTL
+                    }
+                ),
+                exitDirectives = p.ExitDirectiveInput.Directives.Select
+                (d => new
+                    {
+                        type    = d.Type.ToString(),
+                        content = d.Content,
+                        ttl     = d.TTL
+                    }
+                )
+            }
+        );
 
     public string BuildConfig() =>
         (ValueType, Driver) switch

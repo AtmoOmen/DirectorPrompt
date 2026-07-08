@@ -115,11 +115,13 @@ public sealed class MemoryTools
         var embeddingService = embeddingServiceFactory.Create(context.EmbeddingConfig);
 
         var needsRegeneration = candidateList
-                                .Where(m =>
-                                {
-                                    var currentHash = EmbeddingConversions.ComputeHash(m.Content);
-                                    return m.ContentHash != currentHash;
-                                })
+                                .Where
+                                (m =>
+                                    {
+                                        var currentHash = EmbeddingConversions.ComputeHash(m.Content);
+                                        return m.ContentHash != currentHash;
+                                    }
+                                )
                                 .ToList();
 
         if (needsRegeneration.Count > 0)
@@ -176,7 +178,7 @@ public sealed class MemoryTools
                      .Select
                      (sr =>
                          {
-                             var m = memoryMap[sr.entryID];
+                             var m          = memoryMap[sr.entryID];
                              var similarity = 1f - sr.distance;
 
                              var score = similarity;
@@ -230,11 +232,11 @@ public sealed class MemoryTools
                 (
                     new
                     {
-                        id        = m.ID,
-                        content   = m.Content,
-                        tags      = m.Tags,
-                        sceneID   = m.SceneID,
-                        timeline  = m.TimelinePos
+                        id       = m.ID,
+                        content  = m.Content,
+                        tags     = m.Tags,
+                        sceneID  = m.SceneID,
+                        timeline = m.TimelinePos
                     }
                 );
             }
@@ -259,9 +261,16 @@ public sealed class MemoryTools
         string?              characterIDs
     )
     {
-        Log.Information("工具调用: create_memory(sceneID={SceneID}, content={Content})", sceneID, content.Length > 100 ? content[..100] + "..." : content);
+        Log.Information
+        (
+            "工具调用: create_memory(sceneID={SceneID}, content={Content})",
+            sceneID,
+            content.Length > 100 ?
+                content[..100] + "..." :
+                content
+        );
 
-        var tagList     = ParseTags(tags);
+        var tagList       = ParseTags(tags);
         var characterList = ParseCharacterIDs(characterIDs);
 
         var entry = new MemoryEntry
@@ -300,9 +309,13 @@ public sealed class MemoryTools
 
         var updated = existing with
         {
-            Content             = content,
-            Tags                = string.IsNullOrWhiteSpace(tags) ? existing.Tags : ParseTags(tags),
-            RelatedCharacterIDs = string.IsNullOrWhiteSpace(characterIDs) ? existing.RelatedCharacterIDs : ParseCharacterIDs(characterIDs)
+            Content = content,
+            Tags = string.IsNullOrWhiteSpace(tags) ?
+                       existing.Tags :
+                       ParseTags(tags),
+            RelatedCharacterIDs = string.IsNullOrWhiteSpace(characterIDs) ?
+                                      existing.RelatedCharacterIDs :
+                                      ParseCharacterIDs(characterIDs)
         };
 
         await memoryRepository.UpdateAsync(updated);

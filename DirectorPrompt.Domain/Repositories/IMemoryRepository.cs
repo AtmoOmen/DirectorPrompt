@@ -26,10 +26,10 @@ public interface IMemoryRepository
 
     Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
     (
-        long                projectID,
-        byte[]              queryVector,
-        int                 topK,
-        IReadOnlyList<long>? candidateIDs = null,
-        CancellationToken   cancellationToken = default
+        long                 projectID,
+        byte[]               queryVector,
+        int                  topK,
+        IReadOnlyList<long>? candidateIDs      = null,
+        CancellationToken    cancellationToken = default
     );
 }

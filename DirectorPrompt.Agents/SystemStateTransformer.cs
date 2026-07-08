@@ -57,7 +57,8 @@ public sealed class SystemStateTransformer
             foreach (var attr in systemAttrs)
             {
                 if (attr.Scope == StateScope.Category)
-                    await TransformCategoryAttributeAsync(attr, sceneCharacters, sessionID, sceneID.Value, roundID, trigger, attrNameCache, globalStateValues, cancellationToken);
+                    await TransformCategoryAttributeAsync
+                        (attr, sceneCharacters, sessionID, sceneID.Value, roundID, trigger, attrNameCache, globalStateValues, cancellationToken);
             }
         }
 
@@ -77,7 +78,7 @@ public sealed class SystemStateTransformer
     {
         if (attr.ValueType == StateValueType.Enum)
         {
-            var value = await stateRepository.GetStateValueAsync(attr.ID, sessionID, cancellationToken);
+            var value        = await stateRepository.GetStateValueAsync(attr.ID, sessionID, cancellationToken);
             var currentValue = value?.Value ?? string.Empty;
 
             await TransformEnumAttributeAsync
@@ -121,10 +122,12 @@ public sealed class SystemStateTransformer
     {
         foreach (var character in characters)
         {
-            var charValues  = await characterRepository.GetCharacterStateValuesAsync(character.ID, cancellationToken);
+            var charValues = await characterRepository.GetCharacterStateValuesAsync(character.ID, cancellationToken);
             var charContext = charValues.ToDictionary
             (
-                v => attrNameCache.TryGetValue(v.AttributeID, out var name) ? name : v.AttributeID.ToString(),
+                v => attrNameCache.TryGetValue(v.AttributeID, out var name) ?
+                         name :
+                         v.AttributeID.ToString(),
                 v => v.Value
             );
 
@@ -189,9 +192,7 @@ public sealed class SystemStateTransformer
             return;
 
         if (characterID is not null)
-        {
             await characterRepository.SetCharacterStateValueAsync(characterID.Value, attr.ID, newValue, cancellationToken);
-        }
         else
         {
             await stateRepository.SetStateValueAsync
@@ -294,8 +295,8 @@ public sealed class SystemStateTransformer
         if (total <= 0)
             return weights.Keys.FirstOrDefault() ?? string.Empty;
 
-        var roll        = (float)Random.Shared.NextDouble() * total;
-        var cumulative  = 0f;
+        var roll       = (float)Random.Shared.NextDouble() * total;
+        var cumulative = 0f;
 
         foreach (var (key, weight) in weights)
         {
@@ -425,22 +426,22 @@ public sealed class SystemStateTransformer
 
     private sealed class EnumConfig
     {
-        public List<string> Options { get; set; } = [];
+        public List<string>                                  Options         { get; set; } = [];
         public Dictionary<string, Dictionary<string, float>> TransitionRules { get; set; } = [];
-        public List<EnumCondition> Conditions { get; set; } = [];
-        public SystemTrigger Trigger { get; set; } = SystemTrigger.RoundEnd;
+        public List<EnumCondition>                           Conditions      { get; set; } = [];
+        public SystemTrigger                                 Trigger         { get; set; } = SystemTrigger.RoundEnd;
     }
 
     private sealed class EnumCondition
     {
-        public string When { get; set; } = string.Empty;
+        public string                    When       { get; set; } = string.Empty;
         public Dictionary<string, float> Transition { get; set; } = [];
     }
 
     private sealed class CompositeConfig
     {
-        public string GenerationGuide { get; set; } = string.Empty;
-        public SystemTrigger? RegenerateTrigger { get; set; }
-        public string? RegenerateCondition { get; set; }
+        public string         GenerationGuide     { get; set; } = string.Empty;
+        public SystemTrigger? RegenerateTrigger   { get; set; }
+        public string?        RegenerateCondition { get; set; }
     }
 }

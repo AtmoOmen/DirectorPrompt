@@ -63,19 +63,19 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
     public long SavedProjectID { get; private set; }
 
-public ProjectEditViewModel
-(
-IProjectRepository     projectRepository,
-IKnowledgeRepository   knowledgeRepository,
-IStateRepository       stateRepository,
-ICharacterRepository   characterRepository,
-IModelConnectionTester connectionTester
-)
-{
-this.projectRepository   = projectRepository;
-this.knowledgeRepository = knowledgeRepository;
-this.stateRepository     = stateRepository;
-this.characterRepository = characterRepository;
+    public ProjectEditViewModel
+    (
+        IProjectRepository     projectRepository,
+        IKnowledgeRepository   knowledgeRepository,
+        IStateRepository       stateRepository,
+        ICharacterRepository   characterRepository,
+        IModelConnectionTester connectionTester
+    )
+    {
+        this.projectRepository   = projectRepository;
+        this.knowledgeRepository = knowledgeRepository;
+        this.stateRepository     = stateRepository;
+        this.characterRepository = characterRepository;
         this.connectionTester    = connectionTester;
     }
 
@@ -250,23 +250,23 @@ this.characterRepository = characterRepository;
                     var phaseVM = new PhaseEditViewModel();
                     phaseVM.PopulateAvailableKnowledge(KnowledgeGroups);
 
-                    var phName = ph.TryGetProperty("name", out var pn) && pn.ValueKind != JsonValueKind.Null
-                                     ? pn.GetString() ?? string.Empty
-                                     : string.Empty;
+                    var phName = ph.TryGetProperty("name", out var pn) && pn.ValueKind != JsonValueKind.Null ?
+                                     pn.GetString() ?? string.Empty :
+                                     string.Empty;
 
-                    var phExpr = ph.TryGetProperty("expression", out var pe) && pe.ValueKind != JsonValueKind.Null
-                                     ? pe.GetString() ?? string.Empty
-                                     : string.Empty;
+                    var phExpr = ph.TryGetProperty("expression", out var pe) && pe.ValueKind != JsonValueKind.Null ?
+                                     pe.GetString() ?? string.Empty :
+                                     string.Empty;
 
-                    var kIds = ph.TryGetProperty("knowledgeIds", out var kid) && kid.ValueKind == JsonValueKind.Array
-                                   ? kid.EnumerateArray().Select(v => v.GetInt64()).ToArray()
-                                   : [];
-                    var gIds = ph.TryGetProperty("knowledgeGroupIds", out var gid) && gid.ValueKind == JsonValueKind.Array
-                                   ? gid.EnumerateArray().Select(v => v.GetInt64()).ToArray()
-                                   : [];
+                    var kIds = ph.TryGetProperty("knowledgeIds", out var kid) && kid.ValueKind == JsonValueKind.Array ?
+                                   kid.EnumerateArray().Select(v => v.GetInt64()).ToArray() :
+                                   [];
+                    var gIds = ph.TryGetProperty("knowledgeGroupIds", out var gid) && gid.ValueKind == JsonValueKind.Array ?
+                                   gid.EnumerateArray().Select(v => v.GetInt64()).ToArray() :
+                                   [];
 
                     var enterDirs = ParsePhaseDirectives(ph, "enterDirectives");
-                    var exitDirs = ParsePhaseDirectives(ph, "exitDirectives");
+                    var exitDirs  = ParsePhaseDirectives(ph, "exitDirectives");
 
                     phaseVM.SyncFromConfig(phName, phExpr, kIds, gIds, enterDirs, exitDirs);
                     vm.Phases.Add(phaseVM);
@@ -288,9 +288,9 @@ this.characterRepository = characterRepository;
 
         foreach (var item in arr.EnumerateArray())
         {
-            var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null
-                              ? t.GetString() ?? "Plot"
-                              : "Plot";
+            var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null ?
+                              t.GetString() ?? "Plot" :
+                              "Plot";
 
             var type = typeStr switch
             {
@@ -300,13 +300,13 @@ this.characterRepository = characterRepository;
                 _                     => DirectiveType.Plot
             };
 
-            var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null
-                              ? c.GetString() ?? string.Empty
-                              : string.Empty;
+            var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null ?
+                              c.GetString() ?? string.Empty :
+                              string.Empty;
 
-            var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number
-                          ? ttlEl.GetInt32()
-                          : (int?)null;
+            var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number ?
+                          ttlEl.GetInt32() :
+                          (int?)null;
 
             result.Add(new DirectiveItem(type, content, result.Count + 1, ttl));
         }
@@ -346,11 +346,11 @@ this.characterRepository = characterRepository;
         if (projectID <= 0)
             return;
 
-StateAttributes.Clear();
-CharacterCategories.Clear();
+        StateAttributes.Clear();
+        CharacterCategories.Clear();
 
-var attributes = await stateRepository.GetAttributesAsync(projectID);
-var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
+        var attributes = await stateRepository.GetAttributesAsync(projectID);
+        var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
 
         var categories = await characterRepository.GetCategoriesAsync(projectID);
 
@@ -387,9 +387,7 @@ var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
                 catVM?.StateAttributes.Add(attrVM);
             }
             else
-            {
                 StateAttributes.Add(attrVM);
-            }
         }
 
     }
@@ -487,8 +485,8 @@ var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
             Title     = Loc.Get("Knowledge.Entry.New"),
             Content   = string.Empty,
             Tags      = [],
-            GroupID = group?.ID,
-            Active = true
+            GroupID   = group?.ID,
+            Active    = true
         };
 
         var created = await knowledgeRepository.CreateAsync(entry);
@@ -695,10 +693,12 @@ var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
                 Name        = attribute.Name,
                 DisplayName = attribute.DisplayName,
                 Scope       = attribute.Scope,
-                CategoryID  = attribute.Scope == StateScope.Category ? attribute.CategoryID : null,
-                ValueType   = attribute.ValueType,
-                Driver      = attribute.Driver,
-                Config      = attribute.BuildConfig()
+                CategoryID = attribute.Scope == StateScope.Category ?
+                                 attribute.CategoryID :
+                                 null,
+                ValueType = attribute.ValueType,
+                Driver    = attribute.Driver,
+                Config    = attribute.BuildConfig()
             };
 
             await stateRepository.UpdateAttributeAsync(model);
@@ -888,16 +888,12 @@ var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
     }
 
     [RelayCommand]
-    private void AddPhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args)
-    {
+    private void AddPhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args) =>
         args.phase.AddLinkedItem(args.item);
-    }
 
     [RelayCommand]
-    private void RemovePhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args)
-    {
+    private void RemovePhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args) =>
         args.phase.RemoveLinkedItem(args.item);
-    }
 
     [RelayCommand]
     private async Task TestEmbeddingConnectionAsync()

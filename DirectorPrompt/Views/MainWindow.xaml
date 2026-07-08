@@ -18,8 +18,8 @@
                  WindowBackdropType="Mica"
                  WindowCornerPreference="Round"
                  Icon="pack://application:,,,/Assets/Images/Icon.ico">
-<ui:FluentWindow.Resources>
-<Style x:Key="SidebarToggleStyle" TargetType="ui:Button">
+    <ui:FluentWindow.Resources>
+        <Style x:Key="SidebarToggleStyle" TargetType="ui:Button">
             <Setter Property="OverridesDefaultStyle" Value="True" />
             <Setter Property="Background" Value="{DynamicResource ApplicationBackgroundBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlElevationBorderBrush}" />
@@ -321,8 +321,8 @@
                                                             Click="OnCorrectRound"
                                                             Tag="{Binding}" />
                                                         <MenuItem
-Header="{Binding [Dialog.Rollback], Source={x:Static loc:Loc.Instance}}"
-Click="OnRollbackRound"
+                                                            Header="{Binding [Dialog.Rollback], Source={x:Static loc:Loc.Instance}}"
+                                                            Click="OnRollbackRound"
                                                             Tag="{Binding}" />
                                                     </ContextMenu>
                                                 </Button.ContextMenu>
@@ -350,7 +350,8 @@ Click="OnRollbackRound"
                                                     <Style TargetType="ItemsControl">
                                                         <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding HasDirectorBlocks}" Value="False">
+                                                            <DataTrigger Binding="{Binding HasDirectorBlocks}"
+                                                                         Value="False">
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsEditing}" Value="True">
@@ -374,10 +375,10 @@ Click="OnRollbackRound"
                                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                                            Margin="0,0,0,2" />
                                                                 <FlowDocumentScrollViewer Document="{Binding Document}"
-                                                                                          Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                                                                          IsSelectionEnabled="True"
-                                                                                          VerticalScrollBarVisibility="Disabled"
-                                                                                          PreviewMouseWheel="OnFlowDocumentPreviewMouseWheel" />
+                                                                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                                        IsSelectionEnabled="True"
+                                                                        VerticalScrollBarVisibility="Disabled"
+                                                                        PreviewMouseWheel="OnFlowDocumentPreviewMouseWheel" />
                                                             </StackPanel>
                                                         </Border>
                                                     </DataTemplate>
@@ -394,7 +395,8 @@ Click="OnRollbackRound"
                                                     <Style TargetType="FlowDocumentScrollViewer">
                                                         <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding HasDirectorBlocks}" Value="True">
+                                                            <DataTrigger Binding="{Binding HasDirectorBlocks}"
+                                                                         Value="True">
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsEditing}" Value="True">
@@ -444,12 +446,12 @@ Click="OnRollbackRound"
                         BorderBrush="{DynamicResource ControlElevationBorderBrush}"
                         BorderThickness="0,1,0,0"
                         Padding="12,8">
-<StackPanel>
-<components:DirectiveInputControl DirectiveInput="{Binding DirectiveInput}"
-                             ShowSendButton="True"
-                             SendCommand="{Binding SendDirectivesCommand}"
-                             IsProcessing="{Binding IsProcessing}" />
-</StackPanel>
+                    <StackPanel>
+                        <components:DirectiveInputControl DirectiveInput="{Binding DirectiveInput}"
+                                                          ShowSendButton="True"
+                                                          SendCommand="{Binding SendDirectivesCommand}"
+                                                          IsProcessing="{Binding IsProcessing}" />
+                    </StackPanel>
                 </Border>
             </Grid>
 
@@ -539,7 +541,8 @@ Click="OnRollbackRound"
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,0,8,0" />
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                               Margin="0,0,8,0" />
                                                     <TextBlock Text="{Binding Status}" FontSize="11" Foreground="Gray" />
                                                 </StackPanel>
                                                 <ToggleButton Grid.Column="1"
@@ -560,8 +563,9 @@ Click="OnRollbackRound"
                                                        Foreground="{DynamicResource AccentFillColorDefaultBrush}"
                                                        Margin="0,2,0,0" />
 
-                                            <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}"
-                                                        Margin="0,4,0,0">
+                                            <StackPanel
+                                                Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}"
+                                                Margin="0,4,0,0">
                                                 <TextBlock Text="状态"
                                                            FontSize="11"
                                                            FontWeight="SemiBold"
@@ -609,27 +613,32 @@ Click="OnRollbackRound"
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
 
-                                                <TextBlock Text="{Binding [Phase.EnterDirectives], Source={x:Static loc:Loc.Instance}}"
-                                                           FontSize="11"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                           Margin="0,6,0,2" />
-                                                <components:DirectiveInputControl DirectiveInput="{Binding EnterDirectiveInput}" />
+                                                <TextBlock
+                                                    Text="{Binding [Phase.EnterDirectives], Source={x:Static loc:Loc.Instance}}"
+                                                    FontSize="11"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                    Margin="0,6,0,2" />
+                                                <components:DirectiveInputControl
+                                                    DirectiveInput="{Binding EnterDirectiveInput}" />
 
-                                                <TextBlock Text="{Binding [Phase.ExitDirectives], Source={x:Static loc:Loc.Instance}}"
-                                                           FontSize="11"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                           Margin="0,6,0,2" />
-                                                <components:DirectiveInputControl DirectiveInput="{Binding ExitDirectiveInput}" />
+                                                <TextBlock
+                                                    Text="{Binding [Phase.ExitDirectives], Source={x:Static loc:Loc.Instance}}"
+                                                    FontSize="11"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                    Margin="0,6,0,2" />
+                                                <components:DirectiveInputControl
+                                                    DirectiveInput="{Binding ExitDirectiveInput}" />
 
-                                                <ui:Button Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
-                                                           Icon="Save24"
-                                                           HorizontalAlignment="Right"
-                                                           Margin="0,4,0,0"
-                                                           Padding="12,6"
-                                                           Command="{Binding DataContext.SaveCharacterDirectivesCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                           CommandParameter="{Binding}" />
+                                                <ui:Button
+                                                    Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
+                                                    Icon="Save24"
+                                                    HorizontalAlignment="Right"
+                                                    Margin="0,4,0,0"
+                                                    Padding="12,6"
+                                                    Command="{Binding DataContext.SaveCharacterDirectivesCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                    CommandParameter="{Binding}" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>

@@ -8,13 +8,13 @@ public sealed partial class AgentSettingViewModel : ObservableObject
 {
     [ObservableProperty]
     public partial AgentRole Role { get; set; }
-    
+
     [ObservableProperty]
     public partial string Provider { get; set; } = "openai";
-    
+
     [ObservableProperty]
     public partial string Endpoint { get; set; } = string.Empty;
-    
+
     [ObservableProperty]
     public partial string APIKey { get; set; } = string.Empty;
 

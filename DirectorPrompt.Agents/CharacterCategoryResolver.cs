@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text.Json;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -84,7 +83,7 @@ public sealed class CharacterCategoryResolver
 
     private static (long[] CategoryIDs, Dictionary<long, int> DepthMap) ExpandCategoriesWithDepth
     (
-        long[]                            directCategoryIDs,
+        long[]                           directCategoryIDs,
         IReadOnlyList<CharacterCategory> allCategories
     )
     {
@@ -118,7 +117,7 @@ public sealed class CharacterCategoryResolver
 
     private static long[] ResolveAttributes
     (
-        Dictionary<long, int>          depthMap,
+        Dictionary<long, int>         depthMap,
         IReadOnlyList<StateAttribute> categoryAttributes
     )
     {
@@ -138,9 +137,7 @@ public sealed class CharacterCategoryResolver
                     byName[attr.Name] = (attr.ID, depth);
             }
             else
-            {
                 byName[attr.Name] = (attr.ID, depth);
-            }
         }
 
         return byName.Values.Select(v => v.AttributeID).ToArray();
@@ -157,8 +154,8 @@ public sealed class CharacterCategoryResolver
         var existingValues = await characterRepository.GetCharacterStateValuesAsync(characterID, cancellationToken);
         var existingSet    = existingValues.Select(v => v.AttributeID).ToHashSet();
 
-        var allAttributes  = await stateRepository.GetAttributesAsync(projectID, StateScope.Category, cancellationToken);
-        var attrLookup     = allAttributes.ToDictionary(a => a.ID);
+        var allAttributes = await stateRepository.GetAttributesAsync(projectID, StateScope.Category, cancellationToken);
+        var attrLookup    = allAttributes.ToDictionary(a => a.ID);
 
         foreach (var attrID in attributeIDs)
         {

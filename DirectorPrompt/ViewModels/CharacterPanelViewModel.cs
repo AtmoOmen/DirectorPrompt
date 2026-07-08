@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Domain.Models;
 
 namespace DirectorPrompt.ViewModels;
@@ -82,9 +81,9 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
 
     public void SyncFromModel(CharacterCategory category)
     {
-        ID   = category.ID;
-        Name = category.Name;
-        Description = category.Description;
+        ID                    = category.ID;
+        Name                  = category.Name;
+        Description           = category.Description;
         ParentCategoryIDsText = string.Join(", ", category.ParentCategoryIDs);
     }
 
@@ -92,7 +91,11 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
     {
         var parentIDs = ParentCategoryIDsText
                         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .Select(s => long.TryParse(s, out var id) ? id : 0)
+                        .Select
+                        (s => long.TryParse(s, out var id) ?
+                                  id :
+                                  0
+                        )
                         .Where(id => id > 0)
                         .ToArray();
 
@@ -107,7 +110,7 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
     }
 }
 
-public sealed partial class CharacterPanelViewModel : ObservableObject
+public sealed class CharacterPanelViewModel : ObservableObject
 {
     public ObservableCollection<CharacterPanelItemViewModel> Characters { get; } = [];
 

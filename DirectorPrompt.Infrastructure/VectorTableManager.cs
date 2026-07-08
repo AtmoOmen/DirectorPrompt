@@ -62,9 +62,9 @@ public sealed class VectorTableManager
 
     private static async Task<int?> GetDimensionAsync
     (
-        SqliteConnection     connection,
-        string               tableName,
-        CancellationToken    cancellationToken
+        SqliteConnection  connection,
+        string            tableName,
+        CancellationToken cancellationToken
     )
     {
         await using var command = connection.CreateCommand();
@@ -73,7 +73,9 @@ public sealed class VectorTableManager
 
         var result = await command.ExecuteScalarAsync(cancellationToken);
 
-        return result is long dim ? (int)dim : null;
+        return result is long dim ?
+                   (int)dim :
+                   null;
     }
 
     private static async Task CreateVecTableAsync

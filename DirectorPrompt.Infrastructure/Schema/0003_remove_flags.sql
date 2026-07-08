@@ -63,7 +63,8 @@ CREATE TABLE IF NOT EXISTS state_snapshots_new
     );
 
 INSERT INTO state_snapshots_new
-    (id, project_id, session_id, round_id, global_state, character_state, active_directives, current_scene_id, scene_characters, created_at)
+(id, project_id, session_id, round_id, global_state, character_state, active_directives, current_scene_id,
+ scene_characters, created_at)
 SELECT id,
        project_id,
        session_id,

@@ -24,7 +24,7 @@ public partial class CorrectionCompareWindow : FluentWindow
         window.DialogTitleBar.Title = Loc.Get("Dialog.CorrectResultTitle");
         window.RejectButton.Content = Loc.Get("Common.Reject");
         window.AcceptButton.Content = Loc.Get("Common.Accept");
-        window.Owner               = owner;
+        window.Owner                = owner;
 
         window.DiffView.OldTextHeader = leftHeader;
         window.DiffView.NewTextHeader = rightHeader;
@@ -32,8 +32,8 @@ public partial class CorrectionCompareWindow : FluentWindow
         window.DiffView.NewText       = corrected;
         window.DiffView.FontFamily    = new FontFamily("Microsoft YaHei UI, Consolas, Courier New");
 
-        window.DiffView.InsertedBackground = new SolidColorBrush(Color.FromArgb(60, 46, 160, 67));
-        window.DiffView.DeletedBackground  = new SolidColorBrush(Color.FromArgb(60, 248, 81, 73));
+        window.DiffView.InsertedBackground = new SolidColorBrush(Color.FromArgb(60, 46,  160, 67));
+        window.DiffView.DeletedBackground  = new SolidColorBrush(Color.FromArgb(60, 248, 81,  73));
 
         window.ShowDialog();
 

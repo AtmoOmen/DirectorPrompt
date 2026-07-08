@@ -1,17 +1,17 @@
-using System.Collections;
 using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
+using Microsoft.Data.Sqlite;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class MemoryRepository : IMemoryRepository
 {
-    private readonly SqliteConnectionFactory   connectionFactory;
-    private readonly IRoundChangeRepository   roundChangeRepository;
-    private readonly VectorTableManager        vectorTableManager;
+    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly IRoundChangeRepository  roundChangeRepository;
+    private readonly VectorTableManager      vectorTableManager;
 
     public MemoryRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository, VectorTableManager vectorTableManager)
     {
@@ -134,7 +134,9 @@ public sealed class MemoryRepository : IMemoryRepository
                          new { id = entry.ID }
                      );
 
-        var oldDataJSON = oldRow is null ? "{}" : JsonSerializer.Serialize(oldRow);
+        var oldDataJSON = oldRow is null ?
+                              "{}" :
+                              JsonSerializer.Serialize(oldRow);
 
         await connection.ExecuteAsync
         (
@@ -232,6 +234,7 @@ public sealed class MemoryRepository : IMemoryRepository
                     );
 
         var sourceRows = new List<string>();
+
         foreach (var id in memoryIDs)
         {
             var row = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
@@ -240,7 +243,12 @@ public sealed class MemoryRepository : IMemoryRepository
                           new { id },
                           transaction
                       );
-            sourceRows.Add(row is null ? "{}" : JsonSerializer.Serialize(row));
+            sourceRows.Add
+            (
+                row is null ?
+                    "{}" :
+                    JsonSerializer.Serialize(row)
+            );
         }
 
         await connection.ExecuteAsync
@@ -289,9 +297,9 @@ public sealed class MemoryRepository : IMemoryRepository
 
     private static async Task<(IDictionary<string, object>? row, long? projectID)> GetRowAndProjectAsync
     (
-        Microsoft.Data.Sqlite.SqliteConnection connection,
-        long                                   id,
-        CancellationToken                      cancellationToken
+        SqliteConnection  connection,
+        long              id,
+        CancellationToken cancellationToken
     )
     {
         var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
@@ -362,11 +370,11 @@ public sealed class MemoryRepository : IMemoryRepository
 
     public async Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
     (
-        long                projectID,
-        byte[]              queryVector,
-        int                 topK,
-        IReadOnlyList<long>? candidateIDs = null,
-        CancellationToken   cancellationToken = default
+        long                 projectID,
+        byte[]               queryVector,
+        int                  topK,
+        IReadOnlyList<long>? candidateIDs      = null,
+        CancellationToken    cancellationToken = default
     )
     {
         var tableName = VectorTableManager.GetMemoryTableName(projectID);
@@ -377,21 +385,21 @@ public sealed class MemoryRepository : IMemoryRepository
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var sql = candidateIDs is { Count: > 0 } ?
-            $"""
-            SELECT entry_id AS EntryID, distance AS Distance
-            FROM "{tableName}"
-            WHERE embedding MATCH @queryVector
-              AND entry_id IN @candidateIDs
-            ORDER BY distance
-            LIMIT @topK
-            """ :
-            $"""
-            SELECT entry_id AS EntryID, distance AS Distance
-            FROM "{tableName}"
-            WHERE embedding MATCH @queryVector
-            ORDER BY distance
-            LIMIT @topK
-            """;
+                      $"""
+                       SELECT entry_id AS EntryID, distance AS Distance
+                       FROM "{tableName}"
+                       WHERE embedding MATCH @queryVector
+                         AND entry_id IN @candidateIDs
+                       ORDER BY distance
+                       LIMIT @topK
+                       """ :
+                      $"""
+                       SELECT entry_id AS EntryID, distance AS Distance
+                       FROM "{tableName}"
+                       WHERE embedding MATCH @queryVector
+                       ORDER BY distance
+                       LIMIT @topK
+                       """;
 
         var rows = await connection.QueryAsync<(long EntryID, float Distance)>
                    (
@@ -404,17 +412,17 @@ public sealed class MemoryRepository : IMemoryRepository
 
     private sealed class MemoryEntryRow
     {
-        public long   ID                    { get; set; }
-        public long   Project_ID            { get; set; }
-        public long?  Session_ID            { get; set; }
-        public long   Scene_ID              { get; set; }
-        public long   Timeline_Pos          { get; set; }
-        public string Content               { get; set; } = string.Empty;
-        public string Tags                  { get; set; } = "[]";
-        public string Related_Character_IDs { get; set; } = "[]";
-        public string? Content_Hash         { get; set; }
-        public string Created_At            { get; set; } = string.Empty;
-        public string Updated_At            { get; set; } = string.Empty;
+        public long    ID                    { get; set; }
+        public long    Project_ID            { get; set; }
+        public long?   Session_ID            { get; set; }
+        public long    Scene_ID              { get; set; }
+        public long    Timeline_Pos          { get; set; }
+        public string  Content               { get; set; } = string.Empty;
+        public string  Tags                  { get; set; } = "[]";
+        public string  Related_Character_IDs { get; set; } = "[]";
+        public string? Content_Hash          { get; set; }
+        public string  Created_At            { get; set; } = string.Empty;
+        public string  Updated_At            { get; set; } = string.Empty;
 
         public MemoryEntry ToMemoryEntry() =>
             new()

@@ -9,8 +9,8 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class SceneRepository : ISceneRepository
 {
-    private readonly SqliteConnectionFactory   connectionFactory;
-    private readonly IRoundChangeRepository   roundChangeRepository;
+    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly IRoundChangeRepository  roundChangeRepository;
 
     public SceneRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository)
     {

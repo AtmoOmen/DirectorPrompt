@@ -12,16 +12,16 @@ namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class RetrievalStage
 (
-    IChatClientFactory      chatClientFactory,
-    ISceneRepository        sceneRepository,
-    IStateRepository        stateRepository,
-    ICharacterRepository    characterRepository,
-    IDirectiveRepository    directiveRepository,
-    IKnowledgeRepository    knowledgeRepository,
-    IMemoryRepository       memoryRepository,
-    KnowledgeTools          knowledgeTools,
-    MemoryTools             memoryTools,
-    OrchestratorConfig      orchestratorConfig
+    IChatClientFactory   chatClientFactory,
+    ISceneRepository     sceneRepository,
+    IStateRepository     stateRepository,
+    ICharacterRepository characterRepository,
+    IDirectiveRepository directiveRepository,
+    IKnowledgeRepository knowledgeRepository,
+    IMemoryRepository    memoryRepository,
+    KnowledgeTools       knowledgeTools,
+    MemoryTools          memoryTools,
+    OrchestratorConfig   orchestratorConfig
 )
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
@@ -67,7 +67,7 @@ public sealed class RetrievalStage
             return string.Empty;
         }
 
-        var entries = await knowledgeRepository.GetActiveEntriesAsync(context.DirectiveBatch.ProjectID, cancellationToken);
+        var entries    = await knowledgeRepository.GetActiveEntriesAsync(context.DirectiveBatch.ProjectID, cancellationToken);
         var phaseCount = context.PhaseActivatedEntryIDs?.Count ?? 0;
 
         if (entries.Count == 0 && phaseCount == 0)
@@ -242,10 +242,10 @@ public sealed class RetrievalStage
 
     private async Task InjectCharacterStateAsync
     (
-        StringBuilder           sb,
-        ToolExecutionContext    context,
+        StringBuilder            sb,
+        ToolExecutionContext     context,
         IReadOnlyList<Character> characters,
-        CancellationToken       cancellationToken
+        CancellationToken        cancellationToken
     )
     {
         var attributes = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category, cancellationToken);
@@ -273,14 +273,14 @@ public sealed class RetrievalStage
 
     private async Task InjectCharacterRelationsAsync
     (
-        StringBuilder           sb,
-        ToolExecutionContext    context,
+        StringBuilder            sb,
+        ToolExecutionContext     context,
         IReadOnlyList<Character> characters,
-        CancellationToken       cancellationToken
+        CancellationToken        cancellationToken
     )
     {
         var characterIDs = characters.Select(c => c.ID).ToHashSet();
-        var merged = new Dictionary<(long Source, long Target), CharacterRelation>();
+        var merged       = new Dictionary<(long Source, long Target), CharacterRelation>();
 
         foreach (var character in characters)
         {
@@ -302,10 +302,16 @@ public sealed class RetrievalStage
 
         foreach (var r in merged.Values)
         {
-            var sourceName = idToName.TryGetValue(r.SourceCharacterID, out var s) ? s.Name : $"ID:{r.SourceCharacterID}";
-            var targetName = idToName.TryGetValue(r.TargetCharacterID, out var t) ? t.Name : $"ID:{r.TargetCharacterID}";
+            var sourceName = idToName.TryGetValue(r.SourceCharacterID, out var s) ?
+                                 s.Name :
+                                 $"ID:{r.SourceCharacterID}";
+            var targetName = idToName.TryGetValue(r.TargetCharacterID, out var t) ?
+                                 t.Name :
+                                 $"ID:{r.TargetCharacterID}";
 
-            var desc = string.IsNullOrWhiteSpace(r.Description) ? "" : $" ({r.Description})";
+            var desc = string.IsNullOrWhiteSpace(r.Description) ?
+                           "" :
+                           $" ({r.Description})";
             sb.AppendLine($"{sourceName} → {targetName}: {r.RelationType}{desc}");
         }
 

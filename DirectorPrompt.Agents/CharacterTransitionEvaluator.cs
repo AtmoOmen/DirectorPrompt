@@ -27,12 +27,14 @@ public sealed class CharacterTransitionEvaluator
         var activeScene = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
 
         if (activeScene is null)
+        {
             return new TransitionResult
             {
                 EnterDirectives = [],
                 ExitDirectives  = [],
                 ActiveKeys      = []
             };
+        }
 
         var sceneCharacters = await characterRepository.GetBySceneAsync(activeScene.ID, cancellationToken);
 
@@ -46,25 +48,25 @@ public sealed class CharacterTransitionEvaluator
 
         var currentSet = new HashSet<string>(currentKeys);
 
-        var previousSet = previousKeys is not null
-                              ? new HashSet<string>(previousKeys)
-                              : [];
+        var previousSet = previousKeys is not null ?
+                              new HashSet<string>(previousKeys) :
+                              [];
 
         var enterDirectives = activeCharacters
                               .Where(c => !previousSet.Contains(c.ID.ToString()))
                               .SelectMany(c => c.EnterDirectives)
                               .ToList();
 
-        var exitDirectives = previousKeys is not null
-                                  ? await GetExitDirectivesAsync
-                                    (
-                                        sessionID,
-                                        activeScene.ID,
-                                        previousSet,
-                                        currentSet,
-                                        cancellationToken
-                                    )
-                                  : [];
+        var exitDirectives = previousKeys is not null ?
+                                 await GetExitDirectivesAsync
+                                 (
+                                     sessionID,
+                                     activeScene.ID,
+                                     previousSet,
+                                     currentSet,
+                                     cancellationToken
+                                 ) :
+                                 [];
 
         if (enterDirectives.Count > 0 || exitDirectives.Count > 0)
         {
@@ -96,7 +98,11 @@ public sealed class CharacterTransitionEvaluator
     {
         var exitedIDs = previousSet
                         .Except(currentSet)
-                        .Select(s => long.TryParse(s, out var id) ? id : 0)
+                        .Select
+                        (s => long.TryParse(s, out var id) ?
+                                  id :
+                                  0
+                        )
                         .Where(id => id > 0)
                         .ToList();
 

@@ -24,4 +24,3 @@ public record MemoryEntry
 
     public DateTime UpdatedAt { get; init; }
 }
-

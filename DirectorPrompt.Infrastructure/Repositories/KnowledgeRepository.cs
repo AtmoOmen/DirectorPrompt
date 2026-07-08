@@ -7,12 +7,12 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 public sealed class KnowledgeRepository : IKnowledgeRepository
 {
     private readonly SqliteConnectionFactory connectionFactory;
-    private readonly VectorTableManager    vectorTableManager;
+    private readonly VectorTableManager      vectorTableManager;
 
     public KnowledgeRepository(SqliteConnectionFactory connectionFactory, VectorTableManager vectorTableManager)
     {
-        this.connectionFactory   = connectionFactory;
-        this.vectorTableManager  = vectorTableManager;
+        this.connectionFactory  = connectionFactory;
+        this.vectorTableManager = vectorTableManager;
     }
 
     public async Task<KnowledgeEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
@@ -162,10 +162,10 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var projectID = await connection.QueryFirstOrDefaultAsync<long?>
-                         (
-                             "SELECT project_id FROM knowledge_entries WHERE id = @id",
-                             new { id }
-                         );
+                        (
+                            "SELECT project_id FROM knowledge_entries WHERE id = @id",
+                            new { id }
+                        );
 
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
@@ -378,11 +378,11 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
 
     public async Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
     (
-        long                projectID,
-        byte[]              queryVector,
-        int                 topK,
-        IReadOnlyList<long>? candidateIDs = null,
-        CancellationToken   cancellationToken = default
+        long                 projectID,
+        byte[]               queryVector,
+        int                  topK,
+        IReadOnlyList<long>? candidateIDs      = null,
+        CancellationToken    cancellationToken = default
     )
     {
         var tableName = VectorTableManager.GetKnowledgeTableName(projectID);
@@ -393,21 +393,21 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var sql = candidateIDs is { Count: > 0 } ?
-            $"""
-            SELECT entry_id AS EntryID, distance AS Distance
-            FROM "{tableName}"
-            WHERE embedding MATCH @queryVector
-              AND entry_id IN @candidateIDs
-            ORDER BY distance
-            LIMIT @topK
-            """ :
-            $"""
-            SELECT entry_id AS EntryID, distance AS Distance
-            FROM "{tableName}"
-            WHERE embedding MATCH @queryVector
-            ORDER BY distance
-            LIMIT @topK
-            """;
+                      $"""
+                       SELECT entry_id AS EntryID, distance AS Distance
+                       FROM "{tableName}"
+                       WHERE embedding MATCH @queryVector
+                         AND entry_id IN @candidateIDs
+                       ORDER BY distance
+                       LIMIT @topK
+                       """ :
+                      $"""
+                       SELECT entry_id AS EntryID, distance AS Distance
+                       FROM "{tableName}"
+                       WHERE embedding MATCH @queryVector
+                       ORDER BY distance
+                       LIMIT @topK
+                       """;
 
         var rows = await connection.QueryAsync<(long EntryID, float Distance)>
                    (
@@ -420,30 +420,30 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
 
     private sealed class KnowledgeEntryRow
     {
-        public long   ID         { get; set; }
-        public long   Project_ID { get; set; }
-        public string Title      { get; set; } = string.Empty;
-        public string Content    { get; set; } = string.Empty;
-        public string Tags       { get; set; } = "[]";
-        public long?  Group_ID   { get; set; }
-        public int    Active     { get; set; }
+        public long    ID           { get; set; }
+        public long    Project_ID   { get; set; }
+        public string  Title        { get; set; } = string.Empty;
+        public string  Content      { get; set; } = string.Empty;
+        public string  Tags         { get; set; } = "[]";
+        public long?   Group_ID     { get; set; }
+        public int     Active       { get; set; }
         public string? Content_Hash { get; set; }
-        public string Created_At { get; set; } = string.Empty;
-        public string Updated_At { get; set; } = string.Empty;
+        public string  Created_At   { get; set; } = string.Empty;
+        public string  Updated_At   { get; set; } = string.Empty;
 
         public KnowledgeEntry ToKnowledgeEntry() =>
             new()
             {
-                ID        = ID,
-                ProjectID = Project_ID,
-                Title     = Title,
-                Content   = Content,
-                Tags      = JsonHelper.DeserializeStringArray(Tags),
-                GroupID   = Group_ID,
-                Active    = Active != 0,
+                ID          = ID,
+                ProjectID   = Project_ID,
+                Title       = Title,
+                Content     = Content,
+                Tags        = JsonHelper.DeserializeStringArray(Tags),
+                GroupID     = Group_ID,
+                Active      = Active != 0,
                 ContentHash = Content_Hash,
-                CreatedAt = DateTime.Parse(Created_At),
-                UpdatedAt = DateTime.Parse(Updated_At)
+                CreatedAt   = DateTime.Parse(Created_At),
+                UpdatedAt   = DateTime.Parse(Updated_At)
             };
     }
 

@@ -1,7 +1,6 @@
 ﻿using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -24,7 +23,7 @@ public partial class MainWindow : FluentWindow
         InitializeComponent();
 
         viewModel.Dialog.Entries.CollectionChanged += OnDialogEntriesChanged;
-        Loaded += OnLoaded;
+        Loaded                                     += OnLoaded;
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e) =>
@@ -61,11 +60,11 @@ public partial class MainWindow : FluentWindow
     private void ScrollDialogToBottom() =>
         Dispatcher.BeginInvoke(DispatcherPriority.Background, DialogScrollViewer.ScrollToBottom);
 
-private void OnRollbackRound(object sender, RoutedEventArgs e)
-{
-    if (sender is MenuItem { Tag: DialogEntryViewModel })
-        _ = viewModel.RollbackLastRoundCommand.ExecuteAsync(null);
-}
+    private void OnRollbackRound(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: DialogEntryViewModel })
+            _ = viewModel.RollbackLastRoundCommand.ExecuteAsync(null);
+    }
 
     private void OnRewriteRound(object sender, RoutedEventArgs e)
     {

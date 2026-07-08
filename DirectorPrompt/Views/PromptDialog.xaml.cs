@@ -49,10 +49,8 @@ public partial class PromptDialog : FluentWindow
         SecondaryButton.Content  = secondaryText;
     }
 
-    public static bool Confirm(Window owner, string title, string message, bool danger = false)
-    {
-        return Confirm(owner, title, message, Loc.Get("Common.Delete"), Loc.Get("Common.Cancel"), danger);
-    }
+    public static bool Confirm(Window owner, string title, string message, bool danger = false) =>
+        Confirm(owner, title, message, Loc.Get("Common.Delete"), Loc.Get("Common.Cancel"), danger);
 
     public static bool Confirm(Window owner, string title, string message, string primaryText, string secondaryText, bool danger = false)
     {
@@ -114,16 +112,16 @@ public partial class PromptDialog : FluentWindow
             Loc.Get("Common.Cancel"),
             ControlAppearance.Primary
         );
-        dialog.isInputMode              = true;
-        dialog.InputBox.Text            = defaultValue;
-        dialog.InputBox.PlaceholderText = prompt;
-        dialog.InputBox.Visibility      = Visibility.Visible;
-        dialog.InputBox.AcceptsReturn   = true;
-        dialog.InputBox.TextWrapping    = TextWrapping.Wrap;
-        dialog.InputBox.MinHeight       = 120;
-        dialog.InputBox.MaxHeight       = 300;
+        dialog.isInputMode                          = true;
+        dialog.InputBox.Text                        = defaultValue;
+        dialog.InputBox.PlaceholderText             = prompt;
+        dialog.InputBox.Visibility                  = Visibility.Visible;
+        dialog.InputBox.AcceptsReturn               = true;
+        dialog.InputBox.TextWrapping                = TextWrapping.Wrap;
+        dialog.InputBox.MinHeight                   = 120;
+        dialog.InputBox.MaxHeight                   = 300;
         dialog.InputBox.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-        dialog.MessageText.Visibility   = Visibility.Collapsed;
+        dialog.MessageText.Visibility               = Visibility.Collapsed;
         dialog.InputBox.Loaded += (_, _) =>
         {
             dialog.InputBox.Focus();
