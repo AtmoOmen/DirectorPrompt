@@ -1,5 +1,4 @@
 ﻿﻿using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls.Primitives;
@@ -16,7 +15,6 @@ namespace DirectorPrompt.Views;
 public partial class MainWindow : FluentWindow
 {
     private readonly MainViewModel viewModel;
-    private readonly HashSet<DialogEntryViewModel> subscribedEntries = [];
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -36,40 +34,10 @@ public partial class MainWindow : FluentWindow
 
     private void OnDialogEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems is not null)
-        {
-            foreach (DialogEntryViewModel entry in e.NewItems)
-            {
-                entry.PropertyChanged += OnEntryPropertyChanged;
-                subscribedEntries.Add(entry);
-            }
-        }
-        else if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems is not null)
-        {
-            foreach (DialogEntryViewModel entry in e.OldItems)
-            {
-                entry.PropertyChanged -= OnEntryPropertyChanged;
-                subscribedEntries.Remove(entry);
-            }
-        }
-        else if (e.Action == NotifyCollectionChangedAction.Reset)
-        {
-            foreach (var entry in subscribedEntries)
-                entry.PropertyChanged -= OnEntryPropertyChanged;
-            subscribedEntries.Clear();
+        if (e.Action == NotifyCollectionChangedAction.Reset)
             return;
-        }
 
         ScrollDialogToBottom();
-    }
-
-    private void OnEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(DialogEntryViewModel.Document))
-            return;
-
-        if (sender is DialogEntryViewModel entry && ReferenceEquals(entry, viewModel.Dialog.Entries.LastOrDefault()))
-            ScrollDialogToBottom();
     }
 
     private void ScrollDialogToBottom() =>
