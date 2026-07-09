@@ -11,8 +11,8 @@ internal class UpdateOrchestrator
 
     public async Task<(bool ShouldContinue, string? ErrorMessage)> RunAsync
     (
-        Action<string>?            onStatus          = null,
-        Action<int>?               onProgress         = null,
+        Action<string>?             onStatus         = null,
+        Action<int>?                onProgress       = null,
         Func<string, string, Task>? onChangelogReady = null
     )
     {

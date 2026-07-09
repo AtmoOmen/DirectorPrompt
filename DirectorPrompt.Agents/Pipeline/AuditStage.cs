@@ -1,4 +1,3 @@
-using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
@@ -9,14 +8,15 @@ namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class AuditStage
 (
-    IChatClientFactory chatClientFactory,
-    SceneTools         sceneTools,
-    KnowledgeTools     knowledgeTools,
-    StateTools         stateTools,
-    MemoryTools        memoryTools,
-    CharacterTools     characterTools,
-    GenerationStage    generationStage,
-    OrchestratorConfig orchestratorConfig
+    IChatClientFactory  chatClientFactory,
+    AgentConfigResolver agentConfigResolver,
+    SceneTools          sceneTools,
+    KnowledgeTools      knowledgeTools,
+    StateTools          stateTools,
+    MemoryTools         memoryTools,
+    CharacterTools      characterTools,
+    GenerationStage     generationStage,
+    OrchestratorConfig  orchestratorConfig
 )
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
@@ -30,11 +30,11 @@ public sealed class AuditStage
             return;
         }
 
-        var auditAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Audit);
+        var resolved = agentConfigResolver.Resolve(AgentTaskType.Audit);
 
-        if (auditAgent is null)
+        if (resolved is null)
         {
-            Log.Information("AuditStage: Audit Agent 未启用, 跳过");
+            Log.Information("AuditStage: Audit Agent 未配置, 跳过");
             context.AuditPassed = true;
             return;
         }
@@ -45,7 +45,7 @@ public sealed class AuditStage
         {
             Log.Information("审计循环: 尝试={Attempt}/{MaxRetries}", attempt, maxRetries);
 
-            await AuditAsync(context, auditAgent, auditConfig, cancellationToken);
+            await AuditAsync(context, resolved, auditConfig, cancellationToken);
             context.AuditRetryCount = attempt;
 
             if (context.AuditPassed)
@@ -77,7 +77,7 @@ public sealed class AuditStage
     private async Task AuditAsync
     (
         PipelineContext   context,
-        AgentDefinition   auditAgent,
+        ResolvedAgentTask resolved,
         AuditConfig       auditConfig,
         CancellationToken cancellationToken
     )
@@ -89,7 +89,7 @@ public sealed class AuditStage
         Log.Information
         (
             "AuditStage 开始: 模型={Model}, 维度数={DimensionCount}, 维度=[{Dimensions}], 叙事长度={NarrativeLen}",
-            auditAgent.ModelConfig.ModelName,
+            resolved.ModelConfig.ModelName,
             dimensions.Count,
             string.Join(", ", dimensions),
             context.NarrativeOutput?.Length ?? 0
@@ -109,20 +109,16 @@ public sealed class AuditStage
         var dimensionList = string.Join(", ", dimensions);
         var userContent   = $"{context.NarrativeOutput ?? string.Empty}\n\n---\n\n请审计以下维度: {dimensionList}";
 
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, AuditAgentPrompt.SYSTEM),
-            new(ChatRole.User, userContent)
-        };
+        var messages = DirectiveProcessingStage.BuildMessages(resolved.SystemPrompt, resolved.ModelPrompt, userContent);
 
         var options = new ChatOptions
         {
-            Temperature = auditAgent.Temperature,
-            ModelId     = auditAgent.ModelConfig.ModelName,
+            Temperature = resolved.ModelConfig.Temperature,
+            ModelId     = resolved.ModelConfig.ModelName,
             Tools       = [.. tools]
         };
 
-        var client = chatClientFactory.Create(auditAgent.ModelConfig);
+        var client = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
 
         await client.GetResponseAsync(messages, options, cancellationToken);
 

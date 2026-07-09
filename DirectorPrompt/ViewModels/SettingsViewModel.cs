@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Domain.Configurations;
+using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Localization;
@@ -27,7 +28,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string SelectedLanguage { get; set; } = string.Empty;
 
-    public ObservableCollection<AgentSettingViewModel> Agents { get; } = [];
+    public ObservableCollection<ProviderSettingViewModel> Providers { get; } = [];
+
+    public ObservableCollection<ModelSettingViewModel> Models { get; } = [];
+
+    public ObservableCollection<PromptSettingViewModel> Prompts { get; } = [];
+
+    public ObservableCollection<AgentTaskSettingViewModel> AgentTasks { get; } = [];
 
     public EmbeddingSettingViewModel Embedding { get; } = new();
 
@@ -50,47 +57,120 @@ public sealed partial class SettingsViewModel : ObservableObject
         LoadSettings(userSettings);
     }
 
-    private void LoadSettings(UserSettings userSettings)
+    private void LoadSettings(UserSettings settings)
     {
-        SelectedLanguage = userSettings.Localization.Language;
+        SelectedLanguage = settings.Localization.Language;
 
         if (string.IsNullOrEmpty(SelectedLanguage))
             SelectedLanguage = localizationService.CurrentLanguage;
 
-        LoadAgents(userSettings.Orchestrator.Agents);
-        LoadEmbeddingConfig(userSettings.EmbeddingConfig);
+        LoadProviders(settings.Orchestrator.Providers);
+        LoadModels(settings.Orchestrator.Models);
+        LoadPrompts(settings.Orchestrator.Prompts);
+        LoadAgentTasks(settings.Orchestrator.AgentTasks);
+        LoadEmbeddingConfig(settings.EmbeddingConfig);
     }
 
-    private void LoadEmbeddingConfig(ModelConfig config)
+    private void LoadProviders(List<ProviderConfig> configs)
     {
-        Embedding.Provider  = config.Provider;
-        Embedding.Endpoint  = config.Endpoint;
-        Embedding.APIKey    = config.APIKey ?? string.Empty;
-        Embedding.ModelName = config.ModelName;
-    }
+        Providers.Clear();
 
-    private void LoadAgents(List<AgentDefinition> agents)
-    {
-        if (agents is not { Count: > 0 })
-            return;
-
-        foreach (var agent in agents)
+        foreach (var config in configs)
         {
-            Agents.Add
+            Providers.Add
             (
-                new()
+                new ProviderSettingViewModel
                 {
-                    Role         = agent.Role,
-                    Provider     = agent.ModelConfig.Provider,
-                    Endpoint     = agent.ModelConfig.Endpoint,
-                    APIKey       = agent.ModelConfig.APIKey ?? string.Empty,
-                    ModelName    = agent.ModelConfig.ModelName,
-                    SystemPrompt = agent.SystemPrompt,
-                    Temperature  = agent.Temperature,
-                    Tools        = agent.Tools
+                    ID          = config.ID,
+                    DisplayName = config.DisplayName,
+                    Provider    = config.Provider,
+                    Endpoint    = config.Endpoint,
+                    APIKey      = config.APIKey ?? string.Empty
                 }
             );
         }
+    }
+
+    private void LoadModels(List<ModelConfig> configs)
+    {
+        Models.Clear();
+
+        foreach (var config in configs)
+        {
+            Models.Add
+            (
+                new ModelSettingViewModel
+                {
+                    ID              = config.ID,
+                    DisplayName     = config.DisplayName,
+                    ProviderID      = config.ProviderID,
+                    ModelName       = config.ModelName,
+                    Temperature     = config.Temperature,
+                    ReasoningEffort = config.ReasoningEffort,
+                    ExtraParameters = config.ExtraParameters ?? string.Empty,
+                    PromptID        = config.PromptID
+                }
+            );
+        }
+    }
+
+    private void LoadPrompts(List<PromptConfig> configs)
+    {
+        Prompts.Clear();
+
+        foreach (var config in configs)
+        {
+            Prompts.Add
+            (
+                new PromptSettingViewModel
+                {
+                    ID          = config.ID,
+                    DisplayName = config.DisplayName,
+                    Content     = config.Content
+                }
+            );
+        }
+    }
+
+    private void LoadAgentTasks(List<AgentTaskConfig> configs)
+    {
+        AgentTasks.Clear();
+
+        var existing = configs.ToDictionary(c => c.TaskType);
+
+        foreach (var taskType in Enum.GetValues<AgentTaskType>())
+        {
+            if (existing.TryGetValue(taskType, out var config))
+            {
+                AgentTasks.Add
+                (
+                    new AgentTaskSettingViewModel
+                    {
+                        TaskType      = taskType,
+                        ModelConfigID = config.ModelConfigID,
+                        PromptID      = config.PromptID,
+                        Enabled       = config.Enabled
+                    }
+                );
+            }
+            else
+            {
+                AgentTasks.Add
+                (
+                    new AgentTaskSettingViewModel
+                    {
+                        TaskType = taskType,
+                        Enabled  = false
+                    }
+                );
+            }
+        }
+    }
+
+    private void LoadEmbeddingConfig(EmbeddingConfig config)
+    {
+        Embedding.ProviderID = config.ProviderID;
+        Embedding.ModelName  = config.ModelName;
     }
 
     partial void OnSelectedLanguageChanged(string value)
@@ -103,38 +183,105 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void AddProvider() =>
+        Providers.Add(new ProviderSettingViewModel { DisplayName = "新提供商" });
+
+    [RelayCommand]
+    private void RemoveProvider(ProviderSettingViewModel? provider)
+    {
+        if (provider is not null)
+            Providers.Remove(provider);
+    }
+
+    [RelayCommand]
+    private void AddModel() =>
+        Models.Add(new ModelSettingViewModel { DisplayName = "新模型" });
+
+    [RelayCommand]
+    private void RemoveModel(ModelSettingViewModel? model)
+    {
+        if (model is not null)
+            Models.Remove(model);
+    }
+
+    [RelayCommand]
+    private void AddPrompt() =>
+        Prompts.Add(new PromptSettingViewModel { DisplayName = "新提示词" });
+
+    [RelayCommand]
+    private void RemovePrompt(PromptSettingViewModel? prompt)
+    {
+        if (prompt is not null)
+            Prompts.Remove(prompt);
+    }
+
+    [RelayCommand]
     private async Task SaveAsync()
     {
         IsSaving = true;
 
         try
         {
-            var agents = Agents.Select
-            (a => new AgentDefinition
+            var providers = Providers.Select
+            (p => new ProviderConfig
                 {
-                    Role = a.Role,
-                    ModelConfig = new ModelConfig
-                    {
-                        Provider  = a.Provider,
-                        Endpoint  = a.Endpoint,
-                        APIKey    = a.APIKey,
-                        ModelName = a.ModelName
-                    },
-                    SystemPrompt = a.SystemPrompt,
-                    Temperature  = a.Temperature,
-                    Tools        = a.Tools
+                    ID          = p.ID,
+                    DisplayName = p.DisplayName,
+                    Provider    = p.Provider,
+                    Endpoint    = p.Endpoint,
+                    APIKey      = p.APIKey
                 }
             ).ToList();
 
-            userSettings.Orchestrator.Agents = agents;
-            orchestratorConfig.Agents        = agents;
+            var models = Models.Select
+            (m => new ModelConfig
+                {
+                    ID              = m.ID,
+                    DisplayName     = m.DisplayName,
+                    ProviderID      = m.ProviderID,
+                    ModelName       = m.ModelName,
+                    Temperature     = m.Temperature,
+                    ReasoningEffort = m.ReasoningEffort,
+                    ExtraParameters = string.IsNullOrWhiteSpace(m.ExtraParameters) ?
+                                          null :
+                                          m.ExtraParameters,
+                    PromptID = m.PromptID
+                }
+            ).ToList();
 
-            userSettings.EmbeddingConfig = new ModelConfig
+            var prompts = Prompts.Select
+            (p => new PromptConfig
+                {
+                    ID          = p.ID,
+                    DisplayName = p.DisplayName,
+                    Content     = p.Content
+                }
+            ).ToList();
+
+            var tasks = AgentTasks.Select
+            (t => new AgentTaskConfig
+                {
+                    TaskType      = t.TaskType,
+                    ModelConfigID = t.ModelConfigID,
+                    PromptID      = t.PromptID,
+                    Enabled       = t.Enabled
+                }
+            ).ToList();
+
+            userSettings.Orchestrator.Providers  = providers;
+            userSettings.Orchestrator.Models     = models;
+            userSettings.Orchestrator.Prompts    = prompts;
+            userSettings.Orchestrator.AgentTasks = tasks;
+
+            orchestratorConfig.Providers  = providers;
+            orchestratorConfig.Models     = models;
+            orchestratorConfig.Prompts    = prompts;
+            orchestratorConfig.AgentTasks = tasks;
+
+            userSettings.EmbeddingConfig = new EmbeddingConfig
             {
-                Provider  = Embedding.Provider,
-                Endpoint  = Embedding.Endpoint,
-                APIKey    = Embedding.APIKey,
-                ModelName = Embedding.ModelName
+                ProviderID = Embedding.ProviderID,
+                ModelName  = Embedding.ModelName
             };
 
             userSettings.Localization.Language = SelectedLanguage;
@@ -155,78 +302,91 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task FetchAgentModelsAsync(AgentSettingViewModel? agent)
+    private async Task FetchModelsAsync(ModelSettingViewModel? model)
     {
-        if (agent is null)
+        if (model is null)
             return;
 
-        agent.IsFetchingModels  = true;
-        agent.ModelFetchMessage = Loc.Get("Settings.FetchingModels");
+        var provider = Providers.FirstOrDefault(p => p.ID == model.ProviderID);
+
+        if (provider is null)
+            return;
+
+        model.IsFetchingModels  = true;
+        model.ModelFetchMessage = Loc.Get("Settings.FetchingModels");
 
         try
         {
-            var models = await connectionTester.FetchModelsAsync(agent.Provider, agent.Endpoint, agent.APIKey);
+            var models = await connectionTester.FetchModelsAsync(provider.Provider, provider.Endpoint, provider.APIKey);
 
-            agent.AvailableModels.Clear();
-            foreach (var model in models)
-                agent.AvailableModels.Add(model);
+            model.AvailableModels.Clear();
+            foreach (var m in models)
+                model.AvailableModels.Add(m);
 
-            if (string.IsNullOrWhiteSpace(agent.ModelName) && agent.AvailableModels.Count > 0)
-                agent.ModelName = agent.AvailableModels[0];
+            if (string.IsNullOrWhiteSpace(model.ModelName) && model.AvailableModels.Count > 0)
+                model.ModelName = model.AvailableModels[0];
 
-            agent.ModelFetchMessage = Loc.Get("Settings.FetchModelsSuccess", agent.AvailableModels.Count);
+            model.ModelFetchMessage = Loc.Get("Settings.FetchModelsSuccess", model.AvailableModels.Count);
         }
         catch (Exception ex)
         {
-            agent.ModelFetchMessage = Loc.Get("Settings.FetchModelsFailed", ex.Message);
+            model.ModelFetchMessage = Loc.Get("Settings.FetchModelsFailed", ex.Message);
         }
         finally
         {
-            agent.IsFetchingModels = false;
+            model.IsFetchingModels = false;
         }
     }
 
     [RelayCommand]
-    private async Task TestAgentConnectionAsync(AgentSettingViewModel? agent)
+    private async Task TestProviderConnectionAsync(ProviderSettingViewModel? provider)
     {
-        if (agent is null)
+        if (provider is null)
             return;
 
-        agent.IsTestingConnection = true;
-        agent.ConnectionSuccess   = null;
-        agent.ConnectionMessage   = Loc.Get("Settings.TestingConnection");
+        provider.IsTestingConnection = true;
+        provider.ConnectionSuccess   = null;
+        provider.ConnectionMessage   = Loc.Get("Settings.TestingConnection");
 
         try
         {
-            await connectionTester.TestChatAsync(agent.Provider, agent.Endpoint, agent.APIKey, agent.ModelName);
+            var firstModel = Models.FirstOrDefault(m => m.ProviderID == provider.ID);
+            var modelName  = firstModel?.ModelName ?? "gpt-4o-mini";
 
-            agent.ConnectionSuccess = true;
-            agent.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", agent.ModelName);
+            await connectionTester.TestChatAsync(provider.Provider, provider.Endpoint, provider.APIKey, modelName);
+
+            provider.ConnectionSuccess = true;
+            provider.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", provider.DisplayName);
         }
         catch (Exception ex)
         {
-            agent.ConnectionSuccess = false;
-            agent.ConnectionMessage = Loc.Get("Settings.ConnectionFailed", ex.Message);
+            provider.ConnectionSuccess = false;
+            provider.ConnectionMessage = Loc.Get("Settings.ConnectionFailed", ex.Message);
         }
         finally
         {
-            agent.IsTestingConnection = false;
+            provider.IsTestingConnection = false;
         }
     }
 
     [RelayCommand]
     private async Task FetchEmbeddingModelsAsync()
     {
+        var provider = Providers.FirstOrDefault(p => p.ID == Embedding.ProviderID);
+
+        if (provider is null)
+            return;
+
         Embedding.IsFetchingModels  = true;
         Embedding.ModelFetchMessage = Loc.Get("Settings.FetchingModels");
 
         try
         {
-            var models = await connectionTester.FetchModelsAsync(Embedding.Provider, Embedding.Endpoint, Embedding.APIKey);
+            var models = await connectionTester.FetchModelsAsync(provider.Provider, provider.Endpoint, provider.APIKey);
 
             Embedding.AvailableModels.Clear();
-            foreach (var model in models)
-                Embedding.AvailableModels.Add(model);
+            foreach (var m in models)
+                Embedding.AvailableModels.Add(m);
 
             if (string.IsNullOrWhiteSpace(Embedding.ModelName) && Embedding.AvailableModels.Count > 0)
                 Embedding.ModelName = Embedding.AvailableModels[0];
@@ -246,13 +406,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task TestEmbeddingConnectionAsync()
     {
+        var provider = Providers.FirstOrDefault(p => p.ID == Embedding.ProviderID);
+
+        if (provider is null)
+            return;
+
         Embedding.IsTestingConnection = true;
         Embedding.ConnectionSuccess   = null;
         Embedding.ConnectionMessage   = Loc.Get("Settings.TestingConnection");
 
         try
         {
-            await connectionTester.TestEmbeddingAsync(Embedding.Provider, Embedding.Endpoint, Embedding.APIKey, Embedding.ModelName);
+            await connectionTester.TestEmbeddingAsync(provider.Provider, provider.Endpoint, provider.APIKey, Embedding.ModelName);
 
             Embedding.ConnectionSuccess = true;
             Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", Embedding.ModelName);

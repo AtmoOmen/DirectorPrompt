@@ -12,21 +12,22 @@ namespace DirectorPrompt.Agents;
 
 public sealed class Orchestrator
 (
-    IProjectRepository           projectRepository,
-    ISessionRepository           sessionRepository,
-    IEventRepository             eventRepository,
-    ISceneRepository             sceneRepository,
-    IDirectiveRepository         directiveRepository,
-    IRoundChangeRepository       roundChangeRepository,
-    IStateRepository             stateRepository,
-    ISystemStateTransformer      systemStateTransformer,
-    PhaseEvaluator               phaseEvaluator,
-    DirectiveProcessingStage     directiveProcessingStage,
-    RetrievalStage               retrievalStage,
-    GenerationStage              generationStage,
-    AuditStage                   auditStage,
-    PostProcessingStage          postProcessingStage,
-    UserSettings                 userSettings
+    IProjectRepository       projectRepository,
+    ISessionRepository       sessionRepository,
+    IEventRepository         eventRepository,
+    ISceneRepository         sceneRepository,
+    IDirectiveRepository     directiveRepository,
+    IRoundChangeRepository   roundChangeRepository,
+    IStateRepository         stateRepository,
+    ISystemStateTransformer  systemStateTransformer,
+    PhaseEvaluator           phaseEvaluator,
+    DirectiveProcessingStage directiveProcessingStage,
+    RetrievalStage           retrievalStage,
+    GenerationStage          generationStage,
+    AuditStage               auditStage,
+    PostProcessingStage      postProcessingStage,
+    AgentConfigResolver      agentConfigResolver,
+    UserSettings             userSettings
 )
 {
     public async Task<NarrationResult> ProcessBatchAsync
@@ -68,7 +69,7 @@ public sealed class Orchestrator
             foreach (var d in batch.Directives)
                 Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
 
-            var embeddingConfig = userSettings.EmbeddingConfig;
+            var embeddingConfig = ResolveEmbeddingConfig();
 
             var transitionResults = await EvaluateTransitionsAsync(batch.ProjectID, sessionID, roundID, cancellationToken);
 
@@ -197,7 +198,7 @@ public sealed class Orchestrator
 
         var timelinePosition = activeScene.TimelinePosition;
         var history          = await BuildHistoryAsync(sessionID, tempRoundID, cancellationToken);
-        var embeddingConfig = userSettings.EmbeddingConfig;
+        var embeddingConfig  = ResolveEmbeddingConfig();
 
         Log.Information
         (
@@ -343,6 +344,16 @@ public sealed class Orchestrator
         Log.Information("拒绝修正: 对话={SessionID}, 临时轮次={TempRoundID}", sessionID, tempRoundID);
         await DeleteRoundAsync(sessionID, tempRoundID, cancellationToken);
         Log.Information("修正已拒绝, 临时轮次 {TempRoundID} 已删除", tempRoundID);
+    }
+
+    private ResolvedEmbeddingConfig ResolveEmbeddingConfig()
+    {
+        var resolved = agentConfigResolver.ResolveEmbedding(userSettings.EmbeddingConfig);
+
+        if (resolved is null)
+            throw new InvalidOperationException("向量模型配置无效: 未找到对应的提供商");
+
+        return resolved;
     }
 
     private async Task<NarrationResult> RunPipelineAsync

@@ -9,7 +9,10 @@ using Microsoft.Data.Sqlite;
 
 namespace DirectorPrompt.Infrastructure;
 
-public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory) : IProjectPortService
+public sealed class ProjectPortService
+(
+    SqliteConnectionFactory connectionFactory
+) : IProjectPortService
 {
     private const string PACKAGE_FORMAT = "DirectorPrompt-Project-Package";
 
@@ -41,13 +44,13 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
         var packageData = new ProjectPackageData
         {
-            Project               = project,
-            CharacterCategories   = categories,
-            StateAttributes       = attributes,
-            KnowledgeGroups       = groups,
-            KnowledgeEntries      = entries.Select(e => e with { ContentHash = null }).ToList(),
-            KnowledgeEntityIndex  = entityIndex,
-            ProjectCharacters     = characters
+            Project              = project,
+            CharacterCategories  = categories,
+            StateAttributes      = attributes,
+            KnowledgeGroups      = groups,
+            KnowledgeEntries     = entries.Select(e => e with { ContentHash = null }).ToList(),
+            KnowledgeEntityIndex = entityIndex,
+            ProjectCharacters    = characters
         };
 
         var manifest = new PackageManifest
@@ -75,15 +78,14 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
     {
         using var zip = ZipFile.OpenRead(filePath);
 
-        var manifestEntry = zip.GetEntry("manifest.json")
-            ?? throw new InvalidDataException("无效的项目包: 缺少 manifest.json");
+        var manifestEntry = zip.GetEntry("manifest.json") ?? throw new InvalidDataException("无效的项目包: 缺少 manifest.json");
 
         PackageManifest manifest;
 
         using (var manifestStream = manifestEntry.Open())
         {
-            manifest = await JsonSerializer.DeserializeAsync<PackageManifest>(manifestStream, JSONOptions, cancellationToken)
-                       ?? throw new InvalidDataException("无效的项目包: manifest.json 解析失败");
+            manifest = await JsonSerializer.DeserializeAsync<PackageManifest>(manifestStream, JSONOptions, cancellationToken) ??
+                       throw new InvalidDataException("无效的项目包: manifest.json 解析失败");
         }
 
         if (manifest.Format != PACKAGE_FORMAT)
@@ -92,15 +94,14 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
         if (manifest.Version > PACKAGE_VERSION)
             throw new InvalidDataException($"项目包版本过高: v{manifest.Version}, 当前支持: v{PACKAGE_VERSION}");
 
-        var dataEntry = zip.GetEntry("project.json")
-            ?? throw new InvalidDataException("无效的项目包: 缺少 project.json");
+        var dataEntry = zip.GetEntry("project.json") ?? throw new InvalidDataException("无效的项目包: 缺少 project.json");
 
         ProjectPackageData data;
 
         using (var dataStream = dataEntry.Open())
         {
-            data = await JsonSerializer.DeserializeAsync<ProjectPackageData>(dataStream, JSONOptions, cancellationToken)
-                   ?? throw new InvalidDataException("无效的项目包: project.json 解析失败");
+            data = await JsonSerializer.DeserializeAsync<ProjectPackageData>(dataStream, JSONOptions, cancellationToken) ??
+                   throw new InvalidDataException("无效的项目包: project.json 解析失败");
         }
 
         if (data.Project is null)
@@ -115,13 +116,13 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
             var newProjectID = await InsertProjectAsync(connection, transaction, data.Project, now, cancellationToken);
 
             var categoryIDMap = await InsertCharacterCategoriesAsync
-            (
-                connection,
-                transaction,
-                data.CharacterCategories ?? [],
-                newProjectID,
-                cancellationToken
-            );
+                                (
+                                    connection,
+                                    transaction,
+                                    data.CharacterCategories ?? [],
+                                    newProjectID,
+                                    cancellationToken
+                                );
 
             await UpdateCategoryParentIDsAsync
             (
@@ -143,23 +144,23 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
             );
 
             var groupIDMap = await InsertKnowledgeGroupsAsync
-            (
-                connection,
-                transaction,
-                data.KnowledgeGroups ?? [],
-                newProjectID,
-                cancellationToken
-            );
+                             (
+                                 connection,
+                                 transaction,
+                                 data.KnowledgeGroups ?? [],
+                                 newProjectID,
+                                 cancellationToken
+                             );
 
             var entryIDMap = await InsertKnowledgeEntriesAsync
-            (
-                connection,
-                transaction,
-                data.KnowledgeEntries ?? [],
-                newProjectID,
-                groupIDMap,
-                cancellationToken
-            );
+                             (
+                                 connection,
+                                 transaction,
+                                 data.KnowledgeEntries ?? [],
+                                 newProjectID,
+                                 groupIDMap,
+                                 cancellationToken
+                             );
 
             await InsertKnowledgeEntityIndexAsync
             (
@@ -186,8 +187,8 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
             {
                 ProjectID           = newProjectID,
                 ProjectName         = data.Project.Name,
-                KnowledgeEntryCount = data.KnowledgeEntries?.Count ?? 0,
-                StateAttributeCount = data.StateAttributes?.Count ?? 0,
+                KnowledgeEntryCount = data.KnowledgeEntries?.Count  ?? 0,
+                StateAttributeCount = data.StateAttributes?.Count   ?? 0,
                 CharacterCount      = data.ProjectCharacters?.Count ?? 0
             };
         }
@@ -297,8 +298,7 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
                    );
 
         return rows.Select
-                   (
-                       r => new KnowledgeEntityIndex
+                   (r => new KnowledgeEntityIndex
                        {
                            EntryID    = (long)r.EntryID,
                            EntityName = (string)r.EntityName
@@ -358,11 +358,11 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private static async Task<Dictionary<long, long>> InsertCharacterCategoriesAsync
     (
-        SqliteConnection  connection,
-        SqliteTransaction transaction,
+        SqliteConnection        connection,
+        SqliteTransaction       transaction,
         List<CharacterCategory> categories,
-        long              newProjectID,
-        CancellationToken cancellationToken
+        long                    newProjectID,
+        CancellationToken       cancellationToken
     )
     {
         var idMap = new Dictionary<long, long>();
@@ -394,11 +394,11 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private static async Task UpdateCategoryParentIDsAsync
     (
-        SqliteConnection  connection,
-        SqliteTransaction transaction,
+        SqliteConnection        connection,
+        SqliteTransaction       transaction,
         List<CharacterCategory> categories,
         Dictionary<long, long>  categoryIDMap,
-        CancellationToken cancellationToken
+        CancellationToken       cancellationToken
     )
     {
         foreach (var category in categories)
@@ -426,20 +426,19 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private static async Task InsertStateAttributesAsync
     (
-        SqliteConnection  connection,
-        SqliteTransaction transaction,
-        List<StateAttribute>    attributes,
-        long                    newProjectID,
-        Dictionary<long, long>  categoryIDMap,
-        CancellationToken       cancellationToken
+        SqliteConnection       connection,
+        SqliteTransaction      transaction,
+        List<StateAttribute>   attributes,
+        long                   newProjectID,
+        Dictionary<long, long> categoryIDMap,
+        CancellationToken      cancellationToken
     )
     {
         foreach (var attr in attributes)
         {
-            var mappedCategoryID = attr.CategoryID.HasValue
-                                   && categoryIDMap.TryGetValue(attr.CategoryID.Value, out var newCatID)
-                                ? (long?)newCatID
-                                : null;
+            var mappedCategoryID = attr.CategoryID.HasValue && categoryIDMap.TryGetValue(attr.CategoryID.Value, out var newCatID) ?
+                                       (long?)newCatID :
+                                       null;
 
             await connection.ExecuteAsync
             (
@@ -465,11 +464,11 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private static async Task<Dictionary<long, long>> InsertKnowledgeGroupsAsync
     (
-        SqliteConnection  connection,
-        SqliteTransaction transaction,
-        List<KnowledgeGroup>    groups,
-        long                    newProjectID,
-        CancellationToken       cancellationToken
+        SqliteConnection     connection,
+        SqliteTransaction    transaction,
+        List<KnowledgeGroup> groups,
+        long                 newProjectID,
+        CancellationToken    cancellationToken
     )
     {
         var idMap = new Dictionary<long, long>();
@@ -488,7 +487,9 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
                              projectID   = newProjectID,
                              name        = group.Name,
                              description = group.Description,
-                             active      = group.Active ? 1 : 0
+                             active = group.Active ?
+                                          1 :
+                                          0
                          },
                          transaction
                      );
@@ -501,22 +502,21 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private static async Task<Dictionary<long, long>> InsertKnowledgeEntriesAsync
     (
-        SqliteConnection  connection,
-        SqliteTransaction transaction,
-        List<KnowledgeEntry>    entries,
-        long                    newProjectID,
-        Dictionary<long, long>  groupIDMap,
-        CancellationToken       cancellationToken
+        SqliteConnection       connection,
+        SqliteTransaction      transaction,
+        List<KnowledgeEntry>   entries,
+        long                   newProjectID,
+        Dictionary<long, long> groupIDMap,
+        CancellationToken      cancellationToken
     )
     {
         var idMap = new Dictionary<long, long>();
 
         foreach (var entry in entries)
         {
-            var mappedGroupID = entry.GroupID.HasValue
-                                && groupIDMap.TryGetValue(entry.GroupID.Value, out var newGroupID)
-                             ? (long?)newGroupID
-                             : null;
+            var mappedGroupID = entry.GroupID.HasValue && groupIDMap.TryGetValue(entry.GroupID.Value, out var newGroupID) ?
+                                    (long?)newGroupID :
+                                    null;
 
             var id = await connection.ExecuteScalarAsync<long>
                      (
@@ -532,7 +532,9 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
                              content   = entry.Content,
                              tags      = JsonHelper.Serialize(entry.Tags),
                              groupID   = mappedGroupID,
-                             active    = entry.Active ? 1 : 0,
+                             active = entry.Active ?
+                                          1 :
+                                          0,
                              createdAt = entry.CreatedAt.ToString("O"),
                              updatedAt = entry.UpdatedAt.ToString("O")
                          },
@@ -547,8 +549,8 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private static async Task InsertKnowledgeEntityIndexAsync
     (
-        SqliteConnection  connection,
-        SqliteTransaction transaction,
+        SqliteConnection           connection,
+        SqliteTransaction          transaction,
         List<KnowledgeEntityIndex> entityIndex,
         Dictionary<long, long>     entryIDMap,
         CancellationToken          cancellationToken
@@ -577,12 +579,12 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private static async Task InsertProjectCharactersAsync
     (
-        SqliteConnection  connection,
-        SqliteTransaction transaction,
-        List<Character>         characters,
-        long                    newProjectID,
-        Dictionary<long, long>  categoryIDMap,
-        CancellationToken       cancellationToken
+        SqliteConnection       connection,
+        SqliteTransaction      transaction,
+        List<Character>        characters,
+        long                   newProjectID,
+        Dictionary<long, long> categoryIDMap,
+        CancellationToken      cancellationToken
     )
     {
         foreach (var character in characters)
@@ -615,58 +617,60 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
         var result = new long[ids.Length];
 
         for (var i = 0; i < ids.Length; i++)
-            result[i] = idMap.TryGetValue(ids[i], out var newID) ? newID : 0;
+            result[i] = idMap.TryGetValue(ids[i], out var newID) ?
+                            newID :
+                            0;
 
         return result;
     }
 
     private sealed class PackageManifest
     {
-        public string   Format      { get; set; } = string.Empty;
+        public string Format { get; set; } = string.Empty;
 
-        public int      Version     { get; set; }
+        public int Version { get; set; }
 
-        public DateTime ExportedAt  { get; set; }
+        public DateTime ExportedAt { get; set; }
 
-        public string   ProjectName { get; set; } = string.Empty;
+        public string ProjectName { get; set; } = string.Empty;
     }
 
     private sealed class ProjectPackageData
     {
-        public Project?                  Project              { get; set; }
+        public Project? Project { get; set; }
 
-        public List<CharacterCategory>   CharacterCategories  { get; set; } = [];
+        public List<CharacterCategory> CharacterCategories { get; set; } = [];
 
-        public List<StateAttribute>      StateAttributes      { get; set; } = [];
+        public List<StateAttribute> StateAttributes { get; set; } = [];
 
-        public List<KnowledgeGroup>      KnowledgeGroups      { get; set; } = [];
+        public List<KnowledgeGroup> KnowledgeGroups { get; set; } = [];
 
-        public List<KnowledgeEntry>      KnowledgeEntries     { get; set; } = [];
+        public List<KnowledgeEntry> KnowledgeEntries { get; set; } = [];
 
         public List<KnowledgeEntityIndex> KnowledgeEntityIndex { get; set; } = [];
 
-        public List<Character>           ProjectCharacters    { get; set; } = [];
+        public List<Character> ProjectCharacters { get; set; } = [];
     }
 
     private sealed class ProjectRow
     {
-        public long   ID              { get; set; }
+        public long ID { get; set; }
 
-        public string Name            { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
-        public string Description     { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
 
         public string Opening_Message { get; set; } = string.Empty;
 
-        public string Audit_Config    { get; set; } = "{}";
+        public string Audit_Config { get; set; } = "{}";
 
-        public string Memory_Config   { get; set; } = "{}";
+        public string Memory_Config { get; set; } = "{}";
 
         public string Knowledge_Config { get; set; } = "{}";
 
-        public string Created_At      { get; set; } = string.Empty;
+        public string Created_At { get; set; } = string.Empty;
 
-        public string Updated_At      { get; set; } = string.Empty;
+        public string Updated_At { get; set; } = string.Empty;
 
         public Project ToProject() =>
             new()
@@ -685,15 +689,15 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private sealed class CharacterCategoryRow
     {
-        public long    ID                  { get; set; }
+        public long ID { get; set; }
 
-        public long    Project_ID          { get; set; }
+        public long Project_ID { get; set; }
 
-        public string  Name                { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
-        public string? Description         { get; set; }
+        public string? Description { get; set; }
 
-        public string  Parent_Category_IDs { get; set; } = "[]";
+        public string Parent_Category_IDs { get; set; } = "[]";
 
         public CharacterCategory ToCharacterCategory() =>
             new()
@@ -708,23 +712,23 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private sealed class StateAttributeRow
     {
-        public long   ID           { get; set; }
+        public long ID { get; set; }
 
-        public long   Project_ID   { get; set; }
+        public long Project_ID { get; set; }
 
-        public string Name         { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         public string Display_Name { get; set; } = string.Empty;
 
-        public string Scope        { get; set; } = "global";
+        public string Scope { get; set; } = "global";
 
-        public long?  Category_ID  { get; set; }
+        public long? Category_ID { get; set; }
 
-        public string Value_Type   { get; set; } = "numeric";
+        public string Value_Type { get; set; } = "numeric";
 
-        public string Driver       { get; set; } = "narrative";
+        public string Driver { get; set; } = "narrative";
 
-        public string Config       { get; set; } = "{}";
+        public string Config { get; set; } = "{}";
 
         public StateAttribute ToStateAttribute() =>
             new()
@@ -733,8 +737,10 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
                 ProjectID   = Project_ID,
                 Name        = Name,
                 DisplayName = Display_Name,
-                Scope = Scope == "category" ? StateScope.Category : StateScope.Global,
-                CategoryID  = Category_ID,
+                Scope = Scope == "category" ?
+                            StateScope.Category :
+                            StateScope.Global,
+                CategoryID = Category_ID,
                 ValueType = Value_Type switch
                 {
                     "enum"      => StateValueType.Enum,
@@ -752,15 +758,15 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private sealed class KnowledgeGroupRow
     {
-        public long    ID          { get; set; }
+        public long ID { get; set; }
 
-        public long    Project_ID  { get; set; }
+        public long Project_ID { get; set; }
 
-        public string  Name        { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         public string? Description { get; set; }
 
-        public int     Active      { get; set; }
+        public int Active { get; set; }
 
         public KnowledgeGroup ToKnowledgeGroup() =>
             new()
@@ -775,25 +781,25 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private sealed class KnowledgeEntryRow
     {
-        public long    ID           { get; set; }
+        public long ID { get; set; }
 
-        public long    Project_ID   { get; set; }
+        public long Project_ID { get; set; }
 
-        public string  Title        { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
 
-        public string  Content      { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
 
-        public string  Tags         { get; set; } = "[]";
+        public string Tags { get; set; } = "[]";
 
-        public long?   Group_ID     { get; set; }
+        public long? Group_ID { get; set; }
 
-        public int     Active       { get; set; }
+        public int Active { get; set; }
 
         public string? Content_Hash { get; set; }
 
-        public string  Created_At   { get; set; } = string.Empty;
+        public string Created_At { get; set; } = string.Empty;
 
-        public string  Updated_At   { get; set; } = string.Empty;
+        public string Updated_At { get; set; } = string.Empty;
 
         public KnowledgeEntry ToKnowledgeEntry() =>
             new()
@@ -813,23 +819,23 @@ public sealed class ProjectPortService(SqliteConnectionFactory connectionFactory
 
     private sealed class CharacterRow
     {
-        public long   ID           { get; set; }
+        public long ID { get; set; }
 
-        public long   Project_ID   { get; set; }
+        public long Project_ID { get; set; }
 
-        public long?  Session_ID   { get; set; }
+        public long? Session_ID { get; set; }
 
-        public string Name         { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
-        public string Description  { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
 
         public string Category_IDs { get; set; } = "[]";
 
-        public string Status       { get; set; } = "active";
+        public string Status { get; set; } = "active";
 
-        public string Created_At   { get; set; } = string.Empty;
+        public string Created_At { get; set; } = string.Empty;
 
-        public string Updated_At   { get; set; } = string.Empty;
+        public string Updated_At { get; set; } = string.Empty;
 
         public Character ToCharacter() =>
             new()

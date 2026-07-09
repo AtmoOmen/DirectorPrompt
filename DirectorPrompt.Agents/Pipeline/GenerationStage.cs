@@ -1,7 +1,5 @@
 using System.Text;
-using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
-using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using Microsoft.Extensions.AI;
@@ -11,28 +9,28 @@ namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class GenerationStage
 (
-    IChatClientFactory chatClientFactory,
-    KnowledgeTools     knowledgeTools,
-    OrchestratorConfig orchestratorConfig
+    IChatClientFactory  chatClientFactory,
+    AgentConfigResolver agentConfigResolver,
+    KnowledgeTools      knowledgeTools
 )
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
-        var narratorAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Narrator);
+        var resolved = agentConfigResolver.Resolve(AgentTaskType.Narrator);
 
-        if (narratorAgent is null)
+        if (resolved is null)
             throw new InvalidOperationException("未配置 Narrator Agent");
 
         Log.Information
         (
             "GenerationStage 开始: 模型={Model}, 温度={Temperature}",
-            narratorAgent.ModelConfig.ModelName,
-            narratorAgent.Temperature
+            resolved.ModelConfig.ModelName,
+            resolved.ModelConfig.Temperature
         );
 
-        var client       = chatClientFactory.Create(narratorAgent.ModelConfig);
+        var client       = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
         var tools        = knowledgeTools.Create(context.ToolContext);
-        var systemPrompt = BuildSystemPrompt(context);
+        var systemPrompt = BuildSystemPrompt(context, resolved.SystemPrompt);
         var userMessage  = BuildNarratorInput(context);
 
         Log.Information
@@ -41,23 +39,12 @@ public sealed class GenerationStage
             userMessage
         );
 
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, systemPrompt)
-        };
-
-        foreach (var entry in context.History)
-        {
-            messages.Add(new ChatMessage(ChatRole.User,      entry.DirectorInput));
-            messages.Add(new ChatMessage(ChatRole.Assistant, entry.NarrativeOutput));
-        }
-
-        messages.Add(new ChatMessage(ChatRole.User, userMessage));
+        var messages = BuildMessages(systemPrompt, resolved.ModelPrompt, context);
 
         var options = new ChatOptions
         {
-            Temperature = narratorAgent.Temperature,
-            ModelId     = narratorAgent.ModelConfig.ModelName,
+            Temperature = resolved.ModelConfig.Temperature,
+            ModelId     = resolved.ModelConfig.ModelName,
             Tools       = [.. tools]
         };
 
@@ -152,19 +139,19 @@ public sealed class GenerationStage
         CancellationToken        cancellationToken = default
     )
     {
-        var narratorAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Narrator);
+        var resolved = agentConfigResolver.Resolve(AgentTaskType.Narrator);
 
-        if (narratorAgent is null)
+        if (resolved is null)
             throw new InvalidOperationException("未配置 Narrator Agent");
 
         Log.Information
         (
             "GenerationStage 重试: 模型={Model}, 违规数={ViolationCount}",
-            narratorAgent.ModelConfig.ModelName,
+            resolved.ModelConfig.ModelName,
             violations.Count
         );
 
-        var client = chatClientFactory.Create(narratorAgent.ModelConfig);
+        var client = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
         var tools  = knowledgeTools.Create(context.ToolContext);
 
         var sb = new StringBuilder();
@@ -183,18 +170,9 @@ public sealed class GenerationStage
         sb.AppendLine("## 原始输出:");
         sb.AppendLine(context.NarrativeOutput);
 
-        var systemPrompt = BuildSystemPrompt(context);
+        var systemPrompt = BuildSystemPrompt(context, resolved.SystemPrompt);
 
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, systemPrompt)
-        };
-
-        foreach (var entry in context.History)
-        {
-            messages.Add(new ChatMessage(ChatRole.User,      entry.DirectorInput));
-            messages.Add(new ChatMessage(ChatRole.Assistant, entry.NarrativeOutput));
-        }
+        var messages = BuildMessages(systemPrompt, resolved.ModelPrompt, context);
 
         messages.Add(new ChatMessage(ChatRole.User,      BuildNarratorInput(context)));
         messages.Add(new ChatMessage(ChatRole.Assistant, context.NarrativeOutput ?? string.Empty));
@@ -202,8 +180,8 @@ public sealed class GenerationStage
 
         var options = new ChatOptions
         {
-            Temperature = narratorAgent.Temperature,
-            ModelId     = narratorAgent.ModelConfig.ModelName,
+            Temperature = resolved.ModelConfig.Temperature,
+            ModelId     = resolved.ModelConfig.ModelName,
             Tools       = [.. tools]
         };
 
@@ -227,11 +205,29 @@ public sealed class GenerationStage
         Log.Information("Narrator 重试输出:\n{Narrative}", narrative);
     }
 
-    private static string BuildSystemPrompt(PipelineContext context)
+    private static List<ChatMessage> BuildMessages(string systemPrompt, string? modelPrompt, PipelineContext context)
+    {
+        var messages = new List<ChatMessage>();
+
+        if (context.History.Count == 0 && !string.IsNullOrEmpty(modelPrompt))
+            messages.Add(new ChatMessage(ChatRole.System, modelPrompt));
+
+        messages.Add(new ChatMessage(ChatRole.System, systemPrompt));
+
+        foreach (var entry in context.History)
+        {
+            messages.Add(new ChatMessage(ChatRole.User,      entry.DirectorInput));
+            messages.Add(new ChatMessage(ChatRole.Assistant, entry.NarrativeOutput));
+        }
+
+        return messages;
+    }
+
+    private static string BuildSystemPrompt(PipelineContext context, string basePrompt)
     {
         var sb = new StringBuilder();
 
-        sb.AppendLine(NarratorPrompt.SYSTEM);
+        sb.AppendLine(basePrompt);
 
         if (context.Project is not null)
         {

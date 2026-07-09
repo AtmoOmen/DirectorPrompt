@@ -52,9 +52,9 @@ public sealed partial class MemoryPanelItemViewModel : ObservableObject
 
     public void CommitEdit()
     {
-        Content    = EditingContent;
+        Content     = EditingContent;
         TagsDisplay = EditingTags;
-        IsEditing  = false;
+        IsEditing   = false;
     }
 }
 
@@ -71,10 +71,8 @@ public sealed partial class MemorySceneGroupViewModel : ObservableObject
 
     public ObservableCollection<MemoryPanelItemViewModel> Items { get; } = [];
 
-    public MemorySceneGroupViewModel()
-    {
+    public MemorySceneGroupViewModel() =>
         Items.CollectionChanged += (_, _) => ItemCount = Items.Count;
-    }
 }
 
 public sealed class MemoryPanelViewModel : ObservableObject

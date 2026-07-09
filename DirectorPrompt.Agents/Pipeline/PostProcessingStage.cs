@@ -1,7 +1,5 @@
 using System.Text;
-using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
-using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
@@ -12,10 +10,10 @@ namespace DirectorPrompt.Agents.Pipeline;
 public sealed class PostProcessingStage
 (
     IChatClientFactory   chatClientFactory,
+    AgentConfigResolver  agentConfigResolver,
     MemoryTools          memoryTools,
     StateTools           stateTools,
     CharacterTools       characterTools,
-    OrchestratorConfig   orchestratorConfig,
     IStateRepository     stateRepository,
     ICharacterRepository characterRepository,
     ISceneRepository     sceneRepository
@@ -23,23 +21,23 @@ public sealed class PostProcessingStage
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
-        var memoryAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Memory);
+        var resolved = agentConfigResolver.Resolve(AgentTaskType.MemoryUpdate);
 
-        if (memoryAgent is null)
+        if (resolved is null)
         {
-            Log.Debug("PostProcessingStage: Memory Agent 未启用, 跳过");
+            Log.Debug("PostProcessingStage: Memory Update Agent 未配置, 跳过");
             return;
         }
 
         Log.Information
         (
             "PostProcessingStage 开始: 模型={Model}",
-            memoryAgent.ModelConfig.ModelName
+            resolved.ModelConfig.ModelName
         );
 
         Log.Debug("后处理输入 (叙事文本):\n{Narrative}", context.NarrativeOutput ?? "(空)");
 
-        var client      = chatClientFactory.Create(memoryAgent.ModelConfig);
+        var client      = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
         var toolContext = context.ToolContext;
 
         var tools = new List<AIFunction>();
@@ -49,22 +47,20 @@ public sealed class PostProcessingStage
 
         var agentContext = await BuildAgentContextAsync(toolContext, cancellationToken);
 
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, MemorySubAgentPrompt.UPDATE),
-            new(ChatRole.User, $"{agentContext}\n\n---\n\n## 叙事文本\n{context.NarrativeOutput ?? string.Empty}")
-        };
+        var userContent = $"{agentContext}\n\n---\n\n## 叙事文本\n{context.NarrativeOutput ?? string.Empty}";
+
+        var messages = DirectiveProcessingStage.BuildMessages(resolved.SystemPrompt, resolved.ModelPrompt, userContent);
 
         var options = new ChatOptions
         {
-            Temperature = memoryAgent.Temperature,
-            ModelId     = memoryAgent.ModelConfig.ModelName,
+            Temperature = resolved.ModelConfig.Temperature,
+            ModelId     = resolved.ModelConfig.ModelName,
             Tools       = [.. tools]
         };
 
         await client.GetResponseAsync(messages, options, cancellationToken);
 
-        Log.Information("PostProcessingStage 完成: Memory Agent 已处理叙事文本");
+        Log.Information("PostProcessingStage 完成: Memory Update Agent 已处理叙事文本");
     }
 
     private async Task<string> BuildAgentContextAsync(ToolExecutionContext context, CancellationToken cancellationToken)

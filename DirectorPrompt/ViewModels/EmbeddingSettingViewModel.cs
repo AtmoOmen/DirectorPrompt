@@ -6,13 +6,7 @@ namespace DirectorPrompt.ViewModels;
 public sealed partial class EmbeddingSettingViewModel : ObservableObject
 {
     [ObservableProperty]
-    public partial string Provider { get; set; } = "openai";
-
-    [ObservableProperty]
-    public partial string Endpoint { get; set; } = string.Empty;
-
-    [ObservableProperty]
-    public partial string APIKey { get; set; } = string.Empty;
+    public partial string ProviderID { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string ModelName { get; set; } = "text-embedding-v4";

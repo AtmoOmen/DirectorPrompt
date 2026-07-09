@@ -21,7 +21,7 @@ public sealed class EmbeddingService : IEmbeddingService
         this.modelName = modelName;
     }
 
-    public EmbeddingService(ModelConfig config) : this(config.Provider, config.Endpoint, config.APIKey, config.ModelName)
+    public EmbeddingService(ResolvedEmbeddingConfig config) : this(config.Provider, config.Endpoint, config.APIKey, config.ModelName)
     {
     }
 
@@ -54,10 +54,18 @@ public sealed class EmbeddingService : IEmbeddingService
     {
         var normalizedProvider = provider.ToLowerInvariant();
 
+        var effectiveEndpoint = normalizedProvider switch
+        {
+            "ollama" => string.IsNullOrWhiteSpace(endpoint) ?
+                            "http://localhost:11434/v1" :
+                            endpoint,
+            _ => endpoint
+        };
+
         var openAIClient = normalizedProvider switch
         {
-            "openai" => CreateOpenAIClient(),
-            _        => throw new ArgumentException($"不支持的 Embedding Provider: {provider}")
+            "openai" or "ollama" or "custom" => CreateOpenAIClient(effectiveEndpoint),
+            _                                => throw new ArgumentException($"不支持的 Embedding Provider: {provider}")
         };
 
         var embeddingClient = openAIClient.GetEmbeddingClient(modelName);
@@ -65,7 +73,7 @@ public sealed class EmbeddingService : IEmbeddingService
         return embeddingClient.AsIEmbeddingGenerator();
     }
 
-    private OpenAIClient CreateOpenAIClient()
+    private OpenAIClient CreateOpenAIClient(string endpoint)
     {
         OpenAIClientOptions options = new();
 
@@ -87,5 +95,5 @@ public sealed class EmbeddingService : IEmbeddingService
 
 public sealed class EmbeddingServiceFactory : IEmbeddingServiceFactory
 {
-    public IEmbeddingService Create(ModelConfig config) => new EmbeddingService(config);
+    public IEmbeddingService Create(ResolvedEmbeddingConfig config) => new EmbeddingService(config);
 }

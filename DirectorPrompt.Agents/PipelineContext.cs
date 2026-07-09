@@ -55,7 +55,7 @@ public sealed class PipelineContext
         PhaseActivatedEntryIDs
     );
 
-    public required ModelConfig EmbeddingConfig { get; init; }
+    public required ResolvedEmbeddingConfig EmbeddingConfig { get; init; }
 
     public IReadOnlyList<long>? PhaseActivatedEntryIDs { get; set; }
 }

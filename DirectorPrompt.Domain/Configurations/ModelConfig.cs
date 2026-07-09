@@ -1,17 +1,22 @@
+using DirectorPrompt.Domain.Enums;
+
 namespace DirectorPrompt.Domain.Configurations;
 
 public record ModelConfig
 {
-    /// <summary>
-    ///     "openai" / "anthropic" / "ollama" / "custom"
-    /// </summary>
-    public string Provider { get; init; } = string.Empty;
+    public string ID { get; init; } = Guid.NewGuid().ToString("N");
 
-    public string Endpoint { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
 
-    public string? APIKey { get; init; }
+    public string ProviderID { get; init; } = string.Empty;
 
     public string ModelName { get; init; } = string.Empty;
 
-    public string Fingerprint => $"{Provider}|{Endpoint}|{ModelName}";
+    public float Temperature { get; init; } = 0.8f;
+
+    public ReasoningEffort ReasoningEffort { get; init; } = ReasoningEffort.None;
+
+    public string? ExtraParameters { get; init; }
+
+    public string? PromptID { get; init; }
 }

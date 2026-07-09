@@ -44,22 +44,22 @@ public sealed class ProjectRepository : IProjectRepository
 
         var id = await connection.ExecuteScalarAsync<long>
                  (
-                    """
-                    INSERT INTO projects (name, description, opening_message, audit_config, memory_config, knowledge_config, created_at, updated_at)
-                    VALUES (@name, @description, @openingMessage, @auditConfig, @memoryConfig, @knowledgeConfig, @createdAt, @updatedAt);
-                    SELECT last_insert_rowid();
-                    """,
-                    new
-                    {
-                        name            = project.Name,
-                        description     = project.Description,
-                        openingMessage  = project.OpeningMessage,
-                        auditConfig     = project.AuditConfig,
-                        memoryConfig    = project.MemoryConfig,
-                        knowledgeConfig = project.KnowledgeConfig,
-                        createdAt       = now,
-                        updatedAt       = now
-                    }
+                     """
+                     INSERT INTO projects (name, description, opening_message, audit_config, memory_config, knowledge_config, created_at, updated_at)
+                     VALUES (@name, @description, @openingMessage, @auditConfig, @memoryConfig, @knowledgeConfig, @createdAt, @updatedAt);
+                     SELECT last_insert_rowid();
+                     """,
+                     new
+                     {
+                         name            = project.Name,
+                         description     = project.Description,
+                         openingMessage  = project.OpeningMessage,
+                         auditConfig     = project.AuditConfig,
+                         memoryConfig    = project.MemoryConfig,
+                         knowledgeConfig = project.KnowledgeConfig,
+                         createdAt       = now,
+                         updatedAt       = now
+                     }
                  );
 
         return project with { ID = id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };

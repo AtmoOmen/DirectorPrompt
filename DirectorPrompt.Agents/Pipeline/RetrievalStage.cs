@@ -1,7 +1,5 @@
 using System.Text;
-using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
-using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -13,6 +11,7 @@ namespace DirectorPrompt.Agents.Pipeline;
 public sealed class RetrievalStage
 (
     IChatClientFactory   chatClientFactory,
+    AgentConfigResolver  agentConfigResolver,
     ISceneRepository     sceneRepository,
     IStateRepository     stateRepository,
     ICharacterRepository characterRepository,
@@ -20,8 +19,7 @@ public sealed class RetrievalStage
     IKnowledgeRepository knowledgeRepository,
     IMemoryRepository    memoryRepository,
     KnowledgeTools       knowledgeTools,
-    MemoryTools          memoryTools,
-    OrchestratorConfig   orchestratorConfig
+    MemoryTools          memoryTools
 )
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
@@ -59,11 +57,11 @@ public sealed class RetrievalStage
 
     private async Task<string> RetrieveKnowledgeAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        var knowledgeAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Knowledge);
+        var resolved = agentConfigResolver.Resolve(AgentTaskType.Knowledge);
 
-        if (knowledgeAgent is null)
+        if (resolved is null)
         {
-            Log.Debug("Knowledge Agent 未启用, 跳过知识检索");
+            Log.Debug("Knowledge Agent 未配置, 跳过知识检索");
             return string.Empty;
         }
 
@@ -79,25 +77,21 @@ public sealed class RetrievalStage
         Log.Information
         (
             "知识检索: 模型={Model}, 活跃条目数={Count}, Phase激活条目数={PhaseCount}",
-            knowledgeAgent.ModelConfig.ModelName,
+            resolved.ModelConfig.ModelName,
             entries.Count,
             phaseCount
         );
 
-        var client        = chatClientFactory.Create(knowledgeAgent.ModelConfig);
+        var client        = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
         var tools         = knowledgeTools.Create(context.ToolContext);
         var directorInput = BuildDirectorInput(context.DirectiveBatch);
 
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, KnowledgeAgentPrompt.SYSTEM),
-            new(ChatRole.User, directorInput)
-        };
+        var messages = DirectiveProcessingStage.BuildMessages(resolved.SystemPrompt, resolved.ModelPrompt, directorInput);
 
         var options = new ChatOptions
         {
-            Temperature = knowledgeAgent.Temperature,
-            ModelId     = knowledgeAgent.ModelConfig.ModelName,
+            Temperature = resolved.ModelConfig.Temperature,
+            ModelId     = resolved.ModelConfig.ModelName,
             Tools       = [.. tools]
         };
 
@@ -116,11 +110,11 @@ public sealed class RetrievalStage
 
     private async Task<string> RetrieveMemoryAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        var memoryAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Memory);
+        var resolved = agentConfigResolver.Resolve(AgentTaskType.MemoryRecall);
 
-        if (memoryAgent is null)
+        if (resolved is null)
         {
-            Log.Debug("Memory Agent 未启用, 跳过记忆检索");
+            Log.Debug("Memory Recall Agent 未配置, 跳过记忆检索");
             return string.Empty;
         }
 
@@ -132,22 +126,18 @@ public sealed class RetrievalStage
             return "无可用记忆";
         }
 
-        Log.Information("记忆检索: 模型={Model}, 条目数={Count}", memoryAgent.ModelConfig.ModelName, memories.Count);
+        Log.Information("记忆检索: 模型={Model}, 条目数={Count}", resolved.ModelConfig.ModelName, memories.Count);
 
-        var client        = chatClientFactory.Create(memoryAgent.ModelConfig);
+        var client        = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
         var tools         = memoryTools.Create(context.ToolContext);
         var directorInput = BuildDirectorInput(context.DirectiveBatch);
 
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, MemorySubAgentPrompt.RECALL),
-            new(ChatRole.User, directorInput)
-        };
+        var messages = DirectiveProcessingStage.BuildMessages(resolved.SystemPrompt, resolved.ModelPrompt, directorInput);
 
         var options = new ChatOptions
         {
-            Temperature = memoryAgent.Temperature,
-            ModelId     = memoryAgent.ModelConfig.ModelName,
+            Temperature = resolved.ModelConfig.Temperature,
+            ModelId     = resolved.ModelConfig.ModelName,
             Tools       = [.. tools]
         };
 

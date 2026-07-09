@@ -74,7 +74,8 @@
                                         </Border.Effect>
                                         <ScrollViewer x:Name="DropDownScrollViewer">
                                             <Grid RenderOptions.ClearTypeHint="Enabled">
-                                                <Canvas HorizontalAlignment="Left" Height="0" VerticalAlignment="Top" Width="0">
+                                                <Canvas HorizontalAlignment="Left" Height="0" VerticalAlignment="Top"
+                                                        Width="0">
                                                     <Rectangle x:Name="OpaqueRect"
                                                                Fill="{Binding Background, ElementName=DropDownBorder}"
                                                                Height="{Binding ActualHeight, ElementName=DropDownBorder}"
@@ -82,8 +83,8 @@
                                                 </Canvas>
                                                 <StackPanel>
                                                     <prim:SelectAllSelectorItem x:Name="PART_SelectAllSelectorItem"
-                                                                                Content="{TemplateBinding prim:SelectAllSelector.SelectAllContent}"
-                                                                                Visibility="{Binding IsSelectAllActive, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                            Content="{TemplateBinding prim:SelectAllSelector.SelectAllContent}"
+                                                            Visibility="{Binding IsSelectAllActive, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisibilityConverter}}" />
                                                     <ItemsPresenter x:Name="PART_ItemsPresenter"
                                                                     KeyboardNavigation.DirectionalNavigation="Contained"
                                                                     SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
@@ -167,11 +168,13 @@
                                         <Condition Property="IsMouseOver" Value="True" />
                                         <Condition Property="IsDropDownOpen" Value="False" />
                                     </MultiTrigger.Conditions>
-                                    <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource ComboBoxBackgroundPointerOver}" />
+                                    <Setter TargetName="ContentBorder" Property="Background"
+                                            Value="{DynamicResource ComboBoxBackgroundPointerOver}" />
                                 </MultiTrigger>
 
                                 <Trigger Property="IsDropDownOpen" Value="True">
-                                    <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource ComboBoxBackgroundFocused}" />
+                                    <Setter TargetName="ContentBorder" Property="Background"
+                                            Value="{DynamicResource ComboBoxBackgroundFocused}" />
                                     <Trigger.EnterActions>
                                         <BeginStoryboard>
                                             <Storyboard>
@@ -205,8 +208,10 @@
                                 </MultiTrigger>
 
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource ComboBoxBackgroundDisabled}" />
-                                    <Setter TargetName="ContentBorder" Property="BorderBrush" Value="{DynamicResource ComboBoxBorderBrushDisabled}" />
+                                    <Setter TargetName="ContentBorder" Property="Background"
+                                            Value="{DynamicResource ComboBoxBackgroundDisabled}" />
+                                    <Setter TargetName="ContentBorder" Property="BorderBrush"
+                                            Value="{DynamicResource ComboBoxBorderBrushDisabled}" />
                                     <Setter Property="Foreground" Value="{DynamicResource ComboBoxForegroundDisabled}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
@@ -230,11 +235,12 @@
                                         Margin="6,4,6,0"
                                         Background="Transparent"
                                         CornerRadius="{DynamicResource ControlCornerRadius}">
-                                    <CheckBox IsChecked="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}"
-                                              Padding="{TemplateBinding Padding}"
-                                              HorizontalAlignment="Stretch"
-                                              VerticalAlignment="Stretch"
-                                              Foreground="{TemplateBinding Foreground}">
+                                    <CheckBox
+                                        IsChecked="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}"
+                                        Padding="{TemplateBinding Padding}"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Stretch"
+                                        Foreground="{TemplateBinding Foreground}">
                                         <ContentControl Content="{TemplateBinding Content}"
                                                         ContentTemplate="{TemplateBinding ContentTemplate}"
                                                         ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
@@ -245,7 +251,8 @@
                             </Grid>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="ItemBackground" Property="Background" Value="{DynamicResource ComboBoxItemBackgroundSelected}" />
+                                    <Setter TargetName="ItemBackground" Property="Background"
+                                            Value="{DynamicResource ComboBoxItemBackgroundSelected}" />
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter Property="Foreground" Value="{DynamicResource ComboBoxForegroundDisabled}" />

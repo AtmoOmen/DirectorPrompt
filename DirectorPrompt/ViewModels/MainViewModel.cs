@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Text.Json;
 using System.Windows;
-using Microsoft.Win32;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents;
@@ -15,6 +14,7 @@ using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Localization;
 using DirectorPrompt.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
 using Serilog;
 
 namespace DirectorPrompt.ViewModels;
@@ -1121,9 +1121,11 @@ public sealed partial class MainViewModel
         }
 
         var grouped = items
-                      .SelectMany(it => it.CategoryIDs.Length > 0 ?
-                                            it.CategoryIDs.Select(catID => (CatID: catID, it.Item)) :
-                                            [(-1L, it.Item)])
+                      .SelectMany
+                      (it => it.CategoryIDs.Length > 0 ?
+                                 it.CategoryIDs.Select(catID => (CatID: catID, it.Item)) :
+                                 [(-1L, it.Item)]
+                      )
                       .GroupBy(x => x.CatID)
                       .OrderBy(g => g.Key)
                       .ToList();
@@ -1131,8 +1133,8 @@ public sealed partial class MainViewModel
         foreach (var grp in grouped)
         {
             var groupName = grp.Key >= 0 && categoryLookup.TryGetValue(grp.Key, out var cat) ?
-                                 cat.Name :
-                                 Loc.Get("Character.Panel.Uncategorized");
+                                cat.Name :
+                                Loc.Get("Character.Panel.Uncategorized");
 
             var group = new CharacterCategoryGroupViewModel
             {
@@ -1162,20 +1164,22 @@ public sealed partial class MainViewModel
 
         var grouped = memories
                       .GroupBy(m => m.SceneID)
-                      .Select(g =>
-                      {
-                          var scene = sceneLookup.GetValueOrDefault(g.Key);
-                          var label = scene is not null ?
-                                          scene.TimeLabel :
-                                          $"ID:{g.Key}";
-
-                          return new
+                      .Select
+                      (g =>
                           {
-                              Label       = label,
-                              TimelinePos = scene?.TimelinePosition ?? 0,
-                              Items       = g
-                          };
-                      })
+                              var scene = sceneLookup.GetValueOrDefault(g.Key);
+                              var label = scene is not null ?
+                                              scene.TimeLabel :
+                                              $"ID:{g.Key}";
+
+                              return new
+                              {
+                                  Label       = label,
+                                  TimelinePos = scene?.TimelinePosition ?? 0,
+                                  Items       = g
+                              };
+                          }
+                      )
                       .OrderBy(x => x.TimelinePos)
                       .ToList();
 
@@ -1197,14 +1201,14 @@ public sealed partial class MainViewModel
                 (
                     new MemoryPanelItemViewModel
                     {
-                        ID                    = m.ID,
-                        Content               = m.Content,
-                        TagsDisplay           = string.Join(", ", m.Tags),
-                        SceneLabel            = grp.Label,
-                        TimelinePos           = m.TimelinePos,
-                        RelatedCharacters     = string.Join(", ", charNames),
-                        HasRelatedCharacters  = charNames.Count > 0,
-                        UpdatedAtDisplay      = m.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm")
+                        ID                   = m.ID,
+                        Content              = m.Content,
+                        TagsDisplay          = string.Join(", ", m.Tags),
+                        SceneLabel           = grp.Label,
+                        TimelinePos          = m.TimelinePos,
+                        RelatedCharacters    = string.Join(", ", charNames),
+                        HasRelatedCharacters = charNames.Count > 0,
+                        UpdatedAtDisplay     = m.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm")
                     }
                 );
             }
@@ -1233,8 +1237,7 @@ public sealed partial class MainViewModel
                 return;
 
             var tags = item.TagsDisplay
-                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .ToArray();
+                           .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
             var updated = existing with { Content = item.Content, Tags = tags };
 
@@ -1271,7 +1274,6 @@ public sealed partial class MainViewModel
             StatusMessage = Loc.Get("Status.DeleteMemoryFailed", ex.Message);
         }
     }
-
 }
 
 public sealed class PipelineStageViewModel : INotifyPropertyChanged

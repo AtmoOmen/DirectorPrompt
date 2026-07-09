@@ -1,4 +1,3 @@
-using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
@@ -13,20 +12,20 @@ namespace DirectorPrompt.Agents.Pipeline;
 public sealed class DirectiveProcessingStage
 (
     IChatClientFactory   chatClientFactory,
+    AgentConfigResolver  agentConfigResolver,
     SceneTools           sceneTools,
     ISceneRepository     sceneRepository,
     IDirectiveRepository directiveRepository,
-    ITimelineCalculator  timelineCalculator,
-    OrchestratorConfig   orchestratorConfig
+    ITimelineCalculator  timelineCalculator
 )
 {
     public async Task ExecuteAsync
     (
-        DirectiveBatch    batch,
-        long              sessionID,
-        Scene?            activeScene,
-        ModelConfig       embeddingConfig,
-        CancellationToken cancellationToken
+        DirectiveBatch          batch,
+        long                    sessionID,
+        Scene?                  activeScene,
+        ResolvedEmbeddingConfig embeddingConfig,
+        CancellationToken       cancellationToken
     )
     {
         if (activeScene is null)
@@ -113,26 +112,26 @@ public sealed class DirectiveProcessingStage
 
     private async Task CreateSceneViaAgentAsync
     (
-        long              projectID,
-        long              sessionID,
-        string            description,
-        Scene?            currentScene,
-        ModelConfig       embeddingConfig,
-        CancellationToken cancellationToken
+        long                    projectID,
+        long                    sessionID,
+        string                  description,
+        Scene?                  currentScene,
+        ResolvedEmbeddingConfig embeddingConfig,
+        CancellationToken       cancellationToken
     )
     {
-        var sceneAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Scene);
+        var resolved = agentConfigResolver.Resolve(AgentTaskType.Scene);
 
-        if (sceneAgent is null)
+        if (resolved is null)
         {
-            Log.Debug("Scene Agent 为空, 跳过场景创建");
+            Log.Debug("Scene Agent 未配置, 跳过场景创建");
             return;
         }
 
         Log.Information
         (
             "场景创建: 模型={Model}, 描述={Description}",
-            sceneAgent.ModelConfig.ModelName,
+            resolved.ModelConfig.ModelName,
             description
         );
 
@@ -146,19 +145,15 @@ public sealed class DirectiveProcessingStage
             embeddingConfig
         );
 
-        var client = chatClientFactory.Create(sceneAgent.ModelConfig);
+        var client = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
         var tools  = sceneTools.Create(toolContext);
 
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, SceneAgentPrompt.SYSTEM),
-            new(ChatRole.User, description)
-        };
+        var messages = BuildMessages(resolved.SystemPrompt, resolved.ModelPrompt, description);
 
         var options = new ChatOptions
         {
-            Temperature = sceneAgent.Temperature,
-            ModelId     = sceneAgent.ModelConfig.ModelName,
+            Temperature = resolved.ModelConfig.Temperature,
+            ModelId     = resolved.ModelConfig.ModelName,
             Tools       = [.. tools]
         };
 
@@ -197,17 +192,22 @@ public sealed class DirectiveProcessingStage
 
             if (attempt < MAX_SCENE_RETRIES)
             {
-                messages =
-                [
-                    new
-                    (
-                        ChatRole.System,
-                        SceneAgentPrompt.SYSTEM + "\n\n注意: 你之前没有调用 create_scene 工具, 这是强制要求。请立即调用 create_scene 工具创建场景, 不要只回复文本。"
-                    ),
-
-                    new(ChatRole.User, description)
-                ];
+                var retryPrompt = resolved.SystemPrompt + "\n\n注意: 你之前没有调用 create_scene 工具, 这是强制要求。请立即调用 create_scene 工具创建场景, 不要只回复文本。";
+                messages = BuildMessages(retryPrompt, resolved.ModelPrompt, description);
             }
         }
+    }
+
+    internal static List<ChatMessage> BuildMessages(string systemPrompt, string? modelPrompt, string userContent)
+    {
+        var messages = new List<ChatMessage>();
+
+        if (!string.IsNullOrEmpty(modelPrompt))
+            messages.Add(new ChatMessage(ChatRole.System, modelPrompt));
+
+        messages.Add(new ChatMessage(ChatRole.System, systemPrompt));
+        messages.Add(new ChatMessage(ChatRole.User,   userContent));
+
+        return messages;
     }
 }

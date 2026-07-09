@@ -14,10 +14,10 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed partial class ProjectEditViewModel : ObservableObject
 {
-    private readonly IProjectRepository     projectRepository;
-    private readonly IKnowledgeRepository   knowledgeRepository;
-    private readonly IStateRepository       stateRepository;
-    private readonly ICharacterRepository   characterRepository;
+    private readonly IProjectRepository   projectRepository;
+    private readonly IKnowledgeRepository knowledgeRepository;
+    private readonly IStateRepository     stateRepository;
+    private readonly ICharacterRepository characterRepository;
 
     private long projectID;
 
@@ -61,10 +61,10 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
     public ProjectEditViewModel
     (
-        IProjectRepository     projectRepository,
-        IKnowledgeRepository   knowledgeRepository,
-        IStateRepository       stateRepository,
-        ICharacterRepository   characterRepository
+        IProjectRepository   projectRepository,
+        IKnowledgeRepository knowledgeRepository,
+        IStateRepository     stateRepository,
+        ICharacterRepository characterRepository
     )
     {
         this.projectRepository   = projectRepository;

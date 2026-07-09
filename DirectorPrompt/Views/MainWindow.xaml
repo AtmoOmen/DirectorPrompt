@@ -90,8 +90,8 @@
         </Grid.RowDefinitions>
 
         <ui:TitleBar x:Name="WindowTitleBar"
-             Grid.Row="0"
-             Title="DirectorPrompt">
+                     Grid.Row="0"
+                     Title="DirectorPrompt">
             <ui:TitleBar.Icon>
                 <ui:ImageIcon Source="pack://application:,,,/Assets/Images/Icon-NoBackground.png" />
             </ui:TitleBar.Icon>
@@ -604,7 +604,8 @@
                                                         </Border>
                                                         <ControlTemplate.Triggers>
                                                             <Trigger Property="IsChecked" Value="True">
-                                                                <Setter TargetName="Chevron" Property="Symbol" Value="ChevronUp24" />
+                                                                <Setter TargetName="Chevron" Property="Symbol"
+                                                                        Value="ChevronUp24" />
                                                             </Trigger>
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter TargetName="HeaderBg" Property="Background"
@@ -633,29 +634,39 @@
                                                                         <ColumnDefinition Width="*" />
                                                                         <ColumnDefinition Width="Auto" />
                                                                     </Grid.ColumnDefinitions>
-                                                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                                                   Margin="0,0,8,0" />
-                                                                        <TextBlock Text="{Binding Status}" FontSize="11" Foreground="Gray" />
+                                                                    <StackPanel Grid.Column="0"
+                                                                            Orientation="Horizontal">
+                                                                        <TextBlock Text="{Binding Name}"
+                                                                                FontWeight="SemiBold"
+                                                                                Margin="0,0,8,0" />
+                                                                        <TextBlock Text="{Binding Status}"
+                                                                                FontSize="11" Foreground="Gray" />
                                                                     </StackPanel>
                                                                     <ToggleButton Grid.Column="1"
-                                                                                  IsChecked="{Binding IsExpanded}"
-                                                                                  Padding="0"
-                                                                                  Cursor="Hand"
-                                                                                  VerticalAlignment="Center">
+                                                                            IsChecked="{Binding IsExpanded}"
+                                                                            Padding="0"
+                                                                            Cursor="Hand"
+                                                                            VerticalAlignment="Center">
                                                                         <ToggleButton.Template>
                                                                             <ControlTemplate TargetType="ToggleButton">
                                                                                 <ui:SymbolIcon x:Name="DetailChevron"
-                                                                                               Symbol="ChevronDown24"
-                                                                                               FontSize="12"
-                                                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                                                    Symbol="ChevronDown24"
+                                                                                    FontSize="12"
+                                                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                                                                 <ControlTemplate.Triggers>
-                                                                                    <Trigger Property="IsChecked" Value="True">
-                                                                                        <Setter TargetName="DetailChevron" Property="Symbol" Value="ChevronUp24" />
+                                                                                    <Trigger Property="IsChecked"
+                                                                                        Value="True">
+                                                                                        <Setter
+                                                                                            TargetName="DetailChevron"
+                                                                                            Property="Symbol"
+                                                                                            Value="ChevronUp24" />
                                                                                     </Trigger>
-                                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                                        <Setter TargetName="DetailChevron" Property="Foreground"
-                                                                                                Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                                                                    <Trigger Property="IsMouseOver"
+                                                                                        Value="True">
+                                                                                        <Setter
+                                                                                            TargetName="DetailChevron"
+                                                                                            Property="Foreground"
+                                                                                            Value="{DynamicResource AccentFillColorDefaultBrush}" />
                                                                                     </Trigger>
                                                                                 </ControlTemplate.Triggers>
                                                                             </ControlTemplate>
@@ -691,14 +702,14 @@
                                                                                         <ColumnDefinition Width="Auto" />
                                                                                     </Grid.ColumnDefinitions>
                                                                                     <TextBlock Grid.Column="0"
-                                                                                               Text="{Binding Name}"
-                                                                                               FontSize="11"
-                                                                                               TextTrimming="CharacterEllipsis" />
+                                                                                        Text="{Binding Name}"
+                                                                                        FontSize="11"
+                                                                                        TextTrimming="CharacterEllipsis" />
                                                                                     <TextBlock Grid.Column="1"
-                                                                                               Text="{Binding Value}"
-                                                                                               FontSize="11"
-                                                                                               FontWeight="SemiBold"
-                                                                                               Margin="8,0,0,0" />
+                                                                                        Text="{Binding Value}"
+                                                                                        FontSize="11"
+                                                                                        FontWeight="SemiBold"
+                                                                                        Margin="8,0,0,0" />
                                                                                 </Grid>
                                                                             </DataTemplate>
                                                                         </ItemsControl.ItemTemplate>
@@ -713,9 +724,11 @@
                                                                     <ItemsControl ItemsSource="{Binding Relations}">
                                                                         <ItemsControl.ItemTemplate>
                                                                             <DataTemplate>
-                                                                                <TextBlock FontSize="11" TextWrapping="Wrap">
+                                                                                <TextBlock FontSize="11"
+                                                                                    TextWrapping="Wrap">
                                                                                     <Run Text="{Binding Direction}" />
-                                                                                    <Run Text="{Binding Target}" FontWeight="SemiBold" />
+                                                                                    <Run Text="{Binding Target}"
+                                                                                        FontWeight="SemiBold" />
                                                                                     <Run Text=": " />
                                                                                     <Run Text="{Binding Type}" />
                                                                                 </TextBlock>
@@ -794,7 +807,8 @@
                                                         </Border>
                                                         <ControlTemplate.Triggers>
                                                             <Trigger Property="IsChecked" Value="True">
-                                                                <Setter TargetName="Chevron" Property="Symbol" Value="ChevronUp24" />
+                                                                <Setter TargetName="Chevron" Property="Symbol"
+                                                                        Value="ChevronUp24" />
                                                             </Trigger>
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter TargetName="HeaderBg" Property="Background"
@@ -819,31 +833,34 @@
                                                                 CornerRadius="4">
                                                             <StackPanel>
                                                                 <!-- 非编辑模式 -->
-                                                                <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                                                                <StackPanel
+                                                                    Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                                                                     <DockPanel>
                                                                         <TextBlock Text="{Binding UpdatedAtDisplay}"
-                                                                                   FontSize="10"
-                                                                                   Foreground="Gray"
-                                                                                   VerticalAlignment="Center"
-                                                                                   DockPanel.Dock="Left" />
+                                                                                FontSize="10"
+                                                                                Foreground="Gray"
+                                                                                VerticalAlignment="Center"
+                                                                                DockPanel.Dock="Left" />
                                                                         <StackPanel Orientation="Horizontal"
-                                                                                    HorizontalAlignment="Right"
-                                                                                    DockPanel.Dock="Right">
+                                                                                HorizontalAlignment="Right"
+                                                                                DockPanel.Dock="Right">
                                                                             <ui:Button Appearance="Secondary"
-                                                                                       Padding="6,2"
-                                                                                       Margin="4,0,0,0"
-                                                                                       Click="OnEditMemory"
-                                                                                       Tag="{Binding}"
-                                                                                       ToolTip="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}">
-                                                                                <ui:SymbolIcon Symbol="Edit24" FontSize="12" />
+                                                                                    Padding="6,2"
+                                                                                    Margin="4,0,0,0"
+                                                                                    Click="OnEditMemory"
+                                                                                    Tag="{Binding}"
+                                                                                    ToolTip="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}">
+                                                                                <ui:SymbolIcon Symbol="Edit24"
+                                                                                    FontSize="12" />
                                                                             </ui:Button>
                                                                             <ui:Button Appearance="Secondary"
-                                                                                       Padding="6,2"
-                                                                                       Margin="4,0,0,0"
-                                                                                       Click="OnDeleteMemory"
-                                                                                       Tag="{Binding}"
-                                                                                       ToolTip="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}">
-                                                                                <ui:SymbolIcon Symbol="Delete24" FontSize="12" />
+                                                                                    Padding="6,2"
+                                                                                    Margin="4,0,0,0"
+                                                                                    Click="OnDeleteMemory"
+                                                                                    Tag="{Binding}"
+                                                                                    ToolTip="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}">
+                                                                                <ui:SymbolIcon Symbol="Delete24"
+                                                                                    FontSize="12" />
                                                                             </ui:Button>
                                                                         </StackPanel>
                                                                     </DockPanel>
@@ -865,15 +882,20 @@
                                                                 </StackPanel>
 
                                                                 <!-- 编辑模式 -->
-                                                                <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
-                                                                    <ui:TextBox Text="{Binding EditingContent, UpdateSourceTrigger=PropertyChanged}"
-                                                                                AcceptsReturn="True"
-                                                                                TextWrapping="Wrap"
-                                                                                MinHeight="80" />
-                                                                    <ui:TextBox Text="{Binding EditingTags, UpdateSourceTrigger=PropertyChanged}"
-                                                                                Margin="0,4,0,0"
-                                                                                PlaceholderText="{Binding [Memory.Panel.TagsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
-                                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                                                                <StackPanel
+                                                                    Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                                    <ui:TextBox
+                                                                        Text="{Binding EditingContent, UpdateSourceTrigger=PropertyChanged}"
+                                                                        AcceptsReturn="True"
+                                                                        TextWrapping="Wrap"
+                                                                        MinHeight="80" />
+                                                                    <ui:TextBox
+                                                                        Text="{Binding EditingTags, UpdateSourceTrigger=PropertyChanged}"
+                                                                        Margin="0,4,0,0"
+                                                                        PlaceholderText="{Binding [Memory.Panel.TagsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                                    <StackPanel Orientation="Horizontal"
+                                                                            HorizontalAlignment="Right"
+                                                                            Margin="0,4,0,0">
                                                                         <ui:Button
                                                                             Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
                                                                             Icon="Save24"

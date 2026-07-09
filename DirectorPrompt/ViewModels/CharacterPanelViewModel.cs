@@ -98,9 +98,9 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
     public void PopulateAvailableParentCategories(IEnumerable<CharacterCategoryEditViewModel> allCategories)
     {
         var currentSelections = AvailableParentCategories
-            .Where(i => i.IsSelected)
-            .Select(i => i.ID)
-            .ToHashSet();
+                                .Where(i => i.IsSelected)
+                                .Select(i => i.ID)
+                                .ToHashSet();
 
         foreach (var id in pendingParentCategoryIDs)
             currentSelections.Add(id);
@@ -122,9 +122,9 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
 
     public CharacterCategory ToModel(long projectID)
     {
-        var parentIDs = AvailableParentCategories.Count > 0
-                            ? AvailableParentCategories.Where(i => i.IsSelected).Select(i => i.ID).ToArray()
-                            : pendingParentCategoryIDs.ToArray();
+        var parentIDs = AvailableParentCategories.Count > 0 ?
+                            AvailableParentCategories.Where(i => i.IsSelected).Select(i => i.ID).ToArray() :
+                            pendingParentCategoryIDs.ToArray();
 
         return new CharacterCategory
         {
@@ -150,10 +150,8 @@ public sealed partial class CharacterCategoryGroupViewModel : ObservableObject
 
     public ObservableCollection<CharacterPanelItemViewModel> Items { get; } = [];
 
-    public CharacterCategoryGroupViewModel()
-    {
+    public CharacterCategoryGroupViewModel() =>
         Items.CollectionChanged += (_, _) => ItemCount = Items.Count;
-    }
 }
 
 public sealed class CharacterPanelViewModel : ObservableObject

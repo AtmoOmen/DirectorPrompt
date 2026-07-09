@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using DirectorPrompt.Agents;
@@ -9,11 +9,11 @@ using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Infrastructure;
 using DirectorPrompt.Infrastructure.AI;
+using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Infrastructure.Localization;
 using DirectorPrompt.Infrastructure.Logging;
 using DirectorPrompt.Infrastructure.Repositories;
 using DirectorPrompt.Localization;
-using DirectorPrompt.Update;
 using DirectorPrompt.ViewModels;
 using DirectorPrompt.Views;
 using Microsoft.Extensions.Configuration;
@@ -40,6 +40,8 @@ public partial class App : Application
 
         try
         {
+            UserSettingsExtension.MigrateIfNeeded();
+
             host = Host.CreateDefaultBuilder()
                        .UseContentRoot(AppContext.BaseDirectory)
                        .UseSerilog()
@@ -113,20 +115,20 @@ public partial class App : Application
             var orchestrator = new UpdateOrchestrator();
 
             var (shouldContinue, errorMessage) = await orchestrator.RunAsync
-            (
-                status   => updateWindow.UpdateStatus(status),
-                progress => updateWindow.UpdateProgress(progress),
-                (changelog, version) =>
-                {
-                    updateWindow.Hide();
+                                                 (
+                                                     status => updateWindow.UpdateStatus(status),
+                                                     progress => updateWindow.UpdateProgress(progress),
+                                                     (changelog, version) =>
+                                                     {
+                                                         updateWindow.Hide();
 
-                    var changelogWindow = new ChangelogWindow(changelog, version);
-                    changelogWindow.Owner = updateWindow;
-                    changelogWindow.ShowDialog();
+                                                         var changelogWindow = new ChangelogWindow(changelog, version);
+                                                         changelogWindow.Owner = updateWindow;
+                                                         changelogWindow.ShowDialog();
 
-                    return Task.CompletedTask;
-                }
-            );
+                                                         return Task.CompletedTask;
+                                                     }
+                                                 );
 
             if (errorMessage is not null)
             {
@@ -194,6 +196,7 @@ public partial class App : Application
 
         var orchestratorConfig = configuration.GetSection("Orchestrator").Get<OrchestratorConfig>() ?? new OrchestratorConfig();
         services.AddSingleton(orchestratorConfig);
+        services.AddSingleton<AgentConfigResolver>();
 
         var userSettings = configuration.Get<UserSettings>() ?? new UserSettings();
         services.AddSingleton(userSettings);

@@ -104,14 +104,14 @@ public sealed class CharacterRepository : ICharacterRepository
                      """,
                      new
                      {
-                         projectID       = character.ProjectID,
-                         sessionID       = character.SessionID,
-                         name            = character.Name,
-                         description     = character.Description,
-                         categoryIDs     = JsonHelper.Serialize(character.CategoryIDs),
-                         status          = character.Status.ToString().ToLowerInvariant(),
-                         createdAt       = now,
-                         updatedAt       = now
+                         projectID   = character.ProjectID,
+                         sessionID   = character.SessionID,
+                         name        = character.Name,
+                         description = character.Description,
+                         categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
+                         status      = character.Status.ToString().ToLowerInvariant(),
+                         createdAt   = now,
+                         updatedAt   = now
                      }
                  );
 
@@ -143,18 +143,20 @@ public sealed class CharacterRepository : ICharacterRepository
             """,
             new
             {
-                id              = character.ID,
-                name            = character.Name,
-                description     = character.Description,
-                categoryIDs     = JsonHelper.Serialize(character.CategoryIDs),
-                status          = character.Status.ToString().ToLowerInvariant(),
-                updatedAt       = DateTime.UtcNow.ToString("O")
+                id          = character.ID,
+                name        = character.Name,
+                description = character.Description,
+                categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
+                status      = character.Status.ToString().ToLowerInvariant(),
+                updatedAt   = DateTime.UtcNow.ToString("O")
             }
         );
 
         if (oldRow is not null)
+        {
             await roundChangeRepository.RecordUpdateAsync
                 (RoundContext.Current ?? 0, "characters", character.ID, JsonSerializer.Serialize(oldRow), cancellationToken);
+        }
     }
 
     public async Task SetStatusAsync(long characterID, CharacterStatus status, CancellationToken cancellationToken = default)
@@ -672,15 +674,15 @@ public sealed class CharacterRepository : ICharacterRepository
 
     private sealed class CharacterRow
     {
-        public long   ID               { get; set; }
-        public long   Project_ID       { get; set; }
-        public long?  Session_ID       { get; set; }
-        public string Name             { get; set; } = string.Empty;
-        public string Description      { get; set; } = string.Empty;
-        public string Category_IDs     { get; set; } = "[]";
-        public string Status           { get; set; } = "active";
-        public string Created_At       { get; set; } = string.Empty;
-        public string Updated_At       { get; set; } = string.Empty;
+        public long   ID           { get; set; }
+        public long   Project_ID   { get; set; }
+        public long?  Session_ID   { get; set; }
+        public string Name         { get; set; } = string.Empty;
+        public string Description  { get; set; } = string.Empty;
+        public string Category_IDs { get; set; } = "[]";
+        public string Status       { get; set; } = "active";
+        public string Created_At   { get; set; } = string.Empty;
+        public string Updated_At   { get; set; } = string.Empty;
 
         public Character ToCharacter() =>
             new()
@@ -697,8 +699,8 @@ public sealed class CharacterRepository : ICharacterRepository
                     "dead" => CharacterStatus.Dead,
                     _      => CharacterStatus.Active
                 },
-                CreatedAt       = DateTime.Parse(Created_At),
-                UpdatedAt       = DateTime.Parse(Updated_At)
+                CreatedAt = DateTime.Parse(Created_At),
+                UpdatedAt = DateTime.Parse(Updated_At)
             };
     }
 

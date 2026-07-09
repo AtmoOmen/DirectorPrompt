@@ -1,55 +1,152 @@
 using System.ClientModel;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 using DirectorPrompt.Agents;
 using DirectorPrompt.Domain.Configurations;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using Serilog;
+using ReasoningEffort = DirectorPrompt.Domain.Enums.ReasoningEffort;
 
 namespace DirectorPrompt.Infrastructure.AI;
 
 public sealed class ChatClientFactory : IChatClientFactory
 {
-    public IChatClient Create(ModelConfig config)
+    public IChatClient Create(ProviderConfig provider, ModelConfig model)
     {
-        var provider = config.Provider.ToLowerInvariant();
+        var providerType = provider.Provider.ToLowerInvariant();
 
         Log.Information
         (
             "创建 ChatClient: Provider={Provider}, 模型={Model}, Endpoint={Endpoint}",
-            provider,
-            config.ModelName,
-            config.Endpoint
+            providerType,
+            model.ModelName,
+            provider.Endpoint
         );
 
-        var openAIClient = provider switch
+        var inner = providerType switch
         {
-            "openai" => CreateOpenAIClient(config),
-            _        => throw new ArgumentException($"不支持的 Provider: {config.Provider}")
+            "anthropic" => CreateAnthropicClient(provider, model),
+            _           => CreateOpenAICompatibleClient(provider, model, providerType)
         };
 
-        var chatClient = openAIClient.GetChatClient(config.ModelName);
+        var wrapped = new ModelOptionsChatClient(inner, model);
 
-        return new ChatClientBuilder(chatClient.AsIChatClient())
+        return new ChatClientBuilder(wrapped)
                .UseFunctionInvocation()
                .Build();
     }
 
-    private static OpenAIClient CreateOpenAIClient(ModelConfig config)
+    private static IChatClient CreateOpenAICompatibleClient(ProviderConfig provider, ModelConfig model, string providerType)
     {
         OpenAIClientOptions options = new();
 
-        if (!string.IsNullOrWhiteSpace(config.Endpoint))
-            options.Endpoint = new Uri(config.Endpoint);
-
-        if (!string.IsNullOrWhiteSpace(config.APIKey))
+        var endpoint = providerType switch
         {
-            return new OpenAIClient
-            (
-                new ApiKeyCredential(config.APIKey),
-                options
-            );
+            "ollama" => string.IsNullOrWhiteSpace(provider.Endpoint) ?
+                            "http://localhost:11434/v1" :
+                            provider.Endpoint,
+            _ => provider.Endpoint
+        };
+
+        if (!string.IsNullOrWhiteSpace(endpoint))
+            options.Endpoint = new Uri(endpoint);
+
+        var apiKey = !string.IsNullOrWhiteSpace(provider.APIKey) ?
+                         provider.APIKey :
+                         providerType switch
+                         {
+                             "openai" => throw new ArgumentException("OpenAI Provider 需要 API Key"),
+                             _        => "dummy-key"
+                         };
+
+        var openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), options);
+        var chatClient   = openAIClient.GetChatClient(model.ModelName);
+
+        return chatClient.AsIChatClient();
+    }
+
+    private static IChatClient CreateAnthropicClient(ProviderConfig provider, ModelConfig model)
+    {
+        if (string.IsNullOrWhiteSpace(provider.APIKey))
+            throw new ArgumentException("Anthropic Provider 需要 API Key");
+
+        return new AnthropicChatClient
+        (
+            provider.APIKey,
+            model.ModelName,
+            provider.Endpoint
+        );
+    }
+}
+
+public sealed class ModelOptionsChatClient
+(
+    IChatClient inner,
+    ModelConfig modelConfig
+) : IChatClient
+{
+    public async Task<ChatResponse> GetResponseAsync
+    (
+        IEnumerable<ChatMessage> messages,
+        ChatOptions?             options           = null,
+        CancellationToken        cancellationToken = default
+    )
+    {
+        options = ApplyModelOptions(options);
+
+        return await inner.GetResponseAsync(messages, options, cancellationToken);
+    }
+
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync
+    (
+        IEnumerable<ChatMessage>                   messages,
+        ChatOptions?                               options           = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
+    {
+        options = ApplyModelOptions(options);
+
+        await foreach (var update in inner.GetStreamingResponseAsync(messages, options, cancellationToken))
+            yield return update;
+    }
+
+    public object? GetService(Type serviceType, object? serviceKey = null) =>
+        inner.GetService(serviceType, serviceKey);
+
+    public void Dispose() =>
+        inner.Dispose();
+
+    private ChatOptions ApplyModelOptions(ChatOptions? options)
+    {
+        options ??= new ChatOptions();
+
+        if (!string.IsNullOrWhiteSpace(modelConfig.ExtraParameters))
+        {
+            try
+            {
+                var extra = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(modelConfig.ExtraParameters);
+
+                if (extra is not null)
+                {
+                    options.AdditionalProperties ??= [];
+
+                    foreach (var (key, value) in extra)
+                        options.AdditionalProperties[key] = value;
+                }
+            }
+            catch (JsonException ex)
+            {
+                Log.Warning(ex, "解析模型自定义参数失败: {ExtraParameters}", modelConfig.ExtraParameters);
+            }
         }
 
-        throw new ArgumentException("APIKey 不能为空");
+        if (modelConfig.ReasoningEffort != ReasoningEffort.None)
+        {
+            options.AdditionalProperties                     ??= [];
+            options.AdditionalProperties["reasoning_effort"] =   modelConfig.ReasoningEffort.ToString().ToLowerInvariant();
+        }
+
+        return options;
     }
 }

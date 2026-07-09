@@ -14,7 +14,7 @@ public class UserSettings
 
     public UserOrchestratorConfig Orchestrator { get; set; } = new();
 
-    public ModelConfig EmbeddingConfig { get; set; } = new();
+    public EmbeddingConfig EmbeddingConfig { get; set; } = new();
 
     public LocalizationConfig Localization { get; set; } = new();
 

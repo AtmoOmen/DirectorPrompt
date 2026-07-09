@@ -11,5 +11,5 @@ public interface IEmbeddingService
 
 public interface IEmbeddingServiceFactory
 {
-    IEmbeddingService Create(ModelConfig config);
+    IEmbeddingService Create(ResolvedEmbeddingConfig config);
 }

@@ -57,8 +57,10 @@ public sealed class SystemStateTransformer
             foreach (var attr in systemAttrs)
             {
                 if (attr.Scope == StateScope.Category)
+                {
                     await TransformCategoryAttributeAsync
                         (attr, sceneCharacters, sessionID, sceneID.Value, roundID, trigger, attrNameCache, globalStateValues, cancellationToken);
+                }
             }
         }
 
