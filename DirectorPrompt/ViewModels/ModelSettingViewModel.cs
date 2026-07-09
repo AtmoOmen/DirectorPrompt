@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Localization;
 
 namespace DirectorPrompt.ViewModels;
@@ -47,13 +46,4 @@ public sealed partial class ModelSettingViewModel : ObservableObject
     public partial bool? ConnectionSuccess { get; set; }
 
     public ObservableCollection<string> AvailableModels { get; } = [];
-
-    public ReasoningEffort ResolvedReasoningEffort =>
-        ReasoningEffort.ToString().ToLowerInvariant() switch
-        {
-            "high"   => Domain.Enums.ReasoningEffort.High,
-            "medium" => Domain.Enums.ReasoningEffort.Medium,
-            "low"    => Domain.Enums.ReasoningEffort.Low,
-            _        => Domain.Enums.ReasoningEffort.None
-        };
 }

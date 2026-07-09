@@ -109,7 +109,7 @@ public static class UserSettingsExtension
                 ProviderID      = provider.ID,
                 ModelName       = modelName,
                 Temperature     = temperature,
-                ReasoningEffort = ReasoningEffort.None,
+                ReasoningEffort = null,
                 PromptID        = promptID
             };
 

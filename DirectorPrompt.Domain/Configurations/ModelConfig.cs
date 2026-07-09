@@ -1,5 +1,3 @@
-using DirectorPrompt.Domain.Enums;
-
 namespace DirectorPrompt.Domain.Configurations;
 
 public record ModelConfig
@@ -14,7 +12,7 @@ public record ModelConfig
 
     public float Temperature { get; init; } = 0.8f;
 
-    public ReasoningEffort ReasoningEffort { get; init; } = ReasoningEffort.None;
+    public string? ReasoningEffort { get; init; }
 
     public string? ExtraParameters { get; init; }
 

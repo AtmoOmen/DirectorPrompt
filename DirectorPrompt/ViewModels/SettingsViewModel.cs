@@ -107,7 +107,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                     ProviderID       = config.ProviderID,
                     ModelName        = config.ModelName,
                     Temperature      = config.Temperature,
-                    ReasoningEffort  = config.ReasoningEffort.ToString().ToLowerInvariant(),
+                    ReasoningEffort  = config.ReasoningEffort ?? string.Empty,
                     ExtraParameters  = config.ExtraParameters ?? string.Empty,
                     PromptID         = config.PromptID
                 }
@@ -245,7 +245,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                     ProviderID      = m.ProviderID,
                     ModelName       = m.ModelName,
                     Temperature     = m.Temperature,
-                    ReasoningEffort = m.ResolvedReasoningEffort,
+                    ReasoningEffort = string.IsNullOrWhiteSpace(m.ReasoningEffort) ? null : m.ReasoningEffort,
                     ExtraParameters = string.IsNullOrWhiteSpace(m.ExtraParameters) ?
                                           null :
                                           m.ExtraParameters,

@@ -8,7 +8,6 @@ using DirectorPrompt.Domain.Configurations;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using Serilog;
-using ReasoningEffort = DirectorPrompt.Domain.Enums.ReasoningEffort;
 
 namespace DirectorPrompt.Infrastructure.AI;
 
@@ -77,8 +76,10 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         var options = new ClientOptions
         {
-            ApiKey    = provider.APIKey,
-            BaseUrl   = string.IsNullOrWhiteSpace(provider.Endpoint) ? null : provider.Endpoint
+            ApiKey = provider.APIKey,
+            BaseUrl = string.IsNullOrWhiteSpace(provider.Endpoint) ?
+                          null :
+                          provider.Endpoint
         };
 
         var customHeaders = CustomHeaderPipelinePolicy.Parse(provider.CustomHeaders);
@@ -87,7 +88,7 @@ public sealed class ChatClientFactory : IChatClientFactory
             options.ExtraHeaders = customHeaders;
 
         return new AnthropicClient(options)
-               .AsIChatClient(model.ModelName, 8192);
+            .AsIChatClient(model.ModelName, 8192);
     }
 }
 
@@ -152,17 +153,30 @@ public sealed class ModelOptionsChatClient
             }
         }
 
-        if (modelConfig.ReasoningEffort != ReasoningEffort.None)
+        if (!string.IsNullOrWhiteSpace(modelConfig.ReasoningEffort))
         {
-            options.Reasoning ??= new ReasoningOptions();
+            var effort = modelConfig.ReasoningEffort!.Trim().ToLowerInvariant();
 
-            options.Reasoning.Effort = modelConfig.ReasoningEffort switch
+            var mapped = effort switch
             {
-                ReasoningEffort.Low    => Microsoft.Extensions.AI.ReasoningEffort.Low,
-                ReasoningEffort.Medium => Microsoft.Extensions.AI.ReasoningEffort.Medium,
-                ReasoningEffort.High   => Microsoft.Extensions.AI.ReasoningEffort.High,
-                _                      => null
+                "none"                                 => (ReasoningEffort?)ReasoningEffort.None,
+                "low"                                  => ReasoningEffort.Low,
+                "medium"                               => ReasoningEffort.Medium,
+                "high"                                 => ReasoningEffort.High,
+                "xhigh" or "extra_high" or "extrahigh" => ReasoningEffort.ExtraHigh,
+                _                                      => null
             };
+
+            if (mapped is { } effortValue)
+            {
+                options.Reasoning        ??= new ReasoningOptions();
+                options.Reasoning.Effort =   effortValue;
+            }
+            else
+            {
+                options.AdditionalProperties                     ??= [];
+                options.AdditionalProperties["reasoning_effort"] =   effort;
+            }
         }
 
         return options;
