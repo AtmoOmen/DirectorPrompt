@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Localization;
@@ -20,6 +21,14 @@ public sealed partial class AgentSettingViewModel : ObservableObject
 
     [ObservableProperty]
     public partial string ModelName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool IsFetchingModels { get; set; }
+
+    [ObservableProperty]
+    public partial string ModelFetchMessage { get; set; } = string.Empty;
+
+    public ObservableCollection<string> AvailableModels { get; } = [];
 
     [ObservableProperty]
     public partial float Temperature { get; set; }

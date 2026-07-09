@@ -155,13 +155,30 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="100" />
                                                         <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0"
                                                                Text="{Binding [Settings.Agent.ModelName], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
-                                                    <ui:TextBox Grid.Column="1"
-                                                                Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <ComboBox Grid.Column="1"
+                                                              IsEditable="True"
+                                                              ItemsSource="{Binding AvailableModels}"
+                                                              Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <ui:Button Grid.Column="2"
+                                                               Content="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}"
+                                                               Icon="ArrowDownload24"
+                                                               Appearance="Secondary"
+                                                               Margin="8,0,0,0"
+                                                               Command="{Binding DataContext.FetchAgentModelsCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                               CommandParameter="{Binding}"
+                                                               IsEnabled="{Binding IsFetchingModels, Converter={StaticResource InverseBool}}" />
                                                 </Grid>
+
+                                                <TextBlock Text="{Binding ModelFetchMessage}"
+                                                           Margin="100,0,0,8"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="Gray"
+                                                           FontSize="12" />
 
                                                 <Grid Margin="0,0,0,8">
                                                     <Grid.ColumnDefinitions>
@@ -280,13 +297,29 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="100" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
                                            Text="{Binding [Settings.Agent.ModelName], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center" />
-                                <ui:TextBox Grid.Column="1"
-                                            Text="{Binding Embedding.ModelName, UpdateSourceTrigger=PropertyChanged}" />
+                                <ComboBox Grid.Column="1"
+                                          IsEditable="True"
+                                          ItemsSource="{Binding Embedding.AvailableModels}"
+                                          Text="{Binding Embedding.ModelName, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:Button Grid.Column="2"
+                                           Content="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}"
+                                           Icon="ArrowDownload24"
+                                           Appearance="Secondary"
+                                           Margin="8,0,0,0"
+                                           Command="{Binding FetchEmbeddingModelsCommand}"
+                                           IsEnabled="{Binding Embedding.IsFetchingModels, Converter={StaticResource InverseBool}}" />
                             </Grid>
+
+                            <TextBlock Text="{Binding Embedding.ModelFetchMessage}"
+                                       Margin="100,0,0,8"
+                                       TextWrapping="Wrap"
+                                       Foreground="Gray"
+                                       FontSize="12" />
 
                             <Grid Margin="0,8,0,0">
                                 <Grid.ColumnDefinitions>

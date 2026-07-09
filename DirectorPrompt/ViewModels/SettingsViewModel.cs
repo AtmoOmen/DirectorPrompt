@@ -155,6 +155,38 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task FetchAgentModelsAsync(AgentSettingViewModel? agent)
+    {
+        if (agent is null)
+            return;
+
+        agent.IsFetchingModels  = true;
+        agent.ModelFetchMessage = Loc.Get("Settings.FetchingModels");
+
+        try
+        {
+            var models = await connectionTester.FetchModelsAsync(agent.Provider, agent.Endpoint, agent.APIKey);
+
+            agent.AvailableModels.Clear();
+            foreach (var model in models)
+                agent.AvailableModels.Add(model);
+
+            if (string.IsNullOrWhiteSpace(agent.ModelName) && agent.AvailableModels.Count > 0)
+                agent.ModelName = agent.AvailableModels[0];
+
+            agent.ModelFetchMessage = Loc.Get("Settings.FetchModelsSuccess", agent.AvailableModels.Count);
+        }
+        catch (Exception ex)
+        {
+            agent.ModelFetchMessage = Loc.Get("Settings.FetchModelsFailed", ex.Message);
+        }
+        finally
+        {
+            agent.IsFetchingModels = false;
+        }
+    }
+
+    [RelayCommand]
     private async Task TestAgentConnectionAsync(AgentSettingViewModel? agent)
     {
         if (agent is null)
@@ -179,6 +211,35 @@ public sealed partial class SettingsViewModel : ObservableObject
         finally
         {
             agent.IsTestingConnection = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task FetchEmbeddingModelsAsync()
+    {
+        Embedding.IsFetchingModels  = true;
+        Embedding.ModelFetchMessage = Loc.Get("Settings.FetchingModels");
+
+        try
+        {
+            var models = await connectionTester.FetchModelsAsync(Embedding.Provider, Embedding.Endpoint, Embedding.APIKey);
+
+            Embedding.AvailableModels.Clear();
+            foreach (var model in models)
+                Embedding.AvailableModels.Add(model);
+
+            if (string.IsNullOrWhiteSpace(Embedding.ModelName) && Embedding.AvailableModels.Count > 0)
+                Embedding.ModelName = Embedding.AvailableModels[0];
+
+            Embedding.ModelFetchMessage = Loc.Get("Settings.FetchModelsSuccess", Embedding.AvailableModels.Count);
+        }
+        catch (Exception ex)
+        {
+            Embedding.ModelFetchMessage = Loc.Get("Settings.FetchModelsFailed", ex.Message);
+        }
+        finally
+        {
+            Embedding.IsFetchingModels = false;
         }
     }
 
