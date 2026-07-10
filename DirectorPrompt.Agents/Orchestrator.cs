@@ -6,7 +6,6 @@ using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
-using Microsoft.Extensions.AI;
 using Serilog;
 
 namespace DirectorPrompt.Agents;
@@ -26,8 +25,9 @@ public sealed class Orchestrator
     RetrievalStage           retrievalStage,
     GenerationStage          generationStage,
     PostProcessingStage      postProcessingStage,
+    SceneSummaryStage        sceneSummaryStage,
+    HistoryBuilder           historyBuilder,
     AgentConfigResolver      agentConfigResolver,
-    IChatClientFactory       chatClientFactory,
     UserSettings             userSettings
 )
 {
@@ -101,7 +101,7 @@ public sealed class Orchestrator
             if (oldSceneID is not null && oldSceneID != activeScene.ID)
             {
                 Log.Information("场景切换: 旧场景={OldSceneID}, 新场景={NewSceneID}", oldSceneID, activeScene.ID);
-                await GenerateSceneSummaryAsync(sessionID, oldSceneID.Value, cancellationToken);
+                await sceneSummaryStage.ExecuteAsync(sessionID, oldSceneID.Value, cancellationToken);
             }
 
             var previousScene        = await sceneRepository.GetLastCompletedSceneAsync(sessionID, activeScene.ID, cancellationToken);
@@ -109,7 +109,7 @@ public sealed class Orchestrator
 
             timelinePosition = activeScene.TimelinePosition;
 
-            var history = await BuildHistoryAsync(sessionID, activeScene.ID, roundID, cancellationToken);
+            var history = await historyBuilder.BuildAsync(sessionID, activeScene.ID, roundID, cancellationToken);
 
             Log.Information("历史叙事注入: {HistoryCount} 轮", history.Count);
 
@@ -207,7 +207,7 @@ public sealed class Orchestrator
             throw new InvalidOperationException("修正需要已有活跃场景");
 
         var timelinePosition = activeScene.TimelinePosition;
-        var history          = await BuildHistoryAsync(sessionID, activeScene.ID, tempRoundID, cancellationToken);
+        var history          = await historyBuilder.BuildAsync(sessionID, activeScene.ID, tempRoundID, cancellationToken);
         var embeddingConfig  = ResolveEmbeddingConfig();
 
         var previousScene        = await sceneRepository.GetLastCompletedSceneAsync(sessionID, activeScene.ID, cancellationToken);
@@ -361,84 +361,6 @@ public sealed class Orchestrator
         Log.Information("修正已拒绝, 临时轮次 {TempRoundID} 已删除", tempRoundID);
     }
 
-    private async Task GenerateSceneSummaryAsync
-    (
-        long              sessionID,
-        long              sceneID,
-        CancellationToken cancellationToken
-    )
-    {
-        var scene = await sceneRepository.GetByIDAsync(sceneID, cancellationToken);
-
-        if (scene is null)
-            return;
-
-        var events = await eventRepository.GetBySceneAsync(sessionID, sceneID, cancellationToken);
-
-        var historyText = BuildSceneHistoryText(events);
-
-        if (string.IsNullOrWhiteSpace(historyText))
-            return;
-
-        var resolved = agentConfigResolver.Resolve(AgentTaskType.Narrator);
-
-        if (resolved is null)
-        {
-            Log.Warning("场景摘要生成跳过: Narrator Agent 未配置");
-            return;
-        }
-
-        Log.Information("场景摘要生成: 场景={SceneID}, 事件数={EventCount}", sceneID, events.Count);
-
-        var client = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
-        var messages = new List<ChatMessage>
-        {
-            new
-            (
-                ChatRole.System,
-                "请将以下场景内的对话历史压缩为简短摘要 (约 300-500 字), 包含关键事件、人物状态变化和情节发展。只输出摘要内容, 不要添加额外格式。"
-            ),
-            new(ChatRole.User, historyText)
-        };
-
-        var options = new ChatOptions
-        {
-            Temperature = 0.3f,
-            ModelId     = resolved.ModelConfig.ModelName
-        };
-
-        try
-        {
-            var response = await client.GetResponseAsync(messages, options, cancellationToken);
-            var summary  = response.Text?.Trim();
-
-            if (!string.IsNullOrWhiteSpace(summary))
-            {
-                await sceneRepository.UpdateAsync(scene with { Summary = summary }, cancellationToken);
-                Log.Information("场景摘要生成完成: 场景={SceneID}, 摘要长度={SummaryLen}", sceneID, summary.Length);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "场景摘要生成失败: 场景={SceneID}", sceneID);
-        }
-    }
-
-    private static string BuildSceneHistoryText(IReadOnlyList<PlaythroughEvent> events)
-    {
-        var sb = new StringBuilder();
-
-        foreach (var evt in events.OrderBy(e => e.RoundID))
-        {
-            if (evt.Type == EventType.DirectorInput)
-                sb.AppendLine($"[导演指令] {ParseDirectorInput(evt.Data)}");
-            else if (evt.Type == EventType.NarrativeOutput)
-                sb.AppendLine($"[叙事输出] {evt.Data}");
-        }
-
-        return sb.ToString();
-    }
-
     private ResolvedEmbeddingConfig ResolveEmbeddingConfig()
     {
         var resolved = agentConfigResolver.ResolveEmbedding(userSettings.EmbeddingConfig);
@@ -565,78 +487,6 @@ public sealed class Orchestrator
             context.ThinkingOutput  ?? string.Empty,
             context.RoundID
         );
-    }
-
-    private async Task<IReadOnlyList<ChatHistoryEntry>> BuildHistoryAsync
-    (
-        long              sessionID,
-        long              sceneID,
-        long              currentRoundID,
-        CancellationToken cancellationToken
-    )
-    {
-        var events = await eventRepository.GetBySceneAsync(sessionID, sceneID, cancellationToken);
-
-        var directorEvents = events
-                             .Where(e => e.Type == EventType.DirectorInput)
-                             .GroupBy(e => e.RoundID)
-                             .ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.ID).First());
-
-        var narrativeEvents = events
-                              .Where(e => e.Type == EventType.NarrativeOutput)
-                              .GroupBy(e => e.RoundID)
-                              .ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.ID).First());
-
-        var roundIDs = directorEvents.Keys
-                                     .Concat(narrativeEvents.Keys)
-                                     .Distinct()
-                                     .Where(r => r < currentRoundID)
-                                     .OrderBy(r => r)
-                                     .ToList();
-
-        var history = new List<ChatHistoryEntry>();
-
-        foreach (var roundID in roundIDs)
-        {
-            var directorEntry  = directorEvents.GetValueOrDefault(roundID);
-            var narrativeEntry = narrativeEvents.GetValueOrDefault(roundID);
-
-            if (directorEntry is null || narrativeEntry is null)
-                continue;
-
-            var directorInput = ParseDirectorInput(directorEntry.Data);
-            var narrativeText = narrativeEntry.Data;
-
-            if (!string.IsNullOrWhiteSpace(narrativeText))
-                history.Add(new ChatHistoryEntry(roundID, directorInput, narrativeText));
-        }
-
-        return history;
-    }
-
-    private static string ParseDirectorInput(string json)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-
-            var sb = new StringBuilder();
-            sb.AppendLine("## 导演指令");
-
-            foreach (var element in doc.RootElement.EnumerateArray())
-            {
-                var type    = element.GetProperty("type").GetString();
-                var content = element.GetProperty("content").GetString();
-                var order   = element.GetProperty("order").GetInt32();
-                sb.AppendLine($"{order}. [{type}] {content}");
-            }
-
-            return sb.ToString();
-        }
-        catch
-        {
-            return json;
-        }
     }
 
     private static IReadOnlyList<DirectiveItem> ParseOriginalDirectives(string jsonData)
