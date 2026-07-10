@@ -8,10 +8,8 @@ internal sealed class CustomHeaderPipelinePolicy : PipelinePolicy
 {
     private readonly Dictionary<string, string> headers;
 
-    private CustomHeaderPipelinePolicy(Dictionary<string, string> headers)
-    {
+    private CustomHeaderPipelinePolicy(Dictionary<string, string> headers) =>
         this.headers = headers;
-    }
 
     public override void Process(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
     {

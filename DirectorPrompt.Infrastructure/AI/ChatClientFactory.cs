@@ -33,7 +33,12 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         var wrapped = new ModelOptionsChatClient(inner, model);
 
-        return new ChatClientBuilder(wrapped)
+        var builder = new ChatClientBuilder(wrapped);
+
+        if (providerType == "anthropic")
+            builder = builder.Use(next => new CacheControlChatClient(next));
+
+        return builder
                .UseFunctionInvocation()
                .Build();
     }

@@ -20,8 +20,8 @@ public sealed class EventRepository : IEventRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO playthrough_events (project_id, session_id, round_id, type, data, created_at)
-                     VALUES (@projectID, @sessionID, @roundID, @type, @data, @createdAt);
+                     INSERT INTO playthrough_events (project_id, session_id, round_id, scene_id, type, data, created_at)
+                     VALUES (@projectID, @sessionID, @roundID, @sceneID, @type, @data, @createdAt);
                      SELECT last_insert_rowid();
                      """,
                      new
@@ -29,6 +29,7 @@ public sealed class EventRepository : IEventRepository
                          projectID = eventItem.ProjectID,
                          sessionID = eventItem.SessionID,
                          roundID   = eventItem.RoundID,
+                         sceneID   = eventItem.SceneID,
                          type      = JsonNamingPolicy.SnakeCaseLower.ConvertName(eventItem.Type.ToString()),
                          data      = eventItem.Data,
                          createdAt = eventItem.CreatedAt.ToString("O")
@@ -46,6 +47,19 @@ public sealed class EventRepository : IEventRepository
                    (
                        "SELECT * FROM playthrough_events WHERE session_id = @sessionID ORDER BY id",
                        new { sessionID }
+                   );
+
+        return rows.Select(r => r.ToEvent()).ToList();
+    }
+
+    public async Task<IReadOnlyList<PlaythroughEvent>> GetBySceneAsync(long sessionID, long sceneID, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var rows = await connection.QueryAsync<EventRow>
+                   (
+                       "SELECT * FROM playthrough_events WHERE session_id = @sessionID AND scene_id = @sceneID ORDER BY id",
+                       new { sessionID, sceneID }
                    );
 
         return rows.Select(r => r.ToEvent()).ToList();
@@ -105,6 +119,7 @@ public sealed class EventRepository : IEventRepository
         public long   Project_ID { get; set; }
         public long?  Session_ID { get; set; }
         public long   Round_ID   { get; set; }
+        public long?  Scene_ID   { get; set; }
         public string Type       { get; set; } = string.Empty;
         public string Data       { get; set; } = string.Empty;
         public string Created_At { get; set; } = string.Empty;
@@ -130,6 +145,7 @@ public sealed class EventRepository : IEventRepository
                 ProjectID = Project_ID,
                 SessionID = Session_ID ?? 0,
                 RoundID   = Round_ID,
+                SceneID   = Scene_ID,
                 Type      = type,
                 Data      = Data,
                 CreatedAt = DateTime.Parse(Created_At)

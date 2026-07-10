@@ -179,7 +179,7 @@ public sealed class CharacterTools
         }
 
         var embeddingService = embeddingServiceFactory.Create(context.EmbeddingConfig);
-        var fingerprint       = context.EmbeddingConfig.Fingerprint;
+        var fingerprint      = context.EmbeddingConfig.Fingerprint;
 
         var needsRegeneration = characters
                                 .Where
@@ -240,12 +240,12 @@ public sealed class CharacterTools
 
                              return new
                              {
-                                 id        = c.ID,
-                                 name      = c.Name,
-                                 aliases   = c.Aliases,
+                                 id          = c.ID,
+                                 name        = c.Name,
+                                 aliases     = c.Aliases,
                                  description = c.Description,
-                                 status    = c.Status.ToString().ToLowerInvariant(),
-                                 relevance = Math.Round(similarity, 4)
+                                 status      = c.Status.ToString().ToLowerInvariant(),
+                                 relevance   = Math.Round(similarity, 4)
                              };
                          }
                      )
@@ -418,8 +418,7 @@ public sealed class CharacterTools
 
         var aliasList = string.IsNullOrWhiteSpace(aliases) ?
                             [] :
-                            aliases.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                   .ToArray();
+                            aliases.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var character = new Character
         {
@@ -686,8 +685,8 @@ public sealed class CharacterTools
         Character            character
     )
     {
-        var text     = BuildCharacterEmbeddingText(character);
-        var hash     = EmbeddingConversions.ComputeHash(text, context.EmbeddingConfig.Fingerprint);
+        var text = BuildCharacterEmbeddingText(character);
+        var hash = EmbeddingConversions.ComputeHash(text, context.EmbeddingConfig.Fingerprint);
 
         if (character.ContentHash == hash)
             return;

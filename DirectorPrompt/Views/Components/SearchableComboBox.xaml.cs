@@ -72,7 +72,7 @@ public sealed partial class SearchableComboBox : UserControl
             new PropertyMetadata(string.Empty, OnPlaceholderTextChanged)
         );
 
-    private bool isUpdatingText;
+    private bool         isUpdatingText;
     private List<object> allItems = [];
 
     public object? ItemsSource
@@ -192,9 +192,7 @@ public sealed partial class SearchableComboBox : UserControl
                     displayText = GetDisplayValue(selectedItem);
             }
             else
-            {
                 displayText = Text;
-            }
 
             SearchBox.Text = displayText;
         }
@@ -264,8 +262,7 @@ public sealed partial class SearchableComboBox : UserControl
         var searchText = SearchBox.Text ?? string.Empty;
 
         var filtered = allItems.Where
-        (
-            item => GetDisplayValue(item).Contains(searchText, StringComparison.OrdinalIgnoreCase)
+        (item => GetDisplayValue(item).Contains(searchText, StringComparison.OrdinalIgnoreCase)
         ).ToList();
 
         ResultsList.DisplayMemberPath = DisplayMemberPath;
@@ -323,7 +320,7 @@ public sealed partial class SearchableComboBox : UserControl
 
     private void OnHostPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        var posInControl = e.GetPosition(this);
+        var posInControl  = e.GetPosition(this);
         var controlBounds = new Rect(0, 0, ActualWidth, ActualHeight);
 
         if (controlBounds.Contains(posInControl))
@@ -331,7 +328,7 @@ public sealed partial class SearchableComboBox : UserControl
 
         if (DropDown.Child is FrameworkElement popupContent)
         {
-            var posInPopup = e.GetPosition(popupContent);
+            var posInPopup  = e.GetPosition(popupContent);
             var popupBounds = new Rect(0, 0, popupContent.ActualWidth, popupContent.ActualHeight);
 
             if (popupBounds.Contains(posInPopup))
@@ -364,7 +361,7 @@ public sealed partial class SearchableComboBox : UserControl
         }
         finally
         {
-            isUpdatingText = false;
+            isUpdatingText           = false;
             ResultsList.SelectedItem = null;
         }
     }

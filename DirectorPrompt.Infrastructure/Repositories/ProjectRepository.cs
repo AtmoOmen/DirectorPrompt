@@ -153,7 +153,7 @@ public sealed class ProjectRepository : IProjectRepository
             );
 
             await DropVectorTableAsync(connection, transaction, VectorTableManager.GetKnowledgeTableName(id), cancellationToken);
-            await DropVectorTableAsync(connection, transaction, VectorTableManager.GetMemoryTableName(id), cancellationToken);
+            await DropVectorTableAsync(connection, transaction, VectorTableManager.GetMemoryTableName(id),    cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
         }

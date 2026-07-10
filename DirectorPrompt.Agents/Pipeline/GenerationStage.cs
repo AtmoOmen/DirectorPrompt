@@ -49,10 +49,9 @@ public sealed class GenerationStage
             Tools       = [.. tools]
         };
 
-        var narrativeBuilder  = new StringBuilder();
-        var reasoningBuilder  = new StringBuilder();
-        var updateCount       = 0;
-        var hasFunctionCall   = false;
+        var narrativeBuilder   = new StringBuilder();
+        var reasoningBuilder   = new StringBuilder();
+        var updateCount        = 0;
         var streamingAttempted = context.OnStreamingUpdate is not null;
 
         if (streamingAttempted)
@@ -69,8 +68,6 @@ public sealed class GenerationStage
                         reasoningBuilder.Append(reasoning.Text);
                     else if (content is TextContent text)
                         narrativeBuilder.Append(text.Text);
-                    else if (content is FunctionCallContent)
-                        hasFunctionCall = true;
                 }
 
                 context.OnStreamingUpdate?.Invoke
@@ -84,27 +81,15 @@ public sealed class GenerationStage
         var apiReasoning = reasoningBuilder.ToString();
         var rawText      = narrativeBuilder.ToString();
 
-        if (!streamingAttempted || hasFunctionCall || string.IsNullOrWhiteSpace(rawText))
+        if (!streamingAttempted || string.IsNullOrWhiteSpace(rawText))
         {
             if (streamingAttempted)
             {
-                if (hasFunctionCall)
-                {
-                    Log.Warning
-                    (
-                        "流式响应包含工具调用, 回退到非流式以完成工具调用闭环: 流式更新数={Updates}, 流式文本长度={TextLen}",
-                        updateCount,
-                        rawText.Length
-                    );
-                }
-                else
-                {
-                    Log.Warning
-                    (
-                        "流式响应叙事文本为空, 回退到非流式: 流式更新数={Updates}",
-                        updateCount
-                    );
-                }
+                Log.Warning
+                (
+                    "流式响应叙事文本为空, 回退到非流式: 流式更新数={Updates}",
+                    updateCount
+                );
 
                 narrativeBuilder.Clear();
                 reasoningBuilder.Clear();
@@ -141,7 +126,7 @@ public sealed class GenerationStage
     {
         var messages = new List<ChatMessage>();
 
-        if (context.History.Count == 0 && !string.IsNullOrEmpty(modelPrompt))
+        if (!string.IsNullOrEmpty(modelPrompt))
             messages.Add(new ChatMessage(ChatRole.System, modelPrompt));
 
         messages.Add(new ChatMessage(ChatRole.System, systemPrompt));
@@ -176,6 +161,13 @@ public sealed class GenerationStage
                 sb.AppendLine("## 开场叙事");
                 sb.AppendLine(context.Project.OpeningMessage);
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(context.PreviousSceneSummary))
+        {
+            sb.AppendLine();
+            sb.AppendLine("## 上一场景摘要");
+            sb.AppendLine(context.PreviousSceneSummary);
         }
 
         return sb.ToString();

@@ -77,8 +77,8 @@ public sealed class SceneRepository : ISceneRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO scenes (project_id, session_id, timeline_position, time_label, summary, status)
-                     VALUES (@projectID, @sessionID, @timelinePosition, @timeLabel, @summary, @status);
+                     INSERT INTO scenes (project_id, session_id, timeline_position, time_label, summary, progress_summary, status)
+                     VALUES (@projectID, @sessionID, @timelinePosition, @timeLabel, @summary, @progressSummary, @status);
                      SELECT last_insert_rowid();
                      """,
                      new
@@ -88,6 +88,7 @@ public sealed class SceneRepository : ISceneRepository
                          timelinePosition = scene.TimelinePosition,
                          timeLabel        = scene.TimeLabel,
                          summary          = scene.Summary,
+                         progressSummary  = scene.ProgressSummary,
                          status           = scene.Status.ToString().ToLowerInvariant()
                      }
                  );
@@ -113,20 +114,59 @@ public sealed class SceneRepository : ISceneRepository
             UPDATE scenes
             SET time_label = @timeLabel,
                 summary = @summary,
+                progress_summary = @progressSummary,
                 status = @status
             WHERE id = @id
             """,
             new
             {
-                id        = scene.ID,
-                timeLabel = scene.TimeLabel,
-                summary   = scene.Summary,
-                status    = scene.Status.ToString().ToLowerInvariant()
+                id              = scene.ID,
+                timeLabel       = scene.TimeLabel,
+                summary         = scene.Summary,
+                progressSummary = scene.ProgressSummary,
+                status          = scene.Status.ToString().ToLowerInvariant()
             }
         );
 
         if (oldRow is not null)
             await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "scenes", scene.ID, JsonSerializer.Serialize(oldRow), cancellationToken);
+    }
+
+    public async Task CloseActiveSceneAsync(long sessionID, string? summary, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                     (
+                         "SELECT * FROM scenes WHERE session_id = @sessionID AND status = 'active' ORDER BY id DESC LIMIT 1",
+                         new { sessionID }
+                     );
+
+        if (oldRow is null)
+            return;
+
+        var sceneID = (long)oldRow["id"];
+
+        await connection.ExecuteAsync
+        (
+            "UPDATE scenes SET status = 'completed', summary = @summary WHERE id = @id",
+            new { id = sceneID, summary }
+        );
+
+        await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "scenes", sceneID, JsonSerializer.Serialize(oldRow), cancellationToken);
+    }
+
+    public async Task<Scene?> GetLastCompletedSceneAsync(long sessionID, long beforeSceneID, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var row = await connection.QueryFirstOrDefaultAsync<SceneRow>
+                  (
+                      "SELECT * FROM scenes WHERE session_id = @sessionID AND status = 'completed' AND id < @beforeSceneID AND summary IS NOT NULL ORDER BY id DESC LIMIT 1",
+                      new { sessionID, beforeSceneID }
+                  );
+
+        return row?.ToScene();
     }
 
     private sealed class SceneRow
@@ -137,6 +177,7 @@ public sealed class SceneRepository : ISceneRepository
         public long    Timeline_Position { get; set; }
         public string  Time_Label        { get; set; } = string.Empty;
         public string? Summary           { get; set; }
+        public string? Progress_Summary  { get; set; }
         public string  Status            { get; set; } = "active";
 
         public Scene ToScene()
@@ -157,6 +198,7 @@ public sealed class SceneRepository : ISceneRepository
                 TimelinePosition = Timeline_Position,
                 TimeLabel        = Time_Label,
                 Summary          = Summary,
+                ProgressSummary  = Progress_Summary,
                 Status           = status
             };
         }

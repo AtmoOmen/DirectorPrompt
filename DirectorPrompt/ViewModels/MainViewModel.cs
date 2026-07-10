@@ -21,18 +21,18 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed partial class MainViewModel
 (
-    Orchestrator               orchestrator,
-    IProjectRepository         projectRepository,
-    ISessionRepository         sessionRepository,
-    IEventRepository           eventRepository,
-    ISceneRepository           sceneRepository,
-    IStateRepository           stateRepository,
-    ICharacterRepository       characterRepository,
-    IDirectiveRepository       directiveRepository,
-    IMemoryRepository          memoryRepository,
-    IServiceProvider           serviceProvider,
-    UserSettings               userSettings,
-    IProjectPortService        projectPortService
+    Orchestrator         orchestrator,
+    IProjectRepository   projectRepository,
+    ISessionRepository   sessionRepository,
+    IEventRepository     eventRepository,
+    ISceneRepository     sceneRepository,
+    IStateRepository     stateRepository,
+    ICharacterRepository characterRepository,
+    IDirectiveRepository directiveRepository,
+    IMemoryRepository    memoryRepository,
+    IServiceProvider     serviceProvider,
+    UserSettings         userSettings,
+    IProjectPortService  projectPortService
 )
     : ObservableObject
 {
@@ -447,9 +447,9 @@ public sealed partial class MainViewModel
         StatusMessage = Loc.Get("Status.Processing");
         ResetPipelineStages();
 
-        DialogEntryViewModel? streamingEntry = null;
-        DialogEntryViewModel? directorEntry  = null;
-        long expectedRoundID = 0;
+        DialogEntryViewModel? streamingEntry  = null;
+        DialogEntryViewModel? directorEntry   = null;
+        long                  expectedRoundID = 0;
 
         try
         {
@@ -468,7 +468,7 @@ public sealed partial class MainViewModel
                 items.Count
             );
 
-            directorEntry  = Dialog.AddDirectorEntry(0, items.Select(d => (d.Type, d.Content)).ToList());
+            directorEntry = Dialog.AddDirectorEntry(0, items.Select(d => (d.Type, d.Content)).ToList());
 
             DirectiveInput.Clear();
 
@@ -503,18 +503,28 @@ public sealed partial class MainViewModel
             StatusMessage = Loc.Get("Status.Complete");
 
             void StreamingUpdate(string narrative, string thinking) =>
-                dispatcher.BeginInvoke(new Action(() =>
-                {
-                    if (CurrentSession?.ID == sessionID)
-                        streamingEntry.UpdateStreamingContent(narrative, thinking);
-                }));
+                dispatcher.BeginInvoke
+                (
+                    new Action
+                    (() =>
+                        {
+                            if (CurrentSession?.ID == sessionID)
+                                streamingEntry.UpdateStreamingContent(narrative, thinking);
+                        }
+                    )
+                );
 
             void StageUpdate(PipelineStageUpdate update) =>
-                dispatcher.BeginInvoke(new Action(() =>
-                {
-                    if (CurrentSession?.ID == sessionID)
-                        UpdatePipelineStage(update.Stage, update.Status, update.Detail);
-                }));
+                dispatcher.BeginInvoke
+                (
+                    new Action
+                    (() =>
+                        {
+                            if (CurrentSession?.ID == sessionID)
+                                UpdatePipelineStage(update.Stage, update.Status, update.Detail);
+                        }
+                    )
+                );
         }
         catch (OperationCanceledException)
         {
@@ -605,9 +615,9 @@ public sealed partial class MainViewModel
         StatusMessage = Loc.Get("Status.Rewriting");
         ResetPipelineStages();
 
-        DialogEntryViewModel? streamingEntry = null;
-        DialogEntryViewModel? directorEntry  = null;
-        long expectedRoundID = 0;
+        DialogEntryViewModel? streamingEntry  = null;
+        DialogEntryViewModel? directorEntry   = null;
+        long                  expectedRoundID = 0;
 
         try
         {
@@ -640,7 +650,7 @@ public sealed partial class MainViewModel
 
             Dialog.RemoveEntriesByRound(latestRound);
 
-            directorEntry  = Dialog.AddDirectorEntry(0, directives.Select(d => (d.Type, d.Content)).ToList());
+            directorEntry = Dialog.AddDirectorEntry(0, directives.Select(d => (d.Type, d.Content)).ToList());
 
             streamingEntry = Dialog.BeginStreamingNarrative(0);
 
@@ -666,18 +676,28 @@ public sealed partial class MainViewModel
             StatusMessage = Loc.Get("Status.Complete");
 
             void StreamingUpdate(string narrative, string thinking) =>
-                dispatcher.BeginInvoke(new Action(() =>
-                {
-                    if (CurrentSession?.ID == sessionID)
-                        streamingEntry.UpdateStreamingContent(narrative, thinking);
-                }));
+                dispatcher.BeginInvoke
+                (
+                    new Action
+                    (() =>
+                        {
+                            if (CurrentSession?.ID == sessionID)
+                                streamingEntry.UpdateStreamingContent(narrative, thinking);
+                        }
+                    )
+                );
 
             void StageUpdate(PipelineStageUpdate update) =>
-                dispatcher.BeginInvoke(new Action(() =>
-                {
-                    if (CurrentSession?.ID == sessionID)
-                        UpdatePipelineStage(update.Stage, update.Status, update.Detail);
-                }));
+                dispatcher.BeginInvoke
+                (
+                    new Action
+                    (() =>
+                        {
+                            if (CurrentSession?.ID == sessionID)
+                                UpdatePipelineStage(update.Stage, update.Status, update.Detail);
+                        }
+                    )
+                );
         }
         catch (OperationCanceledException)
         {
@@ -731,8 +751,8 @@ public sealed partial class MainViewModel
         StatusMessage = Loc.Get("Status.Correcting");
         ResetPipelineStages();
 
-        DialogEntryViewModel? streamingEntry = null;
-        var expectedRoundID = latestRound + 1;
+        DialogEntryViewModel? streamingEntry  = null;
+        var                   expectedRoundID = latestRound + 1;
 
         try
         {
@@ -829,18 +849,28 @@ public sealed partial class MainViewModel
             pendingCorrectionOriginalNarrative = null;
 
             void StreamingUpdate(string narrative, string thinking) =>
-                dispatcher.BeginInvoke(new Action(() =>
-                {
-                    if (CurrentSession?.ID == sessionID)
-                        streamingEntry.UpdateStreamingContent(narrative, thinking);
-                }));
+                dispatcher.BeginInvoke
+                (
+                    new Action
+                    (() =>
+                        {
+                            if (CurrentSession?.ID == sessionID)
+                                streamingEntry.UpdateStreamingContent(narrative, thinking);
+                        }
+                    )
+                );
 
             void StageUpdate(PipelineStageUpdate update) =>
-                dispatcher.BeginInvoke(new Action(() =>
-                {
-                    if (CurrentSession?.ID == sessionID)
-                        UpdatePipelineStage(update.Stage, update.Status, update.Detail);
-                }));
+                dispatcher.BeginInvoke
+                (
+                    new Action
+                    (() =>
+                        {
+                            if (CurrentSession?.ID == sessionID)
+                                UpdatePipelineStage(update.Stage, update.Status, update.Detail);
+                        }
+                    )
+                );
         }
         catch (OperationCanceledException)
         {

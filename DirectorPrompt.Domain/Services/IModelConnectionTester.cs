@@ -7,7 +7,7 @@ public interface IModelConnectionTester
         string            provider,
         string            endpoint,
         string?           apiKey,
-        string?           customHeaders = null,
+        string?           customHeaders     = null,
         CancellationToken cancellationToken = default
     );
 
@@ -17,7 +17,7 @@ public interface IModelConnectionTester
         string            endpoint,
         string?           apiKey,
         string            modelName,
-        string?           customHeaders = null,
+        string?           customHeaders     = null,
         CancellationToken cancellationToken = default
     );
 
@@ -27,7 +27,7 @@ public interface IModelConnectionTester
         string            endpoint,
         string?           apiKey,
         string            modelName,
-        string?           customHeaders = null,
+        string?           customHeaders     = null,
         CancellationToken cancellationToken = default
     );
 }

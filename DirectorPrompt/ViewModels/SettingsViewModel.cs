@@ -85,7 +85,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                     DisplayName   = config.DisplayName,
                     Provider      = config.Provider,
                     Endpoint      = config.Endpoint,
-                    APIKey        = config.APIKey ?? string.Empty,
+                    APIKey        = config.APIKey        ?? string.Empty,
                     CustomHeaders = config.CustomHeaders ?? string.Empty
                 }
             );
@@ -102,14 +102,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             (
                 new ModelSettingViewModel
                 {
-                    ID               = config.ID,
-                    DisplayName      = config.DisplayName,
-                    ProviderID       = config.ProviderID,
-                    ModelName        = config.ModelName,
-                    Temperature      = config.Temperature,
-                    ReasoningEffort  = config.ReasoningEffort ?? string.Empty,
-                    ExtraParameters  = config.ExtraParameters ?? string.Empty,
-                    PromptID         = config.PromptID
+                    ID              = config.ID,
+                    DisplayName     = config.DisplayName,
+                    ProviderID      = config.ProviderID,
+                    ModelName       = config.ModelName,
+                    Temperature     = config.Temperature,
+                    ReasoningEffort = config.ReasoningEffort ?? string.Empty,
+                    ExtraParameters = config.ExtraParameters ?? string.Empty,
+                    PromptID        = config.PromptID
                 }
             );
         }
@@ -222,14 +222,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             var providers = Providers.Select
-            (
-                p => new ProviderConfig
+            (p => new ProviderConfig
                 {
-                    ID            = p.ID,
-                    DisplayName   = p.DisplayName,
-                    Provider      = p.Provider,
-                    Endpoint      = p.Endpoint,
-                    APIKey        = p.APIKey,
+                    ID          = p.ID,
+                    DisplayName = p.DisplayName,
+                    Provider    = p.Provider,
+                    Endpoint    = p.Endpoint,
+                    APIKey      = p.APIKey,
                     CustomHeaders = string.IsNullOrWhiteSpace(p.CustomHeaders) ?
                                         null :
                                         p.CustomHeaders
@@ -237,15 +236,16 @@ public sealed partial class SettingsViewModel : ObservableObject
             ).ToList();
 
             var models = Models.Select
-            (
-                m => new ModelConfig
+            (m => new ModelConfig
                 {
-                    ID              = m.ID,
-                    DisplayName     = m.DisplayName,
-                    ProviderID      = m.ProviderID,
-                    ModelName       = m.ModelName,
-                    Temperature     = m.Temperature,
-                    ReasoningEffort = string.IsNullOrWhiteSpace(m.ReasoningEffort) ? null : m.ReasoningEffort,
+                    ID          = m.ID,
+                    DisplayName = m.DisplayName,
+                    ProviderID  = m.ProviderID,
+                    ModelName   = m.ModelName,
+                    Temperature = m.Temperature,
+                    ReasoningEffort = string.IsNullOrWhiteSpace(m.ReasoningEffort) ?
+                                          null :
+                                          m.ReasoningEffort,
                     ExtraParameters = string.IsNullOrWhiteSpace(m.ExtraParameters) ?
                                           null :
                                           m.ExtraParameters,
@@ -254,8 +254,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             ).ToList();
 
             var prompts = Prompts.Select
-            (
-                p => new PromptConfig
+            (p => new PromptConfig
                 {
                     ID          = p.ID,
                     DisplayName = p.DisplayName,
@@ -264,8 +263,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             ).ToList();
 
             var tasks = AgentTasks.Select
-            (
-                t => new AgentTaskConfig
+            (t => new AgentTaskConfig
                 {
                     TaskType      = t.TaskType,
                     ModelConfigID = t.ModelConfigID,

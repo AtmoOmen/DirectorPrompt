@@ -15,9 +15,9 @@ public sealed class CharacterRepository : ICharacterRepository
 
     public CharacterRepository
     (
-        SqliteConnectionFactory   connectionFactory,
-        IRoundChangeRepository    roundChangeRepository,
-        VectorTableManager        vectorTableManager
+        SqliteConnectionFactory connectionFactory,
+        IRoundChangeRepository  roundChangeRepository,
+        VectorTableManager      vectorTableManager
     )
     {
         this.connectionFactory     = connectionFactory;
@@ -307,11 +307,11 @@ public sealed class CharacterRepository : ICharacterRepository
 
     public async Task SaveEmbeddingAsync
     (
-        long                 projectID,
-        long                 characterID,
-        byte[]               embedding,
-        string               contentHash,
-        CancellationToken    cancellationToken = default
+        long              projectID,
+        long              characterID,
+        byte[]            embedding,
+        string            contentHash,
+        CancellationToken cancellationToken = default
     )
     {
         var dimension = embedding.Length / sizeof(float);
@@ -855,40 +855,40 @@ public sealed class CharacterRepository : ICharacterRepository
 
     private sealed class CharacterRow
     {
-        public long   ID                { get; set; }
-        public long   Project_ID        { get; set; }
-        public long   Session_ID        { get; set; }
-        public string Name              { get; set; } = string.Empty;
-        public string Description       { get; set; } = string.Empty;
-        public string Aliases           { get; set; } = "[]";
-        public string Category_IDs      { get; set; } = "[]";
-        public string Status            { get; set; } = "active";
-        public int    Touch_Count       { get; set; }
-        public long   Last_Touched_Round { get; set; }
-        public string? Content_Hash     { get; set; }
-        public string Created_At        { get; set; } = string.Empty;
-        public string Updated_At        { get; set; } = string.Empty;
+        public long    ID                 { get; set; }
+        public long    Project_ID         { get; set; }
+        public long    Session_ID         { get; set; }
+        public string  Name               { get; set; } = string.Empty;
+        public string  Description        { get; set; } = string.Empty;
+        public string  Aliases            { get; set; } = "[]";
+        public string  Category_IDs       { get; set; } = "[]";
+        public string  Status             { get; set; } = "active";
+        public int     Touch_Count        { get; set; }
+        public long    Last_Touched_Round { get; set; }
+        public string? Content_Hash       { get; set; }
+        public string  Created_At         { get; set; } = string.Empty;
+        public string  Updated_At         { get; set; } = string.Empty;
 
         public Character ToCharacter() =>
             new()
             {
-                ID              = ID,
-                ProjectID       = Project_ID,
-                SessionID       = Session_ID,
-                Name            = Name,
-                Description     = Description,
-                Aliases         = JsonHelper.DeserializeStringArray(Aliases),
-                CategoryIDs     = JsonHelper.DeserializeInt64Array(Category_IDs),
-                Status          = Status switch
+                ID          = ID,
+                ProjectID   = Project_ID,
+                SessionID   = Session_ID,
+                Name        = Name,
+                Description = Description,
+                Aliases     = JsonHelper.DeserializeStringArray(Aliases),
+                CategoryIDs = JsonHelper.DeserializeInt64Array(Category_IDs),
+                Status = Status switch
                 {
                     "archived" => CharacterStatus.Archived,
                     _          => CharacterStatus.Active
                 },
-                TouchCount      = Touch_Count,
+                TouchCount       = Touch_Count,
                 LastTouchedRound = Last_Touched_Round,
-                ContentHash     = Content_Hash,
-                CreatedAt       = DateTime.Parse(Created_At),
-                UpdatedAt       = DateTime.Parse(Updated_At)
+                ContentHash      = Content_Hash,
+                CreatedAt        = DateTime.Parse(Created_At),
+                UpdatedAt        = DateTime.Parse(Updated_At)
             };
     }
 

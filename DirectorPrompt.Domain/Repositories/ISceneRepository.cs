@@ -15,4 +15,8 @@ public interface ISceneRepository
     Task<Scene> CreateAsync(Scene scene, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Scene scene, CancellationToken cancellationToken = default);
+
+    Task CloseActiveSceneAsync(long sessionID, string? summary, CancellationToken cancellationToken = default);
+
+    Task<Scene?> GetLastCompletedSceneAsync(long sessionID, long beforeSceneID, CancellationToken cancellationToken = default);
 }

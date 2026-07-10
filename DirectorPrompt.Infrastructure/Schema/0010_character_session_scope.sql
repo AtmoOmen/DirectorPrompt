@@ -1,7 +1,9 @@
 -- 人物改为对话级作用域: session_id NOT NULL, 唯一索引改为 (session_id, name)
 
 -- 删除残留的项目模板角色 (session_id IS NULL), 这些不应该存在
-DELETE FROM characters WHERE session_id IS NULL;
+DELETE
+FROM characters
+WHERE session_id IS NULL;
 
 -- 删除旧的唯一索引 (project_id, name), 该索引错误地限制了同一项目内跨对话的角色名唯一性
 DROP INDEX IF EXISTS idx_characters_project_name;

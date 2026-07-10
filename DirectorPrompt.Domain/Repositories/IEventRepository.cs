@@ -8,6 +8,8 @@ public interface IEventRepository
 
     Task<IReadOnlyList<PlaythroughEvent>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<PlaythroughEvent>> GetBySceneAsync(long sessionID, long sceneID, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<PlaythroughEvent>> GetByRoundAsync(long roundID, CancellationToken cancellationToken = default);
 
     Task RemoveByRoundAsync(long roundID, CancellationToken cancellationToken = default);

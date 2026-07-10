@@ -16,5 +16,7 @@ public record Scene
 
     public string? Summary { get; init; }
 
+    public string? ProgressSummary { get; init; }
+
     public SceneStatus Status { get; init; }
 }

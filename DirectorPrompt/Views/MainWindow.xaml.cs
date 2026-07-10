@@ -1,4 +1,4 @@
-﻿﻿using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls.Primitives;

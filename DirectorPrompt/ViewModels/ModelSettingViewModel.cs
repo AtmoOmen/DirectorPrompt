@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using DirectorPrompt.Localization;
 
 namespace DirectorPrompt.ViewModels;
 

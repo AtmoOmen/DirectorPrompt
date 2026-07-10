@@ -16,7 +16,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         string            provider,
         string            endpoint,
         string?           apiKey,
-        string?           customHeaders = null,
+        string?           customHeaders     = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -62,7 +62,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         string            endpoint,
         string?           apiKey,
         string            modelName,
-        string?           customHeaders = null,
+        string?           customHeaders     = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -97,7 +97,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         string            endpoint,
         string?           apiKey,
         string            modelName,
-        string?           customHeaders = null,
+        string?           customHeaders     = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -137,8 +137,10 @@ public sealed class ModelConnectionTester : IModelConnectionTester
 
         var options = new ClientOptions
         {
-            ApiKey  = apiKey,
-            BaseUrl = string.IsNullOrWhiteSpace(endpoint) ? null : endpoint
+            ApiKey = apiKey,
+            BaseUrl = string.IsNullOrWhiteSpace(endpoint) ?
+                          null :
+                          endpoint
         };
 
         var parsedHeaders = CustomHeaderPipelinePolicy.Parse(customHeaders);

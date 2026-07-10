@@ -12,6 +12,8 @@ public record PlaythroughEvent
 
     public long RoundID { get; init; }
 
+    public long? SceneID { get; init; }
+
     public EventType Type { get; init; }
 
     /// <summary>

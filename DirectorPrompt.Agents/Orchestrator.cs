@@ -6,6 +6,7 @@ using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
+using Microsoft.Extensions.AI;
 using Serilog;
 
 namespace DirectorPrompt.Agents;
@@ -26,6 +27,7 @@ public sealed class Orchestrator
     GenerationStage          generationStage,
     PostProcessingStage      postProcessingStage,
     AgentConfigResolver      agentConfigResolver,
+    IChatClientFactory       chatClientFactory,
     UserSettings             userSettings
 )
 {
@@ -50,6 +52,7 @@ public sealed class Orchestrator
 
         var roundID          = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken) + 1;
         var activeScene      = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
+        var oldSceneID       = activeScene?.ID;
         var timelinePosition = activeScene?.TimelinePosition ?? 0;
 
         using (RoundContext.Enter(roundID))
@@ -95,9 +98,18 @@ public sealed class Orchestrator
             if (activeScene is null)
                 throw new InvalidOperationException("场景创建失败: Scene Agent 未调用 create_scene 工具");
 
+            if (oldSceneID is not null && oldSceneID != activeScene.ID)
+            {
+                Log.Information("场景切换: 旧场景={OldSceneID}, 新场景={NewSceneID}", oldSceneID, activeScene.ID);
+                await GenerateSceneSummaryAsync(sessionID, oldSceneID.Value, cancellationToken);
+            }
+
+            var previousScene        = await sceneRepository.GetLastCompletedSceneAsync(sessionID, activeScene.ID, cancellationToken);
+            var previousSceneSummary = previousScene?.Summary;
+
             timelinePosition = activeScene.TimelinePosition;
 
-            var history = await BuildHistoryAsync(sessionID, roundID, cancellationToken);
+            var history = await BuildHistoryAsync(sessionID, activeScene.ID, roundID, cancellationToken);
 
             Log.Information("历史叙事注入: {HistoryCount} 轮", history.Count);
 
@@ -111,6 +123,7 @@ public sealed class Orchestrator
                 Project                 = project,
                 EmbeddingConfig         = embeddingConfig,
                 History                 = history,
+                PreviousSceneSummary    = previousSceneSummary,
                 OnStreamingUpdate       = onStreamingUpdate,
                 OnStageUpdate           = onStageUpdate,
                 PhaseActivatedEntryIDs  = (phaseResult as PhaseEvaluationResult)?.ActivatedEntryIDs ?? []
@@ -194,8 +207,11 @@ public sealed class Orchestrator
             throw new InvalidOperationException("修正需要已有活跃场景");
 
         var timelinePosition = activeScene.TimelinePosition;
-        var history          = await BuildHistoryAsync(sessionID, tempRoundID, cancellationToken);
+        var history          = await BuildHistoryAsync(sessionID, activeScene.ID, tempRoundID, cancellationToken);
         var embeddingConfig  = ResolveEmbeddingConfig();
+
+        var previousScene        = await sceneRepository.GetLastCompletedSceneAsync(sessionID, activeScene.ID, cancellationToken);
+        var previousSceneSummary = previousScene?.Summary;
 
         Log.Information
         (
@@ -227,6 +243,7 @@ public sealed class Orchestrator
                 Project                 = project,
                 EmbeddingConfig         = embeddingConfig,
                 History                 = history,
+                PreviousSceneSummary    = previousSceneSummary,
                 OriginalNarrative       = narrativeEvent.Data,
                 CorrectionGuidance      = correctionGuidance,
                 OnStreamingUpdate       = onStreamingUpdate,
@@ -308,6 +325,7 @@ public sealed class Orchestrator
                 projectID,
                 sessionID,
                 originalRoundID,
+                originalDirectorEvent.SceneID,
                 EventType.DirectorInput,
                 originalDirectorEvent.Data,
                 cancellationToken
@@ -321,6 +339,7 @@ public sealed class Orchestrator
                 projectID,
                 sessionID,
                 originalRoundID,
+                originalDirectorEvent?.SceneID,
                 EventType.NarrativeOutput,
                 tempNarrativeEvent.Data,
                 cancellationToken
@@ -340,6 +359,84 @@ public sealed class Orchestrator
         Log.Information("拒绝修正: 对话={SessionID}, 临时轮次={TempRoundID}", sessionID, tempRoundID);
         await DeleteRoundAsync(sessionID, tempRoundID, cancellationToken);
         Log.Information("修正已拒绝, 临时轮次 {TempRoundID} 已删除", tempRoundID);
+    }
+
+    private async Task GenerateSceneSummaryAsync
+    (
+        long              sessionID,
+        long              sceneID,
+        CancellationToken cancellationToken
+    )
+    {
+        var scene = await sceneRepository.GetByIDAsync(sceneID, cancellationToken);
+
+        if (scene is null)
+            return;
+
+        var events = await eventRepository.GetBySceneAsync(sessionID, sceneID, cancellationToken);
+
+        var historyText = BuildSceneHistoryText(events);
+
+        if (string.IsNullOrWhiteSpace(historyText))
+            return;
+
+        var resolved = agentConfigResolver.Resolve(AgentTaskType.Narrator);
+
+        if (resolved is null)
+        {
+            Log.Warning("场景摘要生成跳过: Narrator Agent 未配置");
+            return;
+        }
+
+        Log.Information("场景摘要生成: 场景={SceneID}, 事件数={EventCount}", sceneID, events.Count);
+
+        var client = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
+        var messages = new List<ChatMessage>
+        {
+            new
+            (
+                ChatRole.System,
+                "请将以下场景内的对话历史压缩为简短摘要 (约 300-500 字), 包含关键事件、人物状态变化和情节发展。只输出摘要内容, 不要添加额外格式。"
+            ),
+            new(ChatRole.User, historyText)
+        };
+
+        var options = new ChatOptions
+        {
+            Temperature = 0.3f,
+            ModelId     = resolved.ModelConfig.ModelName
+        };
+
+        try
+        {
+            var response = await client.GetResponseAsync(messages, options, cancellationToken);
+            var summary  = response.Text?.Trim();
+
+            if (!string.IsNullOrWhiteSpace(summary))
+            {
+                await sceneRepository.UpdateAsync(scene with { Summary = summary }, cancellationToken);
+                Log.Information("场景摘要生成完成: 场景={SceneID}, 摘要长度={SummaryLen}", sceneID, summary.Length);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "场景摘要生成失败: 场景={SceneID}", sceneID);
+        }
+    }
+
+    private static string BuildSceneHistoryText(IReadOnlyList<PlaythroughEvent> events)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var evt in events.OrderBy(e => e.RoundID))
+        {
+            if (evt.Type == EventType.DirectorInput)
+                sb.AppendLine($"[导演指令] {ParseDirectorInput(evt.Data)}");
+            else if (evt.Type == EventType.NarrativeOutput)
+                sb.AppendLine($"[叙事输出] {evt.Data}");
+        }
+
+        return sb.ToString();
     }
 
     private ResolvedEmbeddingConfig ResolveEmbeddingConfig()
@@ -398,6 +495,7 @@ public sealed class Orchestrator
             context.DirectiveBatch.ProjectID,
             context.SessionID,
             context.RoundID,
+            context.CurrentSceneID,
             EventType.DirectorInput,
             JsonSerializer.Serialize
             (
@@ -419,6 +517,7 @@ public sealed class Orchestrator
             context.DirectiveBatch.ProjectID,
             context.SessionID,
             context.RoundID,
+            context.CurrentSceneID,
             EventType.NarrativeOutput,
             context.NarrativeOutput ?? string.Empty,
             cancellationToken
@@ -471,11 +570,12 @@ public sealed class Orchestrator
     private async Task<IReadOnlyList<ChatHistoryEntry>> BuildHistoryAsync
     (
         long              sessionID,
+        long              sceneID,
         long              currentRoundID,
         CancellationToken cancellationToken
     )
     {
-        var events = await eventRepository.GetBySessionAsync(sessionID, cancellationToken);
+        var events = await eventRepository.GetBySceneAsync(sessionID, sceneID, cancellationToken);
 
         var directorEvents = events
                              .Where(e => e.Type == EventType.DirectorInput)
@@ -510,11 +610,6 @@ public sealed class Orchestrator
             if (!string.IsNullOrWhiteSpace(narrativeText))
                 history.Add(new ChatHistoryEntry(roundID, directorInput, narrativeText));
         }
-
-        const int MAX_HISTORY_ROUNDS = 10;
-
-        if (history.Count > MAX_HISTORY_ROUNDS)
-            history = history.TakeLast(MAX_HISTORY_ROUNDS).ToList();
 
         return history;
     }
@@ -578,6 +673,7 @@ public sealed class Orchestrator
         long              projectID,
         long              sessionID,
         long              roundID,
+        long?             sceneID,
         EventType         type,
         string            data,
         CancellationToken cancellationToken
@@ -585,10 +681,11 @@ public sealed class Orchestrator
     {
         Log.Debug
         (
-            "记录事件: 类型={Type}, 对话={SessionID}, 轮次={RoundID}, 数据长度={DataLength}",
+            "记录事件: 类型={Type}, 对话={SessionID}, 轮次={RoundID}, 场景={SceneID}, 数据长度={DataLength}",
             type,
             sessionID,
             roundID,
+            sceneID,
             data.Length
         );
 
@@ -597,6 +694,7 @@ public sealed class Orchestrator
             ProjectID = projectID,
             SessionID = sessionID,
             RoundID   = roundID,
+            SceneID   = sceneID,
             Type      = type,
             Data      = data,
             CreatedAt = DateTime.UtcNow
@@ -747,6 +845,7 @@ public sealed class Orchestrator
                 context.DirectiveBatch.ProjectID,
                 context.SessionID,
                 context.RoundID,
+                context.CurrentSceneID,
                 source.EventType,
                 data,
                 cancellationToken

@@ -79,6 +79,8 @@ public sealed class SceneTools
             return JsonSerializer.Serialize(new { error = ex.Message });
         }
 
+        await sceneRepository.CloseActiveSceneAsync(context.SessionID, null);
+
         var scene = new Scene
         {
             ProjectID        = context.ProjectID,

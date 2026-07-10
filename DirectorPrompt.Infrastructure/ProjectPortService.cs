@@ -175,8 +175,8 @@ public sealed class ProjectPortService
             {
                 ProjectID           = newProjectID,
                 ProjectName         = data.Project.Name,
-                KnowledgeEntryCount = data.KnowledgeEntries?.Count  ?? 0,
-                StateAttributeCount = data.StateAttributes?.Count   ?? 0
+                KnowledgeEntryCount = data.KnowledgeEntries?.Count ?? 0,
+                StateAttributeCount = data.StateAttributes?.Count  ?? 0
             };
         }
         catch
@@ -746,5 +746,4 @@ public sealed class ProjectPortService
                 UpdatedAt   = DateTime.Parse(Updated_At)
             };
     }
-
 }
