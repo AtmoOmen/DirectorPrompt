@@ -700,9 +700,7 @@
                                                     <components:PhaseEditControl
                                                         PhaseSource="{Binding}"
                                                         AddPhaseCommand="{Binding DataContext.AddPhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        DeletePhaseCommand="{Binding DataContext.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        AddPhaseKnowledgeCommand="{Binding DataContext.AddPhaseKnowledgeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        RemovePhaseKnowledgeCommand="{Binding DataContext.RemovePhaseKnowledgeCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                        DeletePhaseCommand="{Binding DataContext.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
 
                                                 </StackPanel>
                                             </StackPanel>
@@ -1129,9 +1127,7 @@
                                                                         <components:PhaseEditControl
                                                                             PhaseSource="{Binding}"
                                                                             AddPhaseCommand="{Binding DataContext.AddPhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                            DeletePhaseCommand="{Binding DataContext.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                            AddPhaseKnowledgeCommand="{Binding DataContext.AddPhaseKnowledgeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                            RemovePhaseKnowledgeCommand="{Binding DataContext.RemovePhaseKnowledgeCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                            DeletePhaseCommand="{Binding DataContext.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                                                                     </StackPanel>
                                                                 </StackPanel>
                                                             </Border>

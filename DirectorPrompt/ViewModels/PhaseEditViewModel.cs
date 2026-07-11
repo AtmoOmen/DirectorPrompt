@@ -10,7 +10,7 @@ public enum KnowledgeSelectionKind
     Entry
 }
 
-public sealed class KnowledgeSelectionItem : ObservableObject
+public sealed partial class KnowledgeSelectionItem : ObservableObject
 {
     public long ID { get; set; }
 
@@ -21,6 +21,9 @@ public sealed class KnowledgeSelectionItem : ObservableObject
     public string DisplayWithType => Kind == KnowledgeSelectionKind.Group ?
                                          $"[分组] {Display}" :
                                          Display;
+
+    [ObservableProperty]
+    public partial bool IsSelected { get; set; }
 }
 
 public sealed partial class PhaseEditViewModel : ObservableObject
@@ -34,36 +37,31 @@ public sealed partial class PhaseEditViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsEditing { get; set; } = true;
 
-    [ObservableProperty]
-    public partial KnowledgeSelectionItem? SelectedAvailableItem { get; set; }
-
-    public ObservableCollection<KnowledgeSelectionItem> AvailableKnowledgeItems { get; } = [];
-
-    public ObservableCollection<KnowledgeSelectionItem> LinkedKnowledgeItems { get; } = [];
+    public ObservableCollection<KnowledgeSelectionItem> KnowledgeItems { get; } = [];
 
     public DirectiveInputViewModel EnterDirectiveInput { get; } = new();
 
     public DirectiveInputViewModel ExitDirectiveInput { get; } = new();
 
     public long[] GetKnowledgeIDs() =>
-        LinkedKnowledgeItems
-            .Where(i => i.Kind == KnowledgeSelectionKind.Entry)
+        KnowledgeItems
+            .Where(i => i is { Kind: KnowledgeSelectionKind.Entry, IsSelected: true })
             .Select(i => i.ID)
             .ToArray();
 
     public long[] GetKnowledgeGroupIDs() =>
-        LinkedKnowledgeItems
-            .Where(i => i.Kind == KnowledgeSelectionKind.Group)
+        KnowledgeItems
+            .Where(i => i is { Kind: KnowledgeSelectionKind.Group, IsSelected: true })
             .Select(i => i.ID)
             .ToArray();
 
     public void PopulateAvailableKnowledge(IEnumerable<KnowledgeGroupEditViewModel> groups)
     {
-        AvailableKnowledgeItems.Clear();
+        KnowledgeItems.Clear();
 
         foreach (var group in groups.Where(g => !g.Active))
         {
-            AvailableKnowledgeItems.Add
+            KnowledgeItems.Add
             (
                 new KnowledgeSelectionItem
                 {
@@ -78,7 +76,7 @@ public sealed partial class PhaseEditViewModel : ObservableObject
         {
             foreach (var entry in group.Entries.Where(e => !e.Active))
             {
-                AvailableKnowledgeItems.Add
+                KnowledgeItems.Add
                 (
                     new KnowledgeSelectionItem
                     {
@@ -89,22 +87,6 @@ public sealed partial class PhaseEditViewModel : ObservableObject
                 );
             }
         }
-    }
-
-    public void AddLinkedItem(KnowledgeSelectionItem item)
-    {
-        if (LinkedKnowledgeItems.Any(i => i.ID == item.ID && i.Kind == item.Kind))
-            return;
-
-        LinkedKnowledgeItems.Add(item);
-        AvailableKnowledgeItems.Remove(item);
-        SelectedAvailableItem = null;
-    }
-
-    public void RemoveLinkedItem(KnowledgeSelectionItem item)
-    {
-        LinkedKnowledgeItems.Remove(item);
-        AvailableKnowledgeItems.Add(item);
     }
 
     public void SyncFromConfig
@@ -124,21 +106,14 @@ public sealed partial class PhaseEditViewModel : ObservableObject
         var kidSet = new HashSet<long>(knowledgeIds);
         var gidSet = new HashSet<long>(knowledgeGroupIds);
 
-        var toLink = AvailableKnowledgeItems
-                     .Where
-                     (i => i.Kind switch
-                         {
-                             KnowledgeSelectionKind.Group => gidSet.Contains(i.ID),
-                             KnowledgeSelectionKind.Entry => kidSet.Contains(i.ID),
-                             _                            => false
-                         }
-                     )
-                     .ToList();
-
-        foreach (var item in toLink)
+        foreach (var item in KnowledgeItems)
         {
-            AvailableKnowledgeItems.Remove(item);
-            LinkedKnowledgeItems.Add(item);
+            item.IsSelected = item.Kind switch
+            {
+                KnowledgeSelectionKind.Group => gidSet.Contains(item.ID),
+                KnowledgeSelectionKind.Entry => kidSet.Contains(item.ID),
+                _                            => false
+            };
         }
 
         var order = 1;

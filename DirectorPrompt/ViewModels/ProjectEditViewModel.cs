@@ -803,7 +803,7 @@ public sealed partial class ProjectEditViewModel
         if (attribute is null)
             return;
 
-        var phase = new PhaseEditViewModel { IsEditing = true };
+        var phase = new PhaseEditViewModel { Name = Loc.Get("Phase.New"), IsEditing = true };
         phase.PopulateAvailableKnowledge(KnowledgeGroups);
         attribute.Phases.Add(phase);
     }
@@ -829,14 +829,6 @@ public sealed partial class ProjectEditViewModel
             }
         }
     }
-
-    [RelayCommand]
-    private void AddPhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args) =>
-        args.phase.AddLinkedItem(args.item);
-
-    [RelayCommand]
-    private void RemovePhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args) =>
-        args.phase.RemoveLinkedItem(args.item);
 
     private sealed record StateAttributeConfigDTO
     {

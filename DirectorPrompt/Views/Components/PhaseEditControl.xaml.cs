@@ -34,24 +34,6 @@ public partial class PhaseEditControl
             new PropertyMetadata(null)
         );
 
-    public static readonly DependencyProperty AddPhaseKnowledgeCommandProperty =
-        DependencyProperty.Register
-        (
-            nameof(AddPhaseKnowledgeCommand),
-            typeof(ICommand),
-            typeof(PhaseEditControl),
-            new PropertyMetadata(null)
-        );
-
-    public static readonly DependencyProperty RemovePhaseKnowledgeCommandProperty =
-        DependencyProperty.Register
-        (
-            nameof(RemovePhaseKnowledgeCommand),
-            typeof(ICommand),
-            typeof(PhaseEditControl),
-            new PropertyMetadata(null)
-        );
-
     public StateAttributeEditViewModel? PhaseSource
     {
         get => (StateAttributeEditViewModel?)GetValue(PhaseSourceProperty);
@@ -68,18 +50,6 @@ public partial class PhaseEditControl
     {
         get => (ICommand?)GetValue(DeletePhaseCommandProperty);
         set => SetValue(DeletePhaseCommandProperty, value);
-    }
-
-    public ICommand? AddPhaseKnowledgeCommand
-    {
-        get => (ICommand?)GetValue(AddPhaseKnowledgeCommandProperty);
-        set => SetValue(AddPhaseKnowledgeCommandProperty, value);
-    }
-
-    public ICommand? RemovePhaseKnowledgeCommand
-    {
-        get => (ICommand?)GetValue(RemovePhaseKnowledgeCommandProperty);
-        set => SetValue(RemovePhaseKnowledgeCommandProperty, value);
     }
 
     public PhaseEditControl() =>
@@ -114,30 +84,5 @@ public partial class PhaseEditControl
             return;
 
         AddPhaseCommand?.Execute(PhaseSource);
-    }
-
-    private void OnAddPhaseKnowledge(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { Tag: PhaseEditViewModel phase })
-            return;
-
-        if (phase.SelectedAvailableItem is null)
-            return;
-
-        AddPhaseKnowledgeCommand?.Execute((phase, phase.SelectedAvailableItem));
-    }
-
-    private void OnRemovePhaseKnowledge(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement fe)
-            return;
-
-        if (fe.Tag is not PhaseEditViewModel phase)
-            return;
-
-        if (fe.DataContext is not KnowledgeSelectionItem item)
-            return;
-
-        RemovePhaseKnowledgeCommand?.Execute((phase, item));
     }
 }
