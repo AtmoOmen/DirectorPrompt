@@ -6,7 +6,6 @@
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
                  xmlns:converters="clr-namespace:DirectorPrompt.Converters"
-                 xmlns:enums="clr-namespace:DirectorPrompt.Domain.Enums;assembly=DirectorPrompt.Domain"
                  xmlns:loc="clr-namespace:DirectorPrompt.Localization"
                  xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
                  mc:Ignorable="d"
@@ -21,7 +20,6 @@
                  WindowCornerPreference="Round"
                  Icon="pack://application:,,,/Assets/Images/Icon.ico">
     <ui:FluentWindow.Resources>
-        <converters:EnumDisplayConverter x:Key="EnumDisplay" />
         <converters:InverseBoolConverter x:Key="InverseBool" />
         <Style TargetType="ListViewItem">
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
@@ -458,8 +456,10 @@
                                                                     Margin="8,0,0,0" />
                                                             </StackPanel>
                                                             <ComboBox
-                                                                ItemsSource="{Binding Source={x:Type enums:StateValueType}, Converter={StaticResource EnumDisplay}}"
-                                                                SelectedItem="{Binding ValueType, Converter={StaticResource EnumDisplay}}" />
+                                                                ItemsSource="{Binding ValueTypes, Source={x:Static vm:EnumOptions.Instance}}"
+                                                                SelectedValue="{Binding ValueType}"
+                                                                SelectedValuePath="Value"
+                                                                DisplayMemberPath="Display" />
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1" Margin="4,0,0,0">
                                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
@@ -473,8 +473,10 @@
                                                                     Margin="8,0,0,0" />
                                                             </StackPanel>
                                                             <ComboBox
-                                                                ItemsSource="{Binding Source={x:Type enums:Driver}, Converter={StaticResource EnumDisplay}}"
-                                                                SelectedItem="{Binding Driver, Converter={StaticResource EnumDisplay}}" />
+                                                                ItemsSource="{Binding Drivers, Source={x:Static vm:EnumOptions.Instance}}"
+                                                                SelectedValue="{Binding Driver}"
+                                                                SelectedValuePath="Value"
+                                                                DisplayMemberPath="Display" />
                                                         </StackPanel>
                                                     </Grid>
 
@@ -567,8 +569,10 @@
                                                                 Margin="8,0,0,0" />
                                                         </StackPanel>
                                                         <ComboBox
-                                                            ItemsSource="{Binding Source={x:Type enums:SystemTrigger}, Converter={StaticResource EnumDisplay}}"
-                                                            SelectedItem="{Binding Trigger, Converter={StaticResource EnumDisplay}}" />
+                                                            ItemsSource="{Binding SystemTriggers, Source={x:Static vm:EnumOptions.Instance}}"
+                                                            SelectedValue="{Binding Trigger}"
+                                                            SelectedValuePath="Value"
+                                                            DisplayMemberPath="Display" />
                                                     </StackPanel>
 
                                                     <components:PhaseEditControl
@@ -773,8 +777,10 @@
                                                                                     Text="{Binding [State.Attribute.ValueType], Source={x:Static loc:Loc.Instance}}"
                                                                                     Margin="0,0,0,4" />
                                                                                 <ComboBox
-                                                                                    ItemsSource="{Binding Source={x:Type enums:StateValueType}, Converter={StaticResource EnumDisplay}}"
-                                                                                    SelectedItem="{Binding ValueType, Converter={StaticResource EnumDisplay}}" />
+                                                                                    ItemsSource="{Binding ValueTypes, Source={x:Static vm:EnumOptions.Instance}}"
+                                                                                    SelectedValue="{Binding ValueType}"
+                                                                                    SelectedValuePath="Value"
+                                                                                    DisplayMemberPath="Display" />
                                                                             </StackPanel>
                                                                             <StackPanel Grid.Column="1"
                                                                                     Margin="4,0,0,0">
@@ -782,8 +788,10 @@
                                                                                     Text="{Binding [State.Attribute.Driver], Source={x:Static loc:Loc.Instance}}"
                                                                                     Margin="0,0,0,4" />
                                                                                 <ComboBox
-                                                                                    ItemsSource="{Binding Source={x:Type enums:Driver}, Converter={StaticResource EnumDisplay}}"
-                                                                                    SelectedItem="{Binding Driver, Converter={StaticResource EnumDisplay}}" />
+                                                                                    ItemsSource="{Binding Drivers, Source={x:Static vm:EnumOptions.Instance}}"
+                                                                                    SelectedValue="{Binding Driver}"
+                                                                                    SelectedValuePath="Value"
+                                                                                    DisplayMemberPath="Display" />
                                                                             </StackPanel>
                                                                         </Grid>
 
@@ -832,8 +840,10 @@
                                                                                 Text="{Binding [State.Attribute.Trigger], Source={x:Static loc:Loc.Instance}}"
                                                                                 Margin="0,8,0,4" />
                                                                             <ComboBox
-                                                                                ItemsSource="{Binding Source={x:Type enums:SystemTrigger}, Converter={StaticResource EnumDisplay}}"
-                                                                                SelectedItem="{Binding Trigger, Converter={StaticResource EnumDisplay}}" />
+                                                                                ItemsSource="{Binding SystemTriggers, Source={x:Static vm:EnumOptions.Instance}}"
+                                                                                SelectedValue="{Binding Trigger}"
+                                                                                SelectedValuePath="Value"
+                                                                                DisplayMemberPath="Display" />
                                                                         </StackPanel>
 
                                                                         <components:PhaseEditControl
