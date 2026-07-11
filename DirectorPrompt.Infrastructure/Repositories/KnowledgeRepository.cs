@@ -1,6 +1,7 @@
 using Dapper;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using Serilog;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
@@ -51,8 +52,8 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                        SELECT k.* FROM knowledge_entries k
                        WHERE k.project_id = @projectID
                          AND k.active = 1
-                         AND (k.group_id IS NULL OR
-                              (SELECT active FROM knowledge_groups WHERE id = k.group_id) = 1)
+                         AND k.group_id IS NOT NULL
+                         AND (SELECT active FROM knowledge_groups WHERE id = k.group_id) = 1
                        ORDER BY k.id
                        """,
                        new { projectID }
@@ -324,12 +325,32 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         );
     }
 
-    public async Task SaveEmbeddingAsync(long projectID, long entryID, byte[] embedding, string contentHash, CancellationToken cancellationToken = default)
+    public async Task SaveEmbeddingsAsync
+    (
+        long                                           projectID,
+        long                                           entryID,
+        IReadOnlyList<(string source, byte[] embedding)> vectors,
+        string                                         contentHash,
+        CancellationToken                               cancellationToken = default
+    )
     {
-        var dimension = embedding.Length / sizeof(float);
+        if (vectors.Count == 0)
+        {
+            await using var conn = await connectionFactory.CreateAsync(cancellationToken);
+
+            await conn.ExecuteAsync
+            (
+                "UPDATE knowledge_entries SET content_hash = @contentHash WHERE id = @entryID",
+                new { entryID, contentHash }
+            );
+
+            return;
+        }
+
+        var dimension = vectors[0].embedding.Length / sizeof(float);
         var tableName = VectorTableManager.GetKnowledgeTableName(projectID);
 
-        await vectorTableManager.EnsureTableAsync(tableName, dimension, cancellationToken);
+        await vectorTableManager.EnsureMultiVectorTableAsync(tableName, dimension, cancellationToken);
 
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
@@ -346,8 +367,8 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
 
             await connection.ExecuteAsync
             (
-                $"INSERT INTO \"{tableName}\" (entry_id, embedding) VALUES (@entryID, @embedding)",
-                new { entryID, embedding },
+                $"INSERT INTO \"{tableName}\" (entry_id, source, embedding) VALUES (@entryID, @source, @embedding)",
+                vectors.Select(v => new { entryID, source = v.source, embedding = v.embedding }),
                 transaction
             );
 
@@ -395,16 +416,24 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         var tableName = VectorTableManager.GetKnowledgeTableName(projectID);
 
         if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
+        {
+            Log.Warning("知识向量表不存在: {Table}", tableName);
             return [];
+        }
 
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var rowCount = await connection.ExecuteScalarAsync<long>($"SELECT COUNT(*) FROM \"{tableName}\"");
+        Log.Information("知识向量表 {Table} 总行数: {Count}", tableName, rowCount);
+
+        var vectorK = topK * 10;
 
         var sql = candidateIDs is { Count: > 0 } ?
                       $"""
                        SELECT entry_id AS EntryID, distance AS Distance
                        FROM "{tableName}"
                        WHERE embedding MATCH @queryVector
-                         AND k = @topK
+                         AND k = @vectorK
                          AND entry_id IN @candidateIDs
                        ORDER BY distance
                        """ :
@@ -412,17 +441,25 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                        SELECT entry_id AS EntryID, distance AS Distance
                        FROM "{tableName}"
                        WHERE embedding MATCH @queryVector
-                         AND k = @topK
+                         AND k = @vectorK
                        ORDER BY distance
                        """;
 
-        var rows = await connection.QueryAsync<(long EntryID, float Distance)>
-                   (
-                       sql,
-                       new { queryVector, topK, candidateIDs }
-                   );
+        var rows = (await connection.QueryAsync<(long EntryID, float Distance)>
+                    (
+                        sql,
+                        new { queryVector, vectorK, candidateIDs }
+                    )).ToList();
 
-        return rows.Select(r => (r.EntryID, r.Distance)).ToList();
+        var grouped = rows.GroupBy(r => r.EntryID).ToList();
+
+        Log.Information("知识向量搜索: 原始行数={Raw}, 分组后={Grouped}", rows.Count, grouped.Count);
+
+        return grouped
+               .Select(g => (entryID: g.Key, distance: g.Min(r => r.Distance)))
+               .OrderBy(r => r.distance)
+               .Take(topK)
+               .ToList();
     }
 
     private sealed class KnowledgeEntryRow

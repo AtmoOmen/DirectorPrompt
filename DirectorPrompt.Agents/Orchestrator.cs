@@ -27,6 +27,7 @@ public sealed class Orchestrator
     SceneSummaryStage        sceneSummaryStage,
     HistoryBuilder           historyBuilder,
     AgentConfigResolver      agentConfigResolver,
+    OrchestratorConfig       orchestratorConfig,
     UserSettings             userSettings
 )
 {
@@ -121,6 +122,8 @@ public sealed class Orchestrator
                 CurrentTimelinePosition = timelinePosition,
                 Project                 = project,
                 EmbeddingConfig         = embeddingConfig,
+                KnowledgeConfig         = orchestratorConfig.KnowledgeConfig,
+                MemoryConfig            = orchestratorConfig.MemoryConfig,
                 History                 = history,
                 PreviousSceneSummary    = previousSceneSummary,
                 OnStreamingUpdate       = onStreamingUpdate,

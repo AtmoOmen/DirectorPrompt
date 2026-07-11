@@ -11,8 +11,7 @@ namespace DirectorPrompt.Agents.Tools;
 public sealed class KnowledgeTools
 (
     IKnowledgeRepository     knowledgeRepository,
-    IEmbeddingServiceFactory embeddingServiceFactory,
-    OrchestratorConfig       orchestratorConfig
+    IEmbeddingServiceFactory embeddingServiceFactory
 )
 {
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -49,7 +48,7 @@ public sealed class KnowledgeTools
                                 .Where
                                 (e =>
                                     {
-                                        var currentHash = EmbeddingConversions.ComputeHash(BuildEmbeddingText(e), fingerprint);
+                                        var currentHash = ComputeEntryHash(e, fingerprint);
                                         return e.ContentHash != currentHash;
                                     }
                                 )
@@ -64,14 +63,33 @@ public sealed class KnowledgeTools
                 entries.Count
             );
 
-            foreach (var entry in needsRegeneration)
-            {
-                var text     = BuildEmbeddingText(entry);
-                var emb      = await embeddingService.GenerateEmbeddingAsync(text);
-                var hash     = EmbeddingConversions.ComputeHash(text, fingerprint);
-                var embBytes = EmbeddingConversions.FloatsToBytes(emb);
+            var entryTexts = needsRegeneration
+                             .Select(e => (entry: e, texts: BuildEmbeddingTexts(e)))
+                             .Where(et => et.texts.Count > 0)
+                             .ToList();
 
-                await knowledgeRepository.SaveEmbeddingAsync(context.ProjectID, entry.ID, embBytes, hash);
+            if (entryTexts.Count > 0)
+            {
+                var allTexts   = entryTexts.SelectMany(et => et.texts.Select(t => t.text)).ToList();
+                var embeddings = await embeddingService.GenerateEmbeddingsAsync(allTexts);
+
+                var offset = 0;
+
+                foreach (var (entry, texts) in entryTexts)
+                {
+                    var hash    = ComputeEntryHash(entry, fingerprint);
+                    var vectors = new List<(string source, byte[] embedding)>();
+
+                    for (var i = 0; i < texts.Count; i++)
+                    {
+                        var embBytes = EmbeddingConversions.FloatsToBytes(embeddings[offset + i]);
+                        vectors.Add((texts[i].source, embBytes));
+                    }
+
+                    await knowledgeRepository.SaveEmbeddingsAsync(context.ProjectID, entry.ID, vectors, hash);
+
+                    offset += texts.Count;
+                }
             }
 
             entries = await GetSearchableEntriesAsync(context);
@@ -80,7 +98,7 @@ public sealed class KnowledgeTools
         var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query);
         var queryBytes     = EmbeddingConversions.FloatsToBytes(queryEmbedding);
 
-        var config = orchestratorConfig.KnowledgeConfig;
+        var config = context.KnowledgeConfig;
         var limit  = topK ?? config.SemanticTopK;
 
         var searchResults = await knowledgeRepository.SearchByVectorAsync
@@ -90,7 +108,37 @@ public sealed class KnowledgeTools
                                 limit
                             );
 
+        Log.Information
+        (
+            "知识搜索结果: 搜索返回={SearchCount}, entryMap大小={EntryCount}, MinRelevance={MinRelevance}",
+            searchResults.Count,
+            entries.Count,
+            config.MinRelevance
+        );
+
         var entryMap = entries.ToDictionary(e => e.ID);
+
+        var matched = searchResults.Where(sr => entryMap.ContainsKey(sr.entryID)).ToList();
+
+        foreach (var sr in matched)
+        {
+            var entry = entryMap[sr.entryID];
+            Log.Information
+            (
+                "知识搜索详情: entryID={EntryID}, remarks={Remarks}, distance={Distance}, relevance={Relevance}",
+                sr.entryID,
+                entry.Remarks,
+                sr.distance,
+                Math.Round(1f - sr.distance, 4)
+            );
+        }
+
+        Log.Information
+        (
+            "知识搜索匹配: entryMap命中={Matched}, 未命中={Unmatched}",
+            matched.Count,
+            searchResults.Count - matched.Count
+        );
 
         var minRelevance = config.MinRelevance;
         var tokenBudget  = config.TokenBudget;
@@ -133,13 +181,28 @@ public sealed class KnowledgeTools
         return JsonSerializer.Serialize(result);
     }
 
-    private static string BuildEmbeddingText(KnowledgeEntry entry)
+    private static IReadOnlyList<(string source, string text)> BuildEmbeddingTexts(KnowledgeEntry entry)
     {
-        var keywords = string.Join(", ", entry.Keywords);
+        var texts = new List<(string source, string text)>();
 
-        return string.IsNullOrWhiteSpace(keywords) ?
-                   entry.Content :
-                   $"{keywords}\n{entry.Content}";
+        foreach (var keyword in entry.Keywords)
+        {
+            if (!string.IsNullOrWhiteSpace(keyword))
+                texts.Add(("keyword", keyword.Trim()));
+        }
+
+        if (!string.IsNullOrWhiteSpace(entry.Content))
+            texts.Add(("content", entry.Content));
+
+        return texts;
+    }
+
+    private static string ComputeEntryHash(KnowledgeEntry entry, string fingerprint)
+    {
+        var texts    = BuildEmbeddingTexts(entry);
+        var combined = string.Join('\0', texts.Select(t => t.text));
+
+        return EmbeddingConversions.ComputeHash(combined, fingerprint);
     }
 
     private static int EstimateTokens(string text) =>

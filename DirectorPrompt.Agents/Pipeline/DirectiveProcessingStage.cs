@@ -16,7 +16,8 @@ public sealed class DirectiveProcessingStage
     SceneTools           sceneTools,
     ISceneRepository     sceneRepository,
     IDirectiveRepository directiveRepository,
-    ITimelineCalculator  timelineCalculator
+    ITimelineCalculator  timelineCalculator,
+    OrchestratorConfig   orchestratorConfig
 )
 {
     public async Task ExecuteAsync
@@ -142,7 +143,9 @@ public sealed class DirectiveProcessingStage
             currentScene?.ID,
             currentScene?.TimelinePosition ?? 0,
             0,
-            embeddingConfig
+            embeddingConfig,
+            orchestratorConfig.KnowledgeConfig,
+            orchestratorConfig.MemoryConfig
         );
 
         var client = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);

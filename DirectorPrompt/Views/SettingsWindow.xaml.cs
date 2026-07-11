@@ -25,6 +25,8 @@ public partial class SettingsWindow : FluentWindow
             PromptsPanel is null   ||
             TasksPanel is null     ||
             EmbeddingPanel is null ||
+            MemoryPanel is null    ||
+            RetrievalPanel is null ||
             LanguagePanel is null)
             return;
 
@@ -46,6 +48,12 @@ public partial class SettingsWindow : FluentWindow
                                     Visibility.Visible :
                                     Visibility.Collapsed;
         EmbeddingPanel.Visibility = tag == "embedding" ?
+                                        Visibility.Visible :
+                                        Visibility.Collapsed;
+        MemoryPanel.Visibility = tag == "memory" ?
+                                     Visibility.Visible :
+                                     Visibility.Collapsed;
+        RetrievalPanel.Visibility = tag == "retrieval" ?
                                         Visibility.Visible :
                                         Visibility.Collapsed;
         LanguagePanel.Visibility = tag == "language" ?

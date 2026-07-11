@@ -322,12 +322,32 @@ public sealed class MemoryRepository : IMemoryRepository
         return (oldRow, projectID);
     }
 
-    public async Task SaveEmbeddingAsync(long projectID, long entryID, byte[] embedding, string contentHash, CancellationToken cancellationToken = default)
+    public async Task SaveEmbeddingsAsync
+    (
+        long                                           projectID,
+        long                                           entryID,
+        IReadOnlyList<(string source, byte[] embedding)> vectors,
+        string                                         contentHash,
+        CancellationToken                               cancellationToken = default
+    )
     {
-        var dimension = embedding.Length / sizeof(float);
+        if (vectors.Count == 0)
+        {
+            await using var conn = await connectionFactory.CreateAsync(cancellationToken);
+
+            await conn.ExecuteAsync
+            (
+                "UPDATE memory_entries SET content_hash = @contentHash WHERE id = @entryID",
+                new { entryID, contentHash }
+            );
+
+            return;
+        }
+
+        var dimension = vectors[0].embedding.Length / sizeof(float);
         var tableName = VectorTableManager.GetMemoryTableName(projectID);
 
-        await vectorTableManager.EnsureTableAsync(tableName, dimension, cancellationToken);
+        await vectorTableManager.EnsureMultiVectorTableAsync(tableName, dimension, cancellationToken);
 
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
@@ -344,8 +364,8 @@ public sealed class MemoryRepository : IMemoryRepository
 
             await connection.ExecuteAsync
             (
-                $"INSERT INTO \"{tableName}\" (entry_id, embedding) VALUES (@entryID, @embedding)",
-                new { entryID, embedding },
+                $"INSERT INTO \"{tableName}\" (entry_id, source, embedding) VALUES (@entryID, @source, @embedding)",
+                vectors.Select(v => new { entryID, source = v.source, embedding = v.embedding }),
                 transaction
             );
 
@@ -397,12 +417,14 @@ public sealed class MemoryRepository : IMemoryRepository
 
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
+        var vectorK = topK * 10;
+
         var sql = candidateIDs is { Count: > 0 } ?
                       $"""
                        SELECT entry_id AS EntryID, distance AS Distance
                        FROM "{tableName}"
                        WHERE embedding MATCH @queryVector
-                         AND k = @topK
+                         AND k = @vectorK
                          AND entry_id IN @candidateIDs
                        ORDER BY distance
                        """ :
@@ -410,17 +432,22 @@ public sealed class MemoryRepository : IMemoryRepository
                        SELECT entry_id AS EntryID, distance AS Distance
                        FROM "{tableName}"
                        WHERE embedding MATCH @queryVector
-                         AND k = @topK
+                         AND k = @vectorK
                        ORDER BY distance
                        """;
 
         var rows = await connection.QueryAsync<(long EntryID, float Distance)>
                    (
                        sql,
-                       new { queryVector, topK, candidateIDs }
+                       new { queryVector, vectorK, candidateIDs }
                    );
 
-        return rows.Select(r => (r.EntryID, r.Distance)).ToList();
+        return rows
+               .GroupBy(r => r.EntryID)
+               .Select(g => (entryID: g.Key, distance: g.Min(r => r.Distance)))
+               .OrderBy(r => r.distance)
+               .Take(topK)
+               .ToList();
     }
 
     private sealed class MemoryEntryRow

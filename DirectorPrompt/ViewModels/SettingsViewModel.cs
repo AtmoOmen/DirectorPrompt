@@ -38,6 +38,10 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public EmbeddingSettingViewModel Embedding { get; } = new();
 
+    public MemorySettingViewModel Memory { get; } = new();
+
+    public KnowledgeSettingViewModel Knowledge { get; } = new();
+
     public IReadOnlyDictionary<string, string> AvailableLanguages =>
         localizationService.AvailableLanguages;
 
@@ -69,6 +73,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         LoadPrompts(settings.Orchestrator.Prompts);
         LoadAgentTasks(settings.Orchestrator.AgentTasks);
         LoadEmbeddingConfig(settings.EmbeddingConfig);
+        LoadMemoryConfig(settings.Orchestrator.MemoryConfig);
+        LoadKnowledgeConfig(settings.Orchestrator.KnowledgeConfig);
     }
 
     private void LoadProviders(List<ProviderConfig> configs)
@@ -170,6 +176,21 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         Embedding.ProviderID = config.ProviderID;
         Embedding.ModelName  = config.ModelName;
+    }
+
+    private void LoadMemoryConfig(MemoryConfig config)
+    {
+        Memory.RecallTopK      = config.RecallTopK;
+        Memory.TokenBudget     = config.TokenBudget;
+        Memory.MinRelevance    = config.MinRelevance;
+        Memory.TimeDecayLambda = config.TimeDecayLambda;
+    }
+
+    private void LoadKnowledgeConfig(KnowledgeRetrievalConfig config)
+    {
+        Knowledge.SemanticTopK = config.SemanticTopK;
+        Knowledge.TokenBudget  = config.TokenBudget;
+        Knowledge.MinRelevance = config.MinRelevance;
     }
 
     partial void OnSelectedLanguageChanged(string value)
@@ -277,10 +298,30 @@ public sealed partial class SettingsViewModel : ObservableObject
             userSettings.Orchestrator.Prompts    = prompts;
             userSettings.Orchestrator.AgentTasks = tasks;
 
+            var memoryConfig = new MemoryConfig
+            {
+                RecallTopK      = Memory.RecallTopK,
+                TokenBudget     = Memory.TokenBudget,
+                MinRelevance    = Memory.MinRelevance,
+                TimeDecayLambda = Memory.TimeDecayLambda
+            };
+
+            var knowledgeConfig = new KnowledgeRetrievalConfig
+            {
+                SemanticTopK = Knowledge.SemanticTopK,
+                TokenBudget  = Knowledge.TokenBudget,
+                MinRelevance = Knowledge.MinRelevance
+            };
+
+            userSettings.Orchestrator.MemoryConfig   = memoryConfig;
+            userSettings.Orchestrator.KnowledgeConfig = knowledgeConfig;
+
             orchestratorConfig.Providers  = providers;
             orchestratorConfig.Models     = models;
             orchestratorConfig.Prompts    = prompts;
             orchestratorConfig.AgentTasks = tasks;
+            orchestratorConfig.MemoryConfig    = memoryConfig;
+            orchestratorConfig.KnowledgeConfig = knowledgeConfig;
 
             userSettings.EmbeddingConfig = new EmbeddingConfig
             {

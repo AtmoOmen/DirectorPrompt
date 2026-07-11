@@ -10,10 +10,6 @@ public record Project
 
     public string OpeningMessage { get; init; } = string.Empty;
 
-    public string MemoryConfig { get; init; } = "{}";
-
-    public string KnowledgeConfig { get; init; } = "{}";
-
     public DateTime CreatedAt { get; init; }
 
     public DateTime UpdatedAt { get; init; }

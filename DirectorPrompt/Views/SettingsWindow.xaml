@@ -55,42 +55,56 @@
                       SelectedIndex="0">
                 <ListViewItem Tag="providers" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="Cloud24" Margin="0,0,12,0" />
+                        <ui:SymbolIcon Symbol="Cloud24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding [Settings.Provider.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
                 <ListViewItem Tag="models" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="Bot24" Margin="0,0,12,0" />
+                        <ui:SymbolIcon Symbol="Bot24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding [Settings.Model.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
                 <ListViewItem Tag="prompts" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="Document24" Margin="0,0,12,0" />
+                        <ui:SymbolIcon Symbol="Document24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding [Settings.Prompt.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
                 <ListViewItem Tag="tasks" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="TaskListLtr24" Margin="0,0,12,0" />
+                        <ui:SymbolIcon Symbol="TaskListLtr24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding [Settings.Task.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
                 <ListViewItem Tag="embedding" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="DataLine24" Margin="0,0,12,0" />
+                        <ui:SymbolIcon Symbol="DataLine24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding [Settings.Embedding.Title], Source={x:Static loc:Loc.Instance}}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="memory" Padding="12,10">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Brain24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [Memory.Title], Source={x:Static loc:Loc.Instance}}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem Tag="retrieval" Padding="12,10">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Search24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [Knowledge.Retrieval.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
                 <ListViewItem Tag="language" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="LocalLanguage24" Margin="0,0,12,0" />
+                        <ui:SymbolIcon Symbol="LocalLanguage24" Width="24" Margin="0,0,12,0" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding [Settings.Language.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
@@ -677,6 +691,80 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                             </Grid>
+                        </StackPanel>
+
+                        <!-- 记忆配置面板 -->
+                        <StackPanel x:Name="MemoryPanel" Visibility="Collapsed">
+                            <TextBlock Text="{Binding [Memory.Title], Source={x:Static loc:Loc.Instance}}"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,16" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding [Memory.RecallTopK], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                            <ui:NumberBox Value="{Binding Memory.RecallTopK}"
+                                          Minimum="1"
+                                          Maximum="100"
+                                          Margin="0,0,0,12" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding [Memory.TokenBudget], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                            <ui:NumberBox Value="{Binding Memory.TokenBudget}"
+                                          Minimum="100"
+                                          Maximum="10000"
+                                          Margin="0,0,0,12" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding [Memory.MinRelevance], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                            <ui:NumberBox Value="{Binding Memory.MinRelevance}"
+                                          Minimum="0"
+                                          Maximum="1"
+                                          Margin="0,0,0,12" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding [Memory.TimeDecayLambda], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                            <ui:NumberBox Value="{Binding Memory.TimeDecayLambda}"
+                                          Minimum="0"
+                                          Maximum="1" />
+                        </StackPanel>
+
+                        <!-- 知识检索配置面板 -->
+                        <StackPanel x:Name="RetrievalPanel" Visibility="Collapsed">
+                            <TextBlock
+                                Text="{Binding [Knowledge.Retrieval.ConfigTitle], Source={x:Static loc:Loc.Instance}}"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Margin="0,0,0,16" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock
+                                    Text="{Binding [Knowledge.Retrieval.SemanticTopK], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
+                            </StackPanel>
+                            <ui:NumberBox Value="{Binding Knowledge.SemanticTopK}"
+                                          Minimum="1"
+                                          Maximum="100"
+                                          Margin="0,0,0,12" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock
+                                    Text="{Binding [Knowledge.Retrieval.TokenBudget], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
+                            </StackPanel>
+                            <ui:NumberBox Value="{Binding Knowledge.TokenBudget}"
+                                          Minimum="100"
+                                          Maximum="10000"
+                                          Margin="0,0,0,12" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock
+                                    Text="{Binding [Knowledge.Retrieval.MinRelevance], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
+                            </StackPanel>
+                            <ui:NumberBox Value="{Binding Knowledge.MinRelevance}"
+                                          Minimum="0"
+                                          Maximum="1" />
                         </StackPanel>
 
                         <!-- 语言面板 -->

@@ -12,7 +12,6 @@ public sealed class MemoryTools
 (
     IMemoryRepository        memoryRepository,
     IEmbeddingServiceFactory embeddingServiceFactory,
-    OrchestratorConfig       orchestratorConfig,
     ICharacterRepository     characterRepository
 )
 {
@@ -121,7 +120,7 @@ public sealed class MemoryTools
                                 .Where
                                 (m =>
                                     {
-                                        var currentHash = EmbeddingConversions.ComputeHash(m.Content, fingerprint);
+                                        var currentHash = ComputeMemoryHash(m, fingerprint);
                                         return m.ContentHash != currentHash;
                                     }
                                 )
@@ -136,16 +135,33 @@ public sealed class MemoryTools
                 candidateList.Count
             );
 
-            var contents   = needsRegeneration.Select(m => m.Content).ToList();
-            var embeddings = await embeddingService.GenerateEmbeddingsAsync(contents);
+            var memoryTexts = needsRegeneration
+                              .Select(m => (memory: m, texts: BuildMemoryEmbeddingTexts(m)))
+                              .Where(mt => mt.texts.Count > 0)
+                              .ToList();
 
-            for (var i = 0; i < needsRegeneration.Count; i++)
+            if (memoryTexts.Count > 0)
             {
-                var memory   = needsRegeneration[i];
-                var hash     = EmbeddingConversions.ComputeHash(memory.Content, fingerprint);
-                var embBytes = EmbeddingConversions.FloatsToBytes(embeddings[i]);
+                var allTexts   = memoryTexts.SelectMany(mt => mt.texts.Select(t => t.text)).ToList();
+                var embeddings = await embeddingService.GenerateEmbeddingsAsync(allTexts);
 
-                await memoryRepository.SaveEmbeddingAsync(context.ProjectID, memory.ID, embBytes, hash);
+                var offset = 0;
+
+                foreach (var (memory, texts) in memoryTexts)
+                {
+                    var hash    = ComputeMemoryHash(memory, fingerprint);
+                    var vectors = new List<(string source, byte[] embedding)>();
+
+                    for (var i = 0; i < texts.Count; i++)
+                    {
+                        var embBytes = EmbeddingConversions.FloatsToBytes(embeddings[offset + i]);
+                        vectors.Add((texts[i].source, embBytes));
+                    }
+
+                    await memoryRepository.SaveEmbeddingsAsync(context.ProjectID, memory.ID, vectors, hash);
+
+                    offset += texts.Count;
+                }
             }
 
             memories = await memoryRepository.GetBySessionAsync(context.SessionID, context.TimelinePosition);
@@ -177,7 +193,7 @@ public sealed class MemoryTools
 
         var memoryMap = candidateList.ToDictionary(m => m.ID);
 
-        var lambda = orchestratorConfig.MemoryConfig.TimeDecayLambda;
+        var lambda = context.MemoryConfig.TimeDecayLambda;
 
         var result = searchResults
                      .Where(sr => memoryMap.ContainsKey(sr.entryID))
@@ -364,6 +380,30 @@ public sealed class MemoryTools
         }
 
         return JsonSerializer.Serialize(new { memoryID = merged.ID });
+    }
+
+    private static IReadOnlyList<(string source, string text)> BuildMemoryEmbeddingTexts(MemoryEntry memory)
+    {
+        var texts = new List<(string source, string text)>();
+
+        foreach (var tag in memory.Tags)
+        {
+            if (!string.IsNullOrWhiteSpace(tag))
+                texts.Add(("tag", tag.Trim()));
+        }
+
+        if (!string.IsNullOrWhiteSpace(memory.Content))
+            texts.Add(("content", memory.Content));
+
+        return texts;
+    }
+
+    private static string ComputeMemoryHash(MemoryEntry memory, string fingerprint)
+    {
+        var texts    = BuildMemoryEmbeddingTexts(memory);
+        var combined = string.Join('\0', texts.Select(t => t.text));
+
+        return EmbeddingConversions.ComputeHash(combined, fingerprint);
     }
 
     private static string[] ParseTags(string tags) =>

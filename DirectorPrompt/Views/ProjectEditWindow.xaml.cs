@@ -42,12 +42,6 @@ public partial class ProjectEditWindow : FluentWindow
         CharacterPanel.Visibility = tag == "character" ?
                                         Visibility.Visible :
                                         Visibility.Collapsed;
-        MemoryPanel.Visibility = tag == "memory" ?
-                                     Visibility.Visible :
-                                     Visibility.Collapsed;
-        RetrievalPanel.Visibility = tag == "retrieval" ?
-                                        Visibility.Visible :
-                                        Visibility.Collapsed;
     }
 
     private void OnDeleteKnowledgeGroup(object sender, RoutedEventArgs e)

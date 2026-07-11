@@ -47,8 +47,8 @@ public sealed class ProjectRepository : IProjectRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO projects (name, description, opening_message, memory_config, knowledge_config, created_at, updated_at)
-                     VALUES (@name, @description, @openingMessage, @memoryConfig, @knowledgeConfig, @createdAt, @updatedAt);
+                     INSERT INTO projects (name, description, opening_message, created_at, updated_at)
+                     VALUES (@name, @description, @openingMessage, @createdAt, @updatedAt);
                      SELECT last_insert_rowid();
                      """,
                      new
@@ -56,8 +56,6 @@ public sealed class ProjectRepository : IProjectRepository
                          name            = project.Name,
                          description     = project.Description,
                          openingMessage  = project.OpeningMessage,
-                         memoryConfig    = project.MemoryConfig,
-                         knowledgeConfig = project.KnowledgeConfig,
                          createdAt       = now,
                          updatedAt       = now
                      }
@@ -77,8 +75,6 @@ public sealed class ProjectRepository : IProjectRepository
             SET name = @name,
                 description = @description,
                 opening_message = @openingMessage,
-                memory_config = @memoryConfig,
-                knowledge_config = @knowledgeConfig,
                 updated_at = @updatedAt
             WHERE id = @id
             """,
@@ -88,8 +84,6 @@ public sealed class ProjectRepository : IProjectRepository
                 name            = project.Name,
                 description     = project.Description,
                 openingMessage  = project.OpeningMessage,
-                memoryConfig    = project.MemoryConfig,
-                knowledgeConfig = project.KnowledgeConfig,
                 updatedAt       = DateTime.UtcNow.ToString("O")
             }
         );
@@ -198,10 +192,6 @@ public sealed class ProjectRepository : IProjectRepository
 
         public string Opening_Message { get; set; } = string.Empty;
 
-        public string Memory_Config { get; set; } = "{}";
-
-        public string Knowledge_Config { get; set; } = "{}";
-
         public string Created_At { get; set; } = string.Empty;
 
         public string Updated_At { get; set; } = string.Empty;
@@ -213,8 +203,6 @@ public sealed class ProjectRepository : IProjectRepository
                 Name            = Name,
                 Description     = Description,
                 OpeningMessage  = Opening_Message,
-                MemoryConfig    = Memory_Config,
-                KnowledgeConfig = Knowledge_Config,
                 CreatedAt       = DateTime.Parse(Created_At),
                 UpdatedAt       = DateTime.Parse(Updated_At)
             };

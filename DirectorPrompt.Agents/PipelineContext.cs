@@ -44,10 +44,16 @@ public sealed class PipelineContext
         CurrentTimelinePosition,
         RoundID,
         EmbeddingConfig,
+        KnowledgeConfig,
+        MemoryConfig,
         PhaseActivatedEntryIDs
     );
 
     public required ResolvedEmbeddingConfig EmbeddingConfig { get; init; }
+
+    public required KnowledgeRetrievalConfig KnowledgeConfig { get; init; }
+
+    public required MemoryConfig MemoryConfig { get; init; }
 
     public IReadOnlyList<long>? PhaseActivatedEntryIDs { get; set; }
 }

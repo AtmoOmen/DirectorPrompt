@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents;
@@ -45,10 +44,6 @@ public sealed partial class ProjectEditViewModel
 
     public ObservableCollection<CharacterCategoryEditViewModel> CharacterCategories { get; } = [];
 
-    public MemorySettingViewModel Memory { get; } = new();
-
-    public KnowledgeSettingViewModel Knowledge { get; } = new();
-
     public bool IsEditing => projectID > 0;
 
     public string TitleText => Loc.Get("Project.EditTitle");
@@ -66,58 +61,11 @@ public sealed partial class ProjectEditViewModel
         Description    = project.Description;
         OpeningMessage = project.OpeningMessage;
 
-        LoadMemoryConfig(project.MemoryConfig);
-        LoadKnowledgeConfig(project.KnowledgeConfig);
-
         OnPropertyChanged(nameof(IsEditing));
         OnPropertyChanged(nameof(TitleText));
 
         await LoadKnowledgeAsync();
         await LoadStateSystemAsync();
-    }
-
-    private void LoadMemoryConfig(string json)
-    {
-        var config = JsonSerializer.Deserialize<MemoryConfig>(json) ?? new MemoryConfig();
-
-        Memory.RecallTopK      = config.RecallTopK;
-        Memory.TokenBudget     = config.TokenBudget;
-        Memory.MinRelevance    = config.MinRelevance;
-        Memory.TimeDecayLambda = config.TimeDecayLambda;
-    }
-
-    private void LoadKnowledgeConfig(string json)
-    {
-        var config = JsonSerializer.Deserialize<KnowledgeRetrievalConfig>(json) ?? new KnowledgeRetrievalConfig();
-
-        Knowledge.SemanticTopK = config.SemanticTopK;
-        Knowledge.TokenBudget  = config.TokenBudget;
-        Knowledge.MinRelevance = config.MinRelevance;
-    }
-
-    private string BuildMemoryConfig()
-    {
-        var config = new MemoryConfig
-        {
-            RecallTopK      = Memory.RecallTopK,
-            TokenBudget     = Memory.TokenBudget,
-            MinRelevance    = Memory.MinRelevance,
-            TimeDecayLambda = Memory.TimeDecayLambda
-        };
-
-        return JsonSerializer.Serialize(config);
-    }
-
-    private string BuildKnowledgeConfig()
-    {
-        var config = new KnowledgeRetrievalConfig
-        {
-            SemanticTopK = Knowledge.SemanticTopK,
-            TokenBudget  = Knowledge.TokenBudget,
-            MinRelevance = Knowledge.MinRelevance
-        };
-
-        return JsonSerializer.Serialize(config);
     }
 
     private static KnowledgeEntryEditViewModel CreateEntryVM(KnowledgeEntry entry, string groupName) =>
@@ -348,9 +296,7 @@ public sealed partial class ProjectEditViewModel
                 ID              = projectID,
                 Name            = Name.Trim(),
                 Description     = Description,
-                OpeningMessage  = OpeningMessage,
-                MemoryConfig    = BuildMemoryConfig(),
-                KnowledgeConfig = BuildKnowledgeConfig()
+                OpeningMessage  = OpeningMessage
             };
 
             await projectRepository.UpdateAsync(project);

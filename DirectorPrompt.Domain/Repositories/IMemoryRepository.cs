@@ -20,7 +20,14 @@ public interface IMemoryRepository
 
     Task DeleteAsync(long id, CancellationToken cancellationToken = default);
 
-    Task SaveEmbeddingAsync(long projectID, long entryID, byte[] embedding, string contentHash, CancellationToken cancellationToken = default);
+    Task SaveEmbeddingsAsync
+    (
+        long                                           projectID,
+        long                                           entryID,
+        IReadOnlyList<(string source, byte[] embedding)> vectors,
+        string                                         contentHash,
+        CancellationToken                               cancellationToken = default
+    );
 
     Task DeleteEmbeddingAsync(long projectID, long entryID, CancellationToken cancellationToken = default);
 

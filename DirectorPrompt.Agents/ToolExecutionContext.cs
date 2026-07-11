@@ -10,5 +10,7 @@ public record ToolExecutionContext
     long                    TimelinePosition,
     long                    RoundID,
     ResolvedEmbeddingConfig EmbeddingConfig,
+    KnowledgeRetrievalConfig KnowledgeConfig,
+    MemoryConfig             MemoryConfig,
     IReadOnlyList<long>?    PhaseActivatedEntryIDs = null
 );
