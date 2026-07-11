@@ -39,6 +39,9 @@ public sealed partial class MainViewModel
     private CancellationTokenSource? generationCts;
     private CancellationTokenSource? sessionLoadCts;
 
+    private DialogEntryViewModel? errorStreamingEntry;
+    private DialogEntryViewModel? errorDirectorEntry;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsProjectSelected))]
     [NotifyPropertyChangedFor(nameof(CanInteractProject))]
@@ -54,7 +57,12 @@ public sealed partial class MainViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotProcessing))]
     [NotifyPropertyChangedFor(nameof(CanInteractProject))]
+    [NotifyPropertyChangedFor(nameof(ShowPipelineStages))]
     public partial bool IsProcessing { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPipelineStages))]
+    public partial bool HasError { get; set; }
 
     [ObservableProperty]
     public partial bool IsSessionSidebarExpanded { get; set; } = true;
@@ -66,6 +74,8 @@ public sealed partial class MainViewModel
     public bool CanInteractProject => IsProjectSelected && !IsProcessing;
 
     public bool IsSessionSelected => CurrentSession is not null;
+
+    public bool ShowPipelineStages => IsProcessing || HasError;
 
     public DialogViewModel Dialog { get; } = new();
 
@@ -484,16 +494,19 @@ public sealed partial class MainViewModel
         IsProcessing  = true;
         StatusMessage = Loc.Get("Status.Processing");
         ResetPipelineStages();
+        RemoveErrorEntries();
+        ClearErrorState();
 
         DialogEntryViewModel? streamingEntry  = null;
         DialogEntryViewModel? directorEntry   = null;
         long                  expectedRoundID = 0;
+        List<DirectiveItem>?  items           = null;
 
         try
         {
-            var items = DirectiveInput.Directives
-                                      .Select(d => new DirectiveItem(d.Type, d.Content, d.Order, d.TTL))
-                                      .ToList();
+            items = DirectiveInput.Directives
+                                  .Select(d => new DirectiveItem(d.Type, d.Content, d.Order, d.TTL))
+                                  .ToList();
 
             var batch = new DirectiveBatch(CurrentProject.ID, items);
 
@@ -544,25 +557,21 @@ public sealed partial class MainViewModel
             void StreamingUpdate(string narrative, string thinking) =>
                 dispatcher.BeginInvoke
                 (
-                    new Action
-                    (() =>
-                        {
-                            if (CurrentSession?.ID == sessionID)
-                                streamingEntry.UpdateStreamingContent(narrative, thinking);
-                        }
-                    )
+                    () =>
+                    {
+                        if (CurrentSession?.ID == sessionID)
+                            streamingEntry.UpdateStreamingContent(narrative, thinking);
+                    }
                 );
 
             void StageUpdate(PipelineStageUpdate update) =>
                 dispatcher.BeginInvoke
                 (
-                    new Action
-                    (() =>
-                        {
-                            if (CurrentSession?.ID == sessionID)
-                                UpdatePipelineStage(update.Stage, update.Status, update.Detail);
-                        }
-                    )
+                    () =>
+                    {
+                        if (CurrentSession?.ID == sessionID)
+                            UpdatePipelineStage(update.Stage, update.Status, update.Detail);
+                    }
                 );
         }
         catch (OperationCanceledException)
@@ -573,6 +582,43 @@ public sealed partial class MainViewModel
         catch (Exception ex)
         {
             Log.Error(ex, "处理指令失败");
+
+            await RollbackRoundAsync(sessionID, expectedRoundID);
+
+            errorStreamingEntry = streamingEntry;
+            errorDirectorEntry  = directorEntry;
+            HasError            = true;
+
+            if (CurrentSession?.ID == sessionID)
+            {
+                DirectiveInput.Clear();
+
+                if (items is not null)
+                {
+                    foreach (var item in items)
+                    {
+                        DirectiveInput.Directives.Add
+                        (
+                            new DirectiveItemViewModel
+                            {
+                                Type    = item.Type,
+                                Content = item.Content,
+                                Order   = item.Order,
+                                TTL     = item.TTL
+                            }
+                        );
+                    }
+                }
+
+                if (streamingEntry is not null)
+                {
+                    await Application.Current.Dispatcher.BeginInvoke
+                    (
+                        () => streamingEntry.SetError(ex.Message)
+                    );
+                }
+            }
+
             StatusMessage = Loc.Get("Status.ProcessFailed", ex.Message);
         }
         finally
@@ -660,6 +706,22 @@ public sealed partial class MainViewModel
     private void CancelEdit(DialogEntryViewModel entry) =>
         entry.CancelEdit();
 
+    private void RemoveErrorEntries()
+    {
+        if (errorStreamingEntry is not null)
+            Dialog.Entries.Remove(errorStreamingEntry);
+
+        if (errorDirectorEntry is not null)
+            Dialog.Entries.Remove(errorDirectorEntry);
+    }
+
+    private void ClearErrorState()
+    {
+        errorStreamingEntry = null;
+        errorDirectorEntry  = null;
+        HasError            = false;
+    }
+
     partial void OnCurrentProjectChanged(Project? value)
     {
         CancelGeneration();
@@ -668,6 +730,7 @@ public sealed partial class MainViewModel
         CurrentSession = null;
         Sessions.Clear();
         Dialog.Clear();
+        ClearErrorState();
 
         if (value is not null)
         {
@@ -687,6 +750,7 @@ public sealed partial class MainViewModel
         Dialog.Clear();
         DirectiveInput.Clear();
         ResetPipelineStages();
+        ClearErrorState();
         _ = SaveSessionStateAsync();
 
         if (value is null)
@@ -1255,6 +1319,7 @@ public sealed class PipelineStageViewModel : INotifyPropertyChanged
         {
             PipelineStageStatus.Running  => "Pipeline.Status.Running",
             PipelineStageStatus.Complete => "Pipeline.Status.Complete",
+            PipelineStageStatus.Failed   => "Pipeline.Status.Failed",
             _                            => status.ToString()
         }
     );

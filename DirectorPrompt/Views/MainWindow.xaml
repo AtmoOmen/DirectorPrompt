@@ -235,7 +235,7 @@
                 <ItemsControl Grid.Row="0"
                               ItemsSource="{Binding PipelineStages}"
                               Margin="16,4,16,4"
-                              Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVisibility}}">
+                              Visibility="{Binding ShowPipelineStages, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="Horizontal" />
@@ -260,6 +260,12 @@
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding Status}" Value="Complete">
                                                 <Setter Property="Opacity" Value="0.6" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                <Setter Property="Background"
+                                                        Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                                                <Setter Property="BorderBrush"
+                                                        Value="{DynamicResource SystemFillColorCriticalBrush}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -315,6 +321,12 @@
                                                 <DataTrigger Binding="{Binding IsDirector}" Value="True">
                                                     <Setter Property="HorizontalAlignment" Value="Right" />
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                    <Setter Property="Background"
+                                                            Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                                                    <Setter Property="BorderBrush"
+                                                            Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
@@ -337,8 +349,18 @@
                                                     Click="OnMoreButtonClick"
                                                     Padding="6,2"
                                                     VerticalAlignment="Top"
-                                                    IsEnabled="{Binding DataContext.IsNotProcessing, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                    Visibility="{Binding IsLast, Converter={StaticResource BoolToVisibility}}">
+                                                    IsEnabled="{Binding DataContext.IsNotProcessing, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Visibility"
+                                                                Value="{Binding IsLast, Converter={StaticResource BoolToVisibility}}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
                                                 <TextBlock Text="⋯" FontSize="14" />
                                                 <Button.ContextMenu>
                                                     <ContextMenu
@@ -360,8 +382,18 @@
                                             Header="{Binding [Dialog.ThinkingProcess], Source={x:Static loc:Loc.Instance}}"
                                             Margin="0,4,0,0"
                                             FontSize="12"
-                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                            Visibility="{Binding HasThinking, Converter={StaticResource BoolToVisibility}}">
+                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                            <Expander.Style>
+                                                <Style TargetType="Expander">
+                                                    <Setter Property="Visibility"
+                                                            Value="{Binding HasThinking, Converter={StaticResource BoolToVisibility}}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Expander.Style>
                                             <TextBlock Text="{Binding Thinking}"
                                                        TextWrapping="Wrap"
                                                        FontSize="12"
@@ -369,8 +401,23 @@
                                                        Margin="0,4,0,0" />
                                         </Expander>
 
-                                        <!-- 内容区域: 三种状态重叠, 同一时刻只显示一个 -->
+                                        <!-- 内容区域: 四种状态重叠, 同一时刻只显示一个 -->
                                         <Grid Margin="0,4,0,0">
+                                            <!-- 错误状态: 显示错误信息 -->
+                                            <StackPanel
+                                                Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ui:SymbolIcon Symbol="ErrorCircle24"
+                                                                   FontSize="16"
+                                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                                   VerticalAlignment="Top"
+                                                                   Margin="0,0,8,0" />
+                                                    <TextBlock Text="{Binding ErrorMessage}"
+                                                               TextWrapping="Wrap"
+                                                               Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                               VerticalAlignment="Top" />
+                                                </StackPanel>
+                                            </StackPanel>
                                             <!-- 导演指令: 按指令分块渲染 Markdown -->
                                             <ItemsControl ItemsSource="{Binding DirectorBlocks}">
                                                 <ItemsControl.Style>
@@ -382,6 +429,9 @@
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding HasError}" Value="True">
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
@@ -427,6 +477,9 @@
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding HasError}" Value="True">
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                         </Style.Triggers>

@@ -12,5 +12,6 @@ public enum PipelineStageKind
 public enum PipelineStageStatus
 {
     Running,
-    Complete
+    Complete,
+    Failed
 }

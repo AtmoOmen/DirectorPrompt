@@ -12,6 +12,7 @@ namespace DirectorPrompt.ViewModels;
 public sealed class DialogEntryViewModel : INotifyPropertyChanged
 {
     private string thinking = string.Empty;
+    private string errorMessage = string.Empty;
 
     public long ID { get; init; }
 
@@ -53,6 +54,22 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
     }
 
     public bool HasThinking => !string.IsNullOrWhiteSpace(thinking);
+
+    public string ErrorMessage
+    {
+        get => errorMessage;
+        set
+        {
+            if (errorMessage != value)
+            {
+                errorMessage = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ErrorMessage)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasError)));
+            }
+        }
+    }
+
+    public bool HasError => !string.IsNullOrWhiteSpace(errorMessage);
 
     public bool IsStreaming
     {
@@ -147,6 +164,12 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
         Document = MarkdownRenderer.Render(narrative);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
+    }
+
+    public void SetError(string message)
+    {
+        IsStreaming = false;
+        ErrorMessage = message;
     }
 
     public void StartEdit()

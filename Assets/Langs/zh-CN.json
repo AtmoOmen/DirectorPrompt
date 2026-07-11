@@ -127,6 +127,7 @@
     "Pipeline.Stage.PostProcessing": "后处理",
     "Pipeline.Stage.Retrieval": "检索",
     "Pipeline.Status.Complete": "完成",
+    "Pipeline.Status.Failed": "失败",
     "Pipeline.Status.Running": "进行中",
     "Project.Basic.Description": "设定",
     "Project.Basic.DescriptionPlaceholder": "描述项目背景、世界观设定、回复格式…",

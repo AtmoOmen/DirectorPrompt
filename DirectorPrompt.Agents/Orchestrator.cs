@@ -83,14 +83,24 @@ public sealed class Orchestrator
                               .FirstOrDefault();
 
             onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
-            await directiveProcessingStage.ExecuteAsync
-            (
-                batch,
-                sessionID,
-                activeScene,
-                embeddingConfig,
-                cancellationToken
-            );
+
+            try
+            {
+                await directiveProcessingStage.ExecuteAsync
+                (
+                    batch,
+                    sessionID,
+                    activeScene,
+                    embeddingConfig,
+                    cancellationToken
+                );
+            }
+            catch
+            {
+                onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Failed));
+                throw;
+            }
+
             onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Complete));
 
             activeScene = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
@@ -165,6 +175,32 @@ public sealed class Orchestrator
         return resolved;
     }
 
+    private static async Task RunStageAsync
+    (
+        PipelineContext  context,
+        PipelineStageKind kind,
+        Func<Task>        action,
+        Func<string?>?    detailFactory = null
+    )
+    {
+        context.OnStageUpdate?.Invoke(new PipelineStageUpdate(kind, PipelineStageStatus.Running));
+
+        try
+        {
+            await action();
+        }
+        catch
+        {
+            context.OnStageUpdate?.Invoke(new PipelineStageUpdate(kind, PipelineStageStatus.Failed));
+            throw;
+        }
+
+        context.OnStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate(kind, PipelineStageStatus.Complete, detailFactory?.Invoke())
+        );
+    }
+
     private async Task<NarrationResult> RunPipelineAsync
     (
         PipelineContext                                                    context,
@@ -172,39 +208,13 @@ public sealed class Orchestrator
         CancellationToken                                                  cancellationToken
     )
     {
-        context.OnStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate(PipelineStageKind.Retrieval, PipelineStageStatus.Running)
-        );
+        await RunStageAsync(context, PipelineStageKind.Retrieval,
+            () => retrievalStage.ExecuteAsync(context, cancellationToken),
+            () => $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}");
 
-        await retrievalStage.ExecuteAsync(context, cancellationToken);
-
-        context.OnStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate
-            (
-                PipelineStageKind.Retrieval,
-                PipelineStageStatus.Complete,
-                $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}"
-            )
-        );
-
-        context.OnStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate(PipelineStageKind.Generation, PipelineStageStatus.Running)
-        );
-
-        await generationStage.ExecuteAsync(context, cancellationToken);
-
-        context.OnStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate
-            (
-                PipelineStageKind.Generation,
-                PipelineStageStatus.Complete,
-                $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
-            )
-        );
+        await RunStageAsync(context, PipelineStageKind.Generation,
+            () => generationStage.ExecuteAsync(context, cancellationToken),
+            () => $"叙事长度={context.NarrativeOutput?.Length ?? 0}");
 
         var now = DateTime.UtcNow;
 
@@ -262,37 +272,19 @@ public sealed class Orchestrator
 
         await eventRepository.AppendBatchAsync(events, cancellationToken);
 
-        context.OnStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Running)
-        );
+        await RunStageAsync(context, PipelineStageKind.PostProcessing,
+            () => postProcessingStage.ExecuteAsync(context, cancellationToken));
 
-        await postProcessingStage.ExecuteAsync(context, cancellationToken);
-
-        context.OnStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete)
-        );
-
-        context.OnStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate(PipelineStageKind.SystemState, PipelineStageStatus.Running)
-        );
-
-        await systemStateTransformer.ExecuteAsync
-        (
-            context.DirectiveBatch.ProjectID,
-            context.SessionID,
-            context.CurrentSceneID,
-            context.RoundID,
-            SystemTrigger.RoundEnd,
-            cancellationToken
-        );
-
-        context.OnStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate(PipelineStageKind.SystemState, PipelineStageStatus.Complete)
-        );
+        await RunStageAsync(context, PipelineStageKind.SystemState,
+            () => systemStateTransformer.ExecuteAsync
+            (
+                context.DirectiveBatch.ProjectID,
+                context.SessionID,
+                context.CurrentSceneID,
+                context.RoundID,
+                SystemTrigger.RoundEnd,
+                cancellationToken
+            ));
 
         await directiveRepository.DecrementTTLAsync(context.SessionID, cancellationToken);
 
