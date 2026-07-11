@@ -327,6 +327,7 @@
                                                     Click="OnMoreButtonClick"
                                                     Padding="6,2"
                                                     VerticalAlignment="Top"
+                                                    IsEnabled="{Binding DataContext.IsNotProcessing, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
                                                     Visibility="{Binding IsLast, Converter={StaticResource BoolToVisibility}}">
                                                 <TextBlock Text="⋯" FontSize="14" />
                                                 <Button.ContextMenu>
