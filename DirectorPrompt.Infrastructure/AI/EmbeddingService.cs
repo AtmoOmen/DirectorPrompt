@@ -6,23 +6,16 @@ using OpenAI;
 
 namespace DirectorPrompt.Infrastructure.AI;
 
-public sealed class EmbeddingService : IEmbeddingService
+public sealed class EmbeddingService
+(
+    string  provider,
+    string  endpoint,
+    string? apiKey,
+    string  modelName,
+    string? customHeaders = null
+)
+    : IEmbeddingService
 {
-    private readonly string  provider;
-    private readonly string  endpoint;
-    private readonly string? apiKey;
-    private readonly string  modelName;
-    private readonly string? customHeaders;
-
-    public EmbeddingService(string provider, string endpoint, string? apiKey, string modelName, string? customHeaders = null)
-    {
-        this.provider      = provider;
-        this.endpoint      = endpoint;
-        this.apiKey        = apiKey;
-        this.modelName     = modelName;
-        this.customHeaders = customHeaders;
-    }
-
     public EmbeddingService(ResolvedEmbeddingConfig config) : this(config.Provider, config.Endpoint, config.APIKey, config.ModelName, config.CustomHeaders)
     {
     }
@@ -72,12 +65,12 @@ public sealed class EmbeddingService : IEmbeddingService
         return embeddingClient.AsIEmbeddingGenerator();
     }
 
-    private OpenAIClient CreateOpenAIClient(string endpoint)
+    private OpenAIClient CreateOpenAIClient(string endPoint)
     {
         OpenAIClientOptions options = new();
 
-        if (!string.IsNullOrWhiteSpace(endpoint))
-            options.Endpoint = new Uri(endpoint);
+        if (!string.IsNullOrWhiteSpace(endPoint))
+            options.Endpoint = new Uri(endPoint);
 
         CustomHeaderPipelinePolicy.ApplyToOptions(options, customHeaders);
 
