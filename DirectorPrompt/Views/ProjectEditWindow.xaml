@@ -195,15 +195,31 @@
                                                     IsChecked="{Binding Active}"
                                                     Margin="0,-4,0,8" />
 
-                                                <TextBlock
-                                                    Text="{Binding [Knowledge.Group.Name], Source={x:Static loc:Loc.Instance}}"
-                                                    FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock
+                                                        Text="{Binding [Knowledge.Group.Name], Source={x:Static loc:Loc.Instance}}"
+                                                        FontWeight="SemiBold" />
+                                                    <TextBlock
+                                                        Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                        Foreground="Gray"
+                                                        FontSize="12"
+                                                        VerticalAlignment="Center"
+                                                        Margin="8,0,0,0" />
+                                                </StackPanel>
                                                 <ui:TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                                             PlaceholderText="{Binding [Knowledge.Group.NamePlaceholder], Source={x:Static loc:Loc.Instance}}"
                                                             Margin="0,0,0,12" />
-                                                <TextBlock
-                                                    Text="{Binding [Knowledge.Group.Description], Source={x:Static loc:Loc.Instance}}"
-                                                    FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock
+                                                        Text="{Binding [Knowledge.Group.Description], Source={x:Static loc:Loc.Instance}}"
+                                                        FontWeight="SemiBold" />
+                                                    <TextBlock
+                                                        Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                        Foreground="Gray"
+                                                        FontSize="12"
+                                                        VerticalAlignment="Center"
+                                                        Margin="8,0,0,0" />
+                                                </StackPanel>
                                                 <ui:TextBox
                                                     Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
                                                     PlaceholderText="{Binding [Knowledge.Group.PlaceholderOptional], Source={x:Static loc:Loc.Instance}}"
@@ -229,7 +245,7 @@
                                                                             <ColumnDefinition Width="Auto" />
                                                                         </Grid.ColumnDefinitions>
                                                                         <TextBlock Grid.Column="0"
-                                                                                Text="{Binding Title}"
+                                                                                Text="{Binding Remarks}"
                                                                                 FontWeight="SemiBold"
                                                                                 VerticalAlignment="Center" />
                                                                         <StackPanel Grid.Column="1"
@@ -257,26 +273,47 @@
                                                                             IsChecked="{Binding Active}"
                                                                             Margin="0,8,0,4" />
 
-                                                                        <TextBlock
-                                                                            Text="{Binding [Knowledge.Entry.TitleLabel], Source={x:Static loc:Loc.Instance}}"
-                                                                            Margin="0,8,0,4" />
+                                                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                            <TextBlock
+                                                                                Text="{Binding [Knowledge.Entry.RemarksLabel], Source={x:Static loc:Loc.Instance}}" />
+                                                                            <TextBlock
+                                                                                Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                Foreground="Gray"
+                                                                                FontSize="12"
+                                                                                VerticalAlignment="Center"
+                                                                                Margin="8,0,0,0" />
+                                                                        </StackPanel>
                                                                         <ui:TextBox
-                                                                            Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
-                                                                        <TextBlock
-                                                                            Text="{Binding [Knowledge.Entry.Content], Source={x:Static loc:Loc.Instance}}"
-                                                                            Margin="0,8,0,4" />
+                                                                            Text="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}" />
+                                                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                            <TextBlock
+                                                                                Text="{Binding [Knowledge.Entry.Content], Source={x:Static loc:Loc.Instance}}" />
+                                                                            <TextBlock
+                                                                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                Foreground="Gray"
+                                                                                FontSize="12"
+                                                                                VerticalAlignment="Center"
+                                                                                Margin="8,0,0,0" />
+                                                                        </StackPanel>
                                                                         <ui:TextBox
                                                                             Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
                                                                             AcceptsReturn="True"
                                                                             TextWrapping="Wrap"
                                                                             MinHeight="80"
                                                                             VerticalScrollBarVisibility="Auto" />
-                                                                        <TextBlock
-                                                                            Text="{Binding [Knowledge.Entry.Tags], Source={x:Static loc:Loc.Instance}}"
-                                                                            Margin="0,8,0,4" />
+                                                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                            <TextBlock
+                                                                                Text="{Binding [Knowledge.Entry.Keywords], Source={x:Static loc:Loc.Instance}}" />
+                                                                            <TextBlock
+                                                                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                Foreground="Gray"
+                                                                                FontSize="12"
+                                                                                VerticalAlignment="Center"
+                                                                                Margin="8,0,0,0" />
+                                                                        </StackPanel>
                                                                         <ui:TextBox
-                                                                            Text="{Binding Tags, UpdateSourceTrigger=PropertyChanged}"
-                                                                            PlaceholderText="{Binding [Knowledge.Entry.TagsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                                            Text="{Binding Keywords, UpdateSourceTrigger=PropertyChanged}"
+                                                                            PlaceholderText="{Binding [Knowledge.Entry.KeywordsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
                                                                     </StackPanel>
                                                                 </StackPanel>
                                                             </Border>

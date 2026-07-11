@@ -136,9 +136,9 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         new()
         {
             ID           = entry.ID,
-            Title        = entry.Title,
+            Remarks      = entry.Remarks,
             Content      = entry.Content,
-            Tags         = string.Join(", ", entry.Tags),
+            Keywords     = string.Join(", ", entry.Keywords),
             GroupID      = entry.GroupID,
             Active       = entry.Active,
             GroupDisplay = groupName
@@ -430,9 +430,9 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         var entry = new KnowledgeEntry
         {
             ProjectID = projectID,
-            Title     = Loc.Get("Knowledge.Entry.New"),
+            Remarks   = Loc.Get("Knowledge.Entry.New"),
             Content   = string.Empty,
-            Tags      = [],
+            Keywords  = [],
             GroupID   = group?.ID,
             Active    = true
         };
@@ -442,9 +442,9 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         var entryVM = new KnowledgeEntryEditViewModel
         {
             ID           = created.ID,
-            Title        = created.Title,
+            Remarks      = created.Remarks,
             Content      = created.Content,
-            Tags         = string.Empty,
+            Keywords     = string.Empty,
             GroupID      = created.GroupID,
             Active       = true,
             GroupDisplay = group?.Name ?? string.Empty,
@@ -459,16 +459,16 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     {
         try
         {
-            var tags = entry.Tags
+            var keywords = entry.Keywords
                             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
             var model = new KnowledgeEntry
             {
                 ID        = entry.ID,
                 ProjectID = projectID,
-                Title     = entry.Title,
+                Remarks   = entry.Remarks,
                 Content   = entry.Content,
-                Tags      = tags,
+                Keywords  = keywords,
                 GroupID   = entry.GroupID,
                 Active    = entry.Active
             };

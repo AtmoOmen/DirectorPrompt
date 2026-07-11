@@ -84,7 +84,7 @@ public sealed partial class PhaseEditViewModel : ObservableObject
                     {
                         ID      = entry.ID,
                         Kind    = KnowledgeSelectionKind.Entry,
-                        Display = entry.Title
+                        Display = entry.Remarks
                     }
                 );
             }

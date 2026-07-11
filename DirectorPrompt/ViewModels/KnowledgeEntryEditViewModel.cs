@@ -7,13 +7,13 @@ public sealed partial class KnowledgeEntryEditViewModel : ObservableObject
     public long ID { get; set; }
 
     [ObservableProperty]
-    public partial string Title { get; set; } = string.Empty;
+    public partial string Remarks { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string Content { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial string Tags { get; set; } = string.Empty;
+    public partial string Keywords { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial long? GroupID { get; set; }

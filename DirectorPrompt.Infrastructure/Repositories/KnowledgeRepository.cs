@@ -104,16 +104,16 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO knowledge_entries (project_id, title, content, tags, group_id, active, created_at, updated_at)
-                     VALUES (@projectID, @title, @content, @tags, @groupID, @active, @createdAt, @updatedAt);
+                     INSERT INTO knowledge_entries (project_id, remarks, content, keywords, group_id, active, created_at, updated_at)
+                     VALUES (@projectID, @remarks, @content, @keywords, @groupID, @active, @createdAt, @updatedAt);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
                          projectID = entry.ProjectID,
-                         title     = entry.Title,
+                         remarks   = entry.Remarks,
                          content   = entry.Content,
-                         tags      = JsonHelper.Serialize(entry.Tags),
+                         keywords  = JsonHelper.Serialize(entry.Keywords),
                          groupID   = entry.GroupID,
                          active = entry.Active ?
                                       1 :
@@ -134,9 +134,9 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         (
             """
             UPDATE knowledge_entries
-            SET title = @title,
+            SET remarks = @remarks,
                 content = @content,
-                tags = @tags,
+                keywords = @keywords,
                 group_id = @groupID,
                 active = @active,
                 updated_at = @updatedAt
@@ -145,9 +145,9 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
             new
             {
                 id      = entry.ID,
-                title   = entry.Title,
+                remarks = entry.Remarks,
                 content = entry.Content,
-                tags    = JsonHelper.Serialize(entry.Tags),
+                keywords = JsonHelper.Serialize(entry.Keywords),
                 groupID = entry.GroupID,
                 active = entry.Active ?
                              1 :
@@ -429,9 +429,9 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
     {
         public long    ID           { get; set; }
         public long    Project_ID   { get; set; }
-        public string  Title        { get; set; } = string.Empty;
+        public string  Remarks      { get; set; } = string.Empty;
         public string  Content      { get; set; } = string.Empty;
-        public string  Tags         { get; set; } = "[]";
+        public string  Keywords     { get; set; } = "[]";
         public long?   Group_ID     { get; set; }
         public int     Active       { get; set; }
         public string? Content_Hash { get; set; }
@@ -443,9 +443,9 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
             {
                 ID          = ID,
                 ProjectID   = Project_ID,
-                Title       = Title,
+                Remarks     = Remarks,
                 Content     = Content,
-                Tags        = JsonHelper.DeserializeStringArray(Tags),
+                Keywords    = JsonHelper.DeserializeStringArray(Keywords),
                 GroupID     = Group_ID,
                 Active      = Active != 0,
                 ContentHash = Content_Hash,

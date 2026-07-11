@@ -72,7 +72,7 @@ public partial class ProjectEditWindow : FluentWindow
         if (sender is not FrameworkElement { Tag: KnowledgeEntryEditViewModel entry })
             return;
 
-        if (!PromptDialog.Confirm(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteKnowledgeEntry", entry.Title), true))
+        if (!PromptDialog.Confirm(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteKnowledgeEntry", entry.Remarks), true))
             return;
 
         ViewModel.DeleteKnowledgeEntryCommand.Execute(entry);

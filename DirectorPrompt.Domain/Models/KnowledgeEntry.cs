@@ -6,11 +6,11 @@ public record KnowledgeEntry
 
     public long ProjectID { get; init; }
 
-    public string Title { get; init; } = string.Empty;
+    public string Remarks { get; init; } = string.Empty;
 
     public string Content { get; init; } = string.Empty;
 
-    public string[] Tags { get; init; } = [];
+    public string[] Keywords { get; init; } = [];
 
     public long? GroupID { get; init; }
 

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
@@ -10,7 +11,8 @@ namespace DirectorPrompt.Agents.Tools;
 public sealed class KnowledgeTools
 (
     IKnowledgeRepository     knowledgeRepository,
-    IEmbeddingServiceFactory embeddingServiceFactory
+    IEmbeddingServiceFactory embeddingServiceFactory,
+    OrchestratorConfig       orchestratorConfig
 )
 {
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -22,7 +24,7 @@ public sealed class KnowledgeTools
             """
             语义检索知识条目
             query: 检索内容
-            topK: 返回条数, 默认 8
+            topK: 返回条数 (可选)
             """
         )
     ];
@@ -47,7 +49,7 @@ public sealed class KnowledgeTools
                                 .Where
                                 (e =>
                                     {
-                                        var currentHash = EmbeddingConversions.ComputeHash($"{e.Title}\n{e.Content}", fingerprint);
+                                        var currentHash = EmbeddingConversions.ComputeHash(BuildEmbeddingText(e), fingerprint);
                                         return e.ContentHash != currentHash;
                                     }
                                 )
@@ -64,7 +66,7 @@ public sealed class KnowledgeTools
 
             foreach (var entry in needsRegeneration)
             {
-                var text     = $"{entry.Title}\n{entry.Content}";
+                var text     = BuildEmbeddingText(entry);
                 var emb      = await embeddingService.GenerateEmbeddingAsync(text);
                 var hash     = EmbeddingConversions.ComputeHash(text, fingerprint);
                 var embBytes = EmbeddingConversions.FloatsToBytes(emb);
@@ -77,7 +79,9 @@ public sealed class KnowledgeTools
 
         var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query);
         var queryBytes     = EmbeddingConversions.FloatsToBytes(queryEmbedding);
-        var limit          = topK ?? 8;
+
+        var config = orchestratorConfig.KnowledgeConfig;
+        var limit  = topK ?? config.SemanticTopK;
 
         var searchResults = await knowledgeRepository.SearchByVectorAsync
                             (
@@ -88,6 +92,10 @@ public sealed class KnowledgeTools
 
         var entryMap = entries.ToDictionary(e => e.ID);
 
+        var minRelevance = config.MinRelevance;
+        var tokenBudget  = config.TokenBudget;
+        var usedTokens   = 0;
+
         var result = searchResults
                      .Where(sr => entryMap.ContainsKey(sr.entryID))
                      .Select
@@ -96,11 +104,25 @@ public sealed class KnowledgeTools
                              var entry = entryMap[sr.entryID];
                              return new
                              {
-                                 title     = entry.Title,
+                                 remarks   = entry.Remarks,
                                  content   = entry.Content,
-                                 tags      = entry.Tags,
+                                 keywords  = entry.Keywords,
                                  relevance = Math.Round(1f - sr.distance, 4)
                              };
+                         }
+                     )
+                     .Where(r =>
+                         {
+                             if (minRelevance > 0 && r.relevance < minRelevance)
+                                 return false;
+
+                             var tokens = EstimateTokens(r.content);
+
+                             if (usedTokens + tokens > tokenBudget)
+                                 return false;
+
+                             usedTokens += tokens;
+                             return true;
                          }
                      )
                      .ToList();
@@ -109,6 +131,18 @@ public sealed class KnowledgeTools
 
         return JsonSerializer.Serialize(result);
     }
+
+    private static string BuildEmbeddingText(KnowledgeEntry entry)
+    {
+        var keywords = string.Join(", ", entry.Keywords);
+
+        return string.IsNullOrWhiteSpace(keywords) ?
+                   entry.Content :
+                   $"{keywords}\n{entry.Content}";
+    }
+
+    private static int EstimateTokens(string text) =>
+        text.Length / 4;
 
     private async Task<IReadOnlyList<KnowledgeEntry>> GetSearchableEntriesAsync(ToolExecutionContext context)
     {
