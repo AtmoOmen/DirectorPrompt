@@ -20,20 +20,15 @@ public sealed class VectorTableManager
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
+        var existingSQL       = await GetCreateSQLAsync(connection, tableName, cancellationToken);
         var existingDimension = await GetDimensionAsync(connection, tableName, cancellationToken);
 
-        if (existingDimension is not null)
+        if (existingSQL is not null)
         {
-            if (existingDimension == dimension)
+            if (existingDimension == dimension && UsesCosineDistance(existingSQL))
                 return;
 
-            Log.Warning
-            (
-                "向量表 {Table} 维度变更: {Old} -> {New}, 重建表",
-                tableName,
-                existingDimension,
-                dimension
-            );
+            Log.Warning("向量表 {Table} 结构变更, 重建表", tableName);
 
             await using var command = connection.CreateCommand();
             command.CommandText = $"DROP TABLE IF EXISTS \"{tableName}\"";
@@ -62,7 +57,9 @@ public sealed class VectorTableManager
 
         var existingSQL = await GetCreateSQLAsync(connection, tableName, cancellationToken);
 
-        if (existingSQL is not null && existingSQL.Contains("source", StringComparison.OrdinalIgnoreCase))
+        if (existingSQL is not null &&
+            existingSQL.Contains("source", StringComparison.OrdinalIgnoreCase) &&
+            UsesCosineDistance(existingSQL))
         {
             var existingDimension = await GetDimensionAsync(connection, tableName, cancellationToken);
 
@@ -83,7 +80,7 @@ public sealed class VectorTableManager
         }
         else if (existingSQL is not null)
         {
-            Log.Warning("向量表 {Table} 升级为多向量结构, 重建", tableName);
+            Log.Warning("向量表 {Table} 结构变更, 重建", tableName);
 
             await using var dropCommand = connection.CreateCommand();
             dropCommand.CommandText = $"DROP TABLE IF EXISTS \"{tableName}\"";
@@ -155,7 +152,7 @@ public sealed class VectorTableManager
     )
     {
         await using var command = connection.CreateCommand();
-        command.CommandText = $"CREATE VIRTUAL TABLE IF NOT EXISTS \"{tableName}\" USING vec0(id INTEGER PRIMARY KEY, entry_id INTEGER, source TEXT, embedding FLOAT[{dimension}])";
+        command.CommandText = $"CREATE VIRTUAL TABLE IF NOT EXISTS \"{tableName}\" USING vec0(id INTEGER PRIMARY KEY, entry_id INTEGER, source TEXT, embedding FLOAT[{dimension}] distance_metric=cosine)";
         await command.ExecuteNonQueryAsync(cancellationToken);
 
         Log.Information("创建多向量 vec0 虚拟表: {Table}, 维度={Dimension}", tableName, dimension);
@@ -170,9 +167,12 @@ public sealed class VectorTableManager
     )
     {
         await using var command = connection.CreateCommand();
-        command.CommandText = $"CREATE VIRTUAL TABLE IF NOT EXISTS \"{tableName}\" USING vec0(entry_id INTEGER PRIMARY KEY, embedding FLOAT[{dimension}])";
+        command.CommandText = $"CREATE VIRTUAL TABLE IF NOT EXISTS \"{tableName}\" USING vec0(entry_id INTEGER PRIMARY KEY, embedding FLOAT[{dimension}] distance_metric=cosine)";
         await command.ExecuteNonQueryAsync(cancellationToken);
 
         Log.Information("创建 vec0 虚拟表: {Table}, 维度={Dimension}", tableName, dimension);
     }
+
+    private static bool UsesCosineDistance(string createSQL) =>
+        createSQL.Contains("distance_metric=cosine", StringComparison.OrdinalIgnoreCase);
 }

@@ -1,25 +1,21 @@
 using System.Text;
-using DirectorPrompt.Agents.Tools;
+using DirectorPrompt.Agents.Retrieval;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using Microsoft.Extensions.AI;
 using Serilog;
 
 namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class RetrievalStage
 (
-    IChatClientFactory   chatClientFactory,
-    AgentConfigResolver  agentConfigResolver,
-    ISceneRepository     sceneRepository,
-    IStateRepository     stateRepository,
-    ICharacterRepository characterRepository,
-    IDirectiveRepository directiveRepository,
-    IKnowledgeRepository knowledgeRepository,
-    IMemoryRepository    memoryRepository,
-    KnowledgeTools       knowledgeTools,
-    MemoryTools          memoryTools
+    ISceneRepository          sceneRepository,
+    IStateRepository          stateRepository,
+    ICharacterRepository      characterRepository,
+    IDirectiveRepository      directiveRepository,
+    EmbeddingIndexService     embeddingIndexService,
+    KnowledgeRetrievalService knowledgeRetrievalService,
+    MemoryRetrievalService    memoryRetrievalService
 )
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
@@ -27,14 +23,25 @@ public sealed class RetrievalStage
         Log.Information("RetrievalStage 开始: 对话={SessionID}, 轮次={RoundID}", context.SessionID, context.RoundID);
 
         var toolContext   = context.ToolContext;
-        var knowledgeTask = RetrieveKnowledgeAsync(context, cancellationToken);
-        var memoryTask    = RetrieveMemoryAsync(context, cancellationToken);
+        var indexingTask  = embeddingIndexService.SynchronizeProjectAsync
+                            (
+                                toolContext.ProjectID,
+                                toolContext.EmbeddingConfig,
+                                cancellationToken
+                            );
+        var queryTask     = BuildRetrievalQueryAsync(context, cancellationToken);
         var injectionTask = BuildSystemInjectionAsync(toolContext, cancellationToken);
 
-        await Task.WhenAll(knowledgeTask, memoryTask, injectionTask);
+        await Task.WhenAll(indexingTask, queryTask, injectionTask);
 
-        context.KnowledgeContext = await knowledgeTask;
-        context.MemoryContext    = await memoryTask;
+        var query         = await queryTask;
+        var knowledgeTask = knowledgeRetrievalService.SearchAsync(toolContext, query, cancellationToken);
+        var memoryTask    = memoryRetrievalService.SearchAsync(toolContext, query, cancellationToken);
+
+        await Task.WhenAll(knowledgeTask, memoryTask);
+
+        context.KnowledgeContext = FormatKnowledgeContext(await knowledgeTask);
+        context.MemoryContext    = FormatMemoryContext(await memoryTask);
         context.SystemInjection  = await injectionTask;
 
         Log.Information
@@ -55,103 +62,87 @@ public sealed class RetrievalStage
             Log.Debug("系统注入内容:\n{Content}", context.SystemInjection);
     }
 
-    private async Task<string> RetrieveKnowledgeAsync(PipelineContext context, CancellationToken cancellationToken)
+    private async Task<string> BuildRetrievalQueryAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        var resolved = agentConfigResolver.Resolve(AgentTaskType.Knowledge);
+        var sb = new StringBuilder();
 
-        if (resolved is null)
+        if (context.CurrentSceneID is not null)
         {
-            Log.Debug("Knowledge Agent 未配置, 跳过知识检索");
-            return string.Empty;
+            var sceneTask      = sceneRepository.GetByIDAsync(context.CurrentSceneID.Value, cancellationToken);
+            var charactersTask = characterRepository.GetBySceneAsync(context.CurrentSceneID.Value, cancellationToken);
+
+            await Task.WhenAll(sceneTask, charactersTask);
+
+            var scene = await sceneTask;
+
+            if (scene is not null)
+            {
+                sb.AppendLine("当前场景:");
+                sb.AppendLine($"时间: {scene.TimeLabel}");
+
+                if (!string.IsNullOrWhiteSpace(scene.ProgressSummary))
+                    sb.AppendLine($"进展: {scene.ProgressSummary}");
+                else if (!string.IsNullOrWhiteSpace(scene.Summary))
+                    sb.AppendLine($"摘要: {scene.Summary}");
+            }
+
+            var characters = await charactersTask;
+
+            if (characters.Count > 0)
+            {
+                sb.AppendLine("在场人物:");
+
+                foreach (var character in characters)
+                {
+                    var aliases = character.Aliases.Length > 0 ?
+                                      $", 别称: {string.Join("、", character.Aliases)}" :
+                                      string.Empty;
+                    sb.AppendLine($"- {character.Name}{aliases}: {character.Description}");
+                }
+            }
         }
 
-        var entries    = await knowledgeRepository.GetActiveEntriesAsync(context.DirectiveBatch.ProjectID, cancellationToken);
-        var phaseCount = context.PhaseActivatedEntryIDs?.Count ?? 0;
-
-        if (entries.Count == 0 && phaseCount == 0)
+        if (!string.IsNullOrWhiteSpace(context.PreviousSceneSummary))
         {
-            Log.Information("知识检索: 无知识条目, 跳过 AI 调用");
-            return "无可用知识";
+            sb.AppendLine("上一场景摘要:");
+            sb.AppendLine(context.PreviousSceneSummary);
         }
 
-        Log.Information
-        (
-            "知识检索: 模型={Model}, 活跃条目数={Count}, Phase激活条目数={PhaseCount}",
-            resolved.ModelConfig.ModelName,
-            entries.Count,
-            phaseCount
-        );
+        sb.AppendLine("导演指令:");
 
-        var client        = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
-        var tools         = knowledgeTools.Create(context.ToolContext);
-        var directorInput = BuildDirectorInput(context.DirectiveBatch);
+        foreach (var item in context.DirectiveBatch.Directives)
+            sb.AppendLine($"{item.Order}. [{item.Type}] {item.Content}");
 
-        var messages = DirectiveProcessingStage.BuildMessages(resolved.SystemPrompt, resolved.ModelPrompt, directorInput);
-
-        var options = new ChatOptions
-        {
-            Temperature = resolved.ModelConfig.Temperature,
-            ModelId     = resolved.ModelConfig.ModelName,
-            Tools       = [.. tools]
-        };
-
-        var response = await client.GetResponseAsync(messages, options, cancellationToken);
-
-        var assistantMessage = response.Messages.LastOrDefault();
-        var text             = assistantMessage?.Text ?? string.Empty;
-
-        Log.Information("知识检索完成: 返回长度={Length}", text.Length);
-
-        if (!string.IsNullOrWhiteSpace(text))
-            Log.Debug("知识检索结果:\n{Content}", text);
-
-        return text;
+        return sb.ToString();
     }
 
-    private async Task<string> RetrieveMemoryAsync(PipelineContext context, CancellationToken cancellationToken)
+    private static string FormatKnowledgeContext(IReadOnlyList<KnowledgeRetrievalResult> results)
     {
-        var resolved = agentConfigResolver.Resolve(AgentTaskType.MemoryRecall);
+        var sb = new StringBuilder();
 
-        if (resolved is null)
+        foreach (var result in results)
         {
-            Log.Debug("Memory Recall Agent 未配置, 跳过记忆检索");
-            return string.Empty;
+            if (!string.IsNullOrWhiteSpace(result.Remarks))
+                sb.AppendLine($"### {result.Remarks}");
+
+            sb.AppendLine(result.Content);
+            sb.AppendLine();
         }
 
-        var memories = await memoryRepository.GetBySessionAsync(context.SessionID, context.CurrentTimelinePosition, cancellationToken);
+        return sb.ToString().TrimEnd();
+    }
 
-        if (memories.Count == 0)
+    private static string FormatMemoryContext(IReadOnlyList<MemoryRetrievalResult> results)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var result in results)
         {
-            Log.Information("记忆检索: 无记忆条目, 跳过 AI 调用");
-            return "无可用记忆";
+            sb.AppendLine(result.Content);
+            sb.AppendLine();
         }
 
-        Log.Information("记忆检索: 模型={Model}, 条目数={Count}", resolved.ModelConfig.ModelName, memories.Count);
-
-        var client        = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
-        var tools         = memoryTools.Create(context.ToolContext);
-        var directorInput = BuildDirectorInput(context.DirectiveBatch);
-
-        var messages = DirectiveProcessingStage.BuildMessages(resolved.SystemPrompt, resolved.ModelPrompt, directorInput);
-
-        var options = new ChatOptions
-        {
-            Temperature = resolved.ModelConfig.Temperature,
-            ModelId     = resolved.ModelConfig.ModelName,
-            Tools       = [.. tools]
-        };
-
-        var response = await client.GetResponseAsync(messages, options, cancellationToken);
-
-        var assistantMessage = response.Messages.LastOrDefault();
-        var text             = assistantMessage?.Text ?? string.Empty;
-
-        Log.Information("记忆检索完成: 返回长度={Length}", text.Length);
-
-        if (!string.IsNullOrWhiteSpace(text))
-            Log.Debug("记忆检索结果:\n{Content}", text);
-
-        return text;
+        return sb.ToString().TrimEnd();
     }
 
     private async Task<string> BuildSystemInjectionAsync(ToolExecutionContext context, CancellationToken cancellationToken)
@@ -318,12 +309,4 @@ public sealed class RetrievalStage
         sb.AppendLine();
     }
 
-    private static string BuildDirectorInput(DirectiveBatch batch)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("## 导演指令");
-        foreach (var item in batch.Directives)
-            sb.AppendLine($"{item.Order}. [{item.Type}] {item.Content}");
-        return sb.ToString();
-    }
 }

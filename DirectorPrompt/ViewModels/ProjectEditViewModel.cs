@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents;
+using DirectorPrompt.Agents.Retrieval;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -15,11 +16,14 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed partial class ProjectEditViewModel
 (
-    IProjectRepository   projectRepository,
-    IKnowledgeRepository knowledgeRepository,
-    IStateRepository     stateRepository,
-    ICharacterRepository characterRepository,
-    IProjectPortService  projectPortService
+    IProjectRepository    projectRepository,
+    IKnowledgeRepository  knowledgeRepository,
+    IStateRepository      stateRepository,
+    ICharacterRepository  characterRepository,
+    IProjectPortService   projectPortService,
+    EmbeddingIndexService embeddingIndexService,
+    AgentConfigResolver   agentConfigResolver,
+    UserSettings          userSettings
 )
     : ObservableObject
 {
@@ -439,6 +443,13 @@ public sealed partial class ProjectEditViewModel
             };
 
             await knowledgeRepository.UpdateAsync(model);
+
+            var stored = await knowledgeRepository.GetByIDAsync(model.ID) ??
+                         throw new InvalidOperationException($"知识条目 {model.ID} 不存在");
+            var embeddingConfig = agentConfigResolver.ResolveEmbedding(userSettings.EmbeddingConfig) ??
+                                  throw new InvalidOperationException("向量模型配置无效: 未找到对应的提供商");
+
+            await embeddingIndexService.IndexKnowledgeAsync([stored], embeddingConfig);
             ValidationMessage = string.Empty;
         }
         catch (Exception ex)

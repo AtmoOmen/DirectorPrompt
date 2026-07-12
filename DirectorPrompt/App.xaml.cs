@@ -1,8 +1,9 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using DirectorPrompt.Agents;
 using DirectorPrompt.Agents.Pipeline;
+using DirectorPrompt.Agents.Retrieval;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Repositories;
@@ -207,6 +208,9 @@ public partial class App
         services.AddSingleton(userSettings);
 
         services.AddSingleton<IEmbeddingServiceFactory, EmbeddingServiceFactory>();
+        services.AddSingleton<EmbeddingIndexService>();
+        services.AddSingleton<KnowledgeRetrievalService>();
+        services.AddSingleton<MemoryRetrievalService>();
 
         RegisterLocalization(services, configuration);
 

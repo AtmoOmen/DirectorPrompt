@@ -33,6 +33,19 @@ public sealed class MemoryRepository : IMemoryRepository
         return row?.ToMemoryEntry();
     }
 
+    public async Task<IReadOnlyList<MemoryEntry>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var rows = await connection.QueryAsync<MemoryEntryRow>
+                   (
+                       "SELECT * FROM memory_entries WHERE project_id = @projectID ORDER BY id",
+                       new { projectID }
+                   );
+
+        return rows.Select(r => r.ToMemoryEntry()).ToList();
+    }
+
     public async Task<IReadOnlyList<MemoryEntry>> GetBySessionAsync
     (
         long              sessionID,
@@ -333,6 +346,8 @@ public sealed class MemoryRepository : IMemoryRepository
     {
         if (vectors.Count == 0)
         {
+            await DeleteEmbeddingAsync(projectID, entryID, cancellationToken);
+
             await using var conn = await connectionFactory.CreateAsync(cancellationToken);
 
             await conn.ExecuteAsync
@@ -401,7 +416,7 @@ public sealed class MemoryRepository : IMemoryRepository
         );
     }
 
-    public async Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
+    public async Task<IReadOnlyList<VectorSearchResult>> SearchByVectorAsync
     (
         long                 projectID,
         byte[]               queryVector,
@@ -421,7 +436,7 @@ public sealed class MemoryRepository : IMemoryRepository
 
         var sql = candidateIDs is { Count: > 0 } ?
                       $"""
-                       SELECT entry_id AS EntryID, distance AS Distance
+                       SELECT entry_id AS EntryID, source AS Source, distance AS Distance
                        FROM "{tableName}"
                        WHERE embedding MATCH @queryVector
                          AND k = @vectorK
@@ -429,14 +444,14 @@ public sealed class MemoryRepository : IMemoryRepository
                        ORDER BY distance
                        """ :
                       $"""
-                       SELECT entry_id AS EntryID, distance AS Distance
+                       SELECT entry_id AS EntryID, source AS Source, distance AS Distance
                        FROM "{tableName}"
                        WHERE embedding MATCH @queryVector
                          AND k = @vectorK
                        ORDER BY distance
                        """;
 
-        var rows = await connection.QueryAsync<(long EntryID, float Distance)>
+        var rows = await connection.QueryAsync<(long EntryID, string Source, float Distance)>
                    (
                        sql,
                        new { queryVector, vectorK, candidateIDs }
@@ -444,8 +459,9 @@ public sealed class MemoryRepository : IMemoryRepository
 
         return rows
                .GroupBy(r => r.EntryID)
-               .Select(g => (entryID: g.Key, distance: g.Min(r => r.Distance)))
-               .OrderBy(r => r.distance)
+               .Select(g => g.OrderBy(r => r.Distance).First())
+               .Select(r => new VectorSearchResult(r.EntryID, r.Source, r.Distance))
+               .OrderBy(r => r.Distance)
                .Take(topK)
                .ToList();
     }

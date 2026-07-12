@@ -6,6 +6,8 @@ public interface IMemoryRepository
 {
     Task<MemoryEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<MemoryEntry>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<MemoryEntry>> GetBySessionAsync(long sessionID, long maxTimelinePos, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<MemoryEntry>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default);
@@ -31,7 +33,7 @@ public interface IMemoryRepository
 
     Task DeleteEmbeddingAsync(long projectID, long entryID, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
+    Task<IReadOnlyList<VectorSearchResult>> SearchByVectorAsync
     (
         long                 projectID,
         byte[]               queryVector,

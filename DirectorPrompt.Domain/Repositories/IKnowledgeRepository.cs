@@ -45,7 +45,7 @@ public interface IKnowledgeRepository
 
     Task DeleteEmbeddingAsync(long projectID, long entryID, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
+    Task<IReadOnlyList<VectorSearchResult>> SearchByVectorAsync
     (
         long                 projectID,
         byte[]               queryVector,

@@ -336,6 +336,8 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
     {
         if (vectors.Count == 0)
         {
+            await DeleteEmbeddingAsync(projectID, entryID, cancellationToken);
+
             await using var conn = await connectionFactory.CreateAsync(cancellationToken);
 
             await conn.ExecuteAsync
@@ -404,7 +406,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         );
     }
 
-    public async Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
+    public async Task<IReadOnlyList<VectorSearchResult>> SearchByVectorAsync
     (
         long                 projectID,
         byte[]               queryVector,
@@ -430,7 +432,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
 
         var sql = candidateIDs is { Count: > 0 } ?
                       $"""
-                       SELECT entry_id AS EntryID, distance AS Distance
+                       SELECT entry_id AS EntryID, source AS Source, distance AS Distance
                        FROM "{tableName}"
                        WHERE embedding MATCH @queryVector
                          AND k = @vectorK
@@ -438,14 +440,14 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                        ORDER BY distance
                        """ :
                       $"""
-                       SELECT entry_id AS EntryID, distance AS Distance
+                       SELECT entry_id AS EntryID, source AS Source, distance AS Distance
                        FROM "{tableName}"
                        WHERE embedding MATCH @queryVector
                          AND k = @vectorK
                        ORDER BY distance
                        """;
 
-        var rows = (await connection.QueryAsync<(long EntryID, float Distance)>
+        var rows = (await connection.QueryAsync<(long EntryID, string Source, float Distance)>
                     (
                         sql,
                         new { queryVector, vectorK, candidateIDs }
@@ -456,8 +458,9 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         Log.Information("知识向量搜索: 原始行数={Raw}, 分组后={Grouped}", rows.Count, grouped.Count);
 
         return grouped
-               .Select(g => (entryID: g.Key, distance: g.Min(r => r.Distance)))
-               .OrderBy(r => r.distance)
+               .Select(g => g.OrderBy(r => r.Distance).First())
+               .Select(r => new VectorSearchResult(r.EntryID, r.Source, r.Distance))
+               .OrderBy(r => r.Distance)
                .Take(topK)
                .ToList();
     }

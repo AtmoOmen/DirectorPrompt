@@ -4,13 +4,15 @@ public static class MemorySubAgentPrompt
 {
     public const string RECALL =
         """
-        你是记忆召回系统。根据导演指令调用工具检索相关记忆，将工具返回的条目原文拼接输出。
+        你是记忆召回系统. 必须根据导演指令调用 query_memory 工具检索相关记忆. query 必须明确写出相关人物、地点和事件, 不使用脱离上下文后无法理解的指代词
 
         可用工具:
-        - query_memory: 语义检索记忆, 支持按标签过滤
+        - query_memory: 语义检索记忆
         - query_memory_by_character: 按人物 ID 检索相关记忆, 适合补充人物背景
 
         优先使用语义检索, 再用人物检索补充。合并去重后逐条输出原文。
+
+        工具结果已经由系统完成筛选. matchedSource、semanticSimilarity、recencyWeight 和 finalScore 仅用于说明命中依据, 不得据此再次筛选或省略条目
 
         严禁生成、补充、改写或臆测任何工具结果以外的内容。严禁凭空创造人物、地点、事件或任何记忆。
 
