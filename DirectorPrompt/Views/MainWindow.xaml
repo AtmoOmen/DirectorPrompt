@@ -343,7 +343,7 @@
                                                     VerticalAlignment="Top"
                                                     IsEnabled="{Binding DataContext.IsNotProcessing, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}">
                                                 <Button.Style>
-                                                    <Style TargetType="Button">
+                                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                                         <Setter Property="Visibility"
                                                                 Value="{Binding IsLast, Converter={StaticResource BoolToVisibility}}" />
                                                         <Style.Triggers>
@@ -376,7 +376,7 @@
                                             FontSize="12"
                                             Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                                             <Expander.Style>
-                                                <Style TargetType="Expander">
+                                                <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
                                                     <Setter Property="Visibility"
                                                             Value="{Binding HasThinking, Converter={StaticResource BoolToVisibility}}" />
                                                     <Style.Triggers>
