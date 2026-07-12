@@ -151,10 +151,87 @@ public sealed partial class CharacterCategoryGroupViewModel : ObservableObject
         Items.CollectionChanged += (_, _) => ItemCount = Items.Count;
 }
 
-public sealed class CharacterPanelViewModel : ObservableObject
+public sealed partial class CharacterPanelViewModel : ObservableObject
 {
+    [ObservableProperty]
+    public partial string SearchText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string SelectedCategory { get; set; } = string.Empty;
+
+    public ObservableCollection<string> AvailableCategories { get; } = [];
+
+    private readonly List<CharacterCategoryGroupViewModel> allGroups = [];
+
     public ObservableCollection<CharacterCategoryGroupViewModel> Groups { get; } = [];
 
-    public void Clear() =>
+    private string AllCategoriesLabel => Localization.Loc.Get("Character.Panel.AllCategories");
+
+    public CharacterPanelViewModel() =>
+        SelectedCategory = AllCategoriesLabel;
+
+    public void Clear()
+    {
+        allGroups.Clear();
         Groups.Clear();
+        AvailableCategories.Clear();
+    }
+
+    public void SetGroups(IEnumerable<CharacterCategoryGroupViewModel> groups)
+    {
+        allGroups.Clear();
+        allGroups.AddRange(groups);
+
+
+        var previousCategory = SelectedCategory;
+        AvailableCategories.Clear();
+        AvailableCategories.Add(AllCategoriesLabel);
+        foreach (var g in allGroups)
+        {
+            if (!string.IsNullOrWhiteSpace(g.CategoryName))
+                AvailableCategories.Add(g.CategoryName);
+        }
+        SelectedCategory = AvailableCategories.Contains(previousCategory) ? previousCategory : AllCategoriesLabel;
+
+        ApplyFilter();
+    }
+
+    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    partial void OnSelectedCategoryChanged(string value) => ApplyFilter();
+
+    private void ApplyFilter()
+    {
+        Groups.Clear();
+        var filter = SearchText?.Trim();
+        var categoryFilter = SelectedCategory;
+        var allCategoriesVal = AllCategoriesLabel;
+
+        foreach (var g in allGroups)
+        {
+
+            if (!string.IsNullOrWhiteSpace(categoryFilter) && categoryFilter != allCategoriesVal && g.CategoryName != categoryFilter)
+                continue;
+
+            var filteredItems = g.Items.Where(i =>
+                string.IsNullOrWhiteSpace(filter) ||
+                i.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                i.Description.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                i.Categories.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+
+            if (filteredItems.Count == 0)
+                continue;
+
+            var newGroup = new CharacterCategoryGroupViewModel
+            {
+                CategoryName = g.CategoryName,
+                IsExpanded   = true
+            };
+
+            foreach (var item in filteredItems)
+                newGroup.Items.Add(item);
+
+            Groups.Add(newGroup);
+        }
+    }
 }

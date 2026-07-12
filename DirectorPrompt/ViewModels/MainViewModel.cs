@@ -67,6 +67,9 @@ public sealed partial class MainViewModel
     [ObservableProperty]
     public partial bool IsSessionSidebarExpanded { get; set; } = true;
 
+    [ObservableProperty]
+    public partial bool IsRightSidebarExpanded { get; set; } = true;
+
     public bool IsProjectSelected => CurrentProject is not null;
 
     public bool IsNotProcessing => !IsProcessing;
@@ -437,6 +440,10 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private void ToggleSessionSidebar() =>
         IsSessionSidebarExpanded = !IsSessionSidebarExpanded;
+
+    [RelayCommand]
+    private void ToggleRightSidebar() =>
+        IsRightSidebarExpanded = !IsRightSidebarExpanded;
 
     [RelayCommand]
     private void OpenSettings()
@@ -1058,8 +1065,6 @@ public sealed partial class MainViewModel
         if (CurrentSession is null || CurrentProject is null)
             return;
 
-        CharacterPanel.Clear();
-
         var characters    = await characterRepository.GetBySessionAsync(CurrentSession.ID);
         var categories    = await characterRepository.GetCategoriesAsync(CurrentProject.ID);
         var categoryAttrs = await stateRepository.GetAttributesAsync(CurrentProject.ID, StateScope.Category);
@@ -1134,6 +1139,7 @@ public sealed partial class MainViewModel
                       .OrderBy(g => g.Key)
                       .ToList();
 
+        var localGroups = new List<CharacterCategoryGroupViewModel>();
         foreach (var grp in grouped)
         {
             var groupName = grp.Key >= 0 && categoryLookup.TryGetValue(grp.Key, out var cat) ?
@@ -1148,16 +1154,16 @@ public sealed partial class MainViewModel
             foreach (var (_, item) in grp)
                 group.Items.Add(item);
 
-            CharacterPanel.Groups.Add(group);
+            localGroups.Add(group);
         }
+
+        CharacterPanel.SetGroups(localGroups);
     }
 
     private async Task RefreshMemoryPanelAsync()
     {
         if (CurrentSession is null || CurrentProject is null)
             return;
-
-        MemoryPanel.Clear();
 
         var memories   = await memoryRepository.GetBySessionAsync(CurrentSession.ID, long.MaxValue);
         var scenes     = await sceneRepository.GetBySessionAsync(CurrentSession.ID);
@@ -1187,6 +1193,7 @@ public sealed partial class MainViewModel
                       .OrderBy(x => x.TimelinePos)
                       .ToList();
 
+        var localGroups = new List<MemorySceneGroupViewModel>();
         foreach (var grp in grouped)
         {
             var group = new MemorySceneGroupViewModel
@@ -1217,8 +1224,10 @@ public sealed partial class MainViewModel
                 );
             }
 
-            MemoryPanel.Groups.Add(group);
+            localGroups.Add(group);
         }
+
+        MemoryPanel.SetGroups(localGroups);
 
         Log.Information
         (

@@ -75,24 +75,138 @@ public sealed partial class MemorySceneGroupViewModel : ObservableObject
         Items.CollectionChanged += (_, _) => ItemCount = Items.Count;
 }
 
-public sealed class MemoryPanelViewModel : ObservableObject
+public sealed partial class MemoryPanelViewModel : ObservableObject
 {
+    [ObservableProperty]
+    public partial string SearchText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string SelectedScene { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string SelectedTag { get; set; } = string.Empty;
+
+    public ObservableCollection<string> AvailableScenes { get; } = [];
+    public ObservableCollection<string> AvailableTags { get; } = [];
+
+    private readonly List<MemorySceneGroupViewModel> allGroups = [];
+
     public ObservableCollection<MemorySceneGroupViewModel> Groups { get; } = [];
 
-    public void Clear() =>
+    private string AllScenesLabel => Localization.Loc.Get("Memory.Panel.AllScenes");
+    private string AllTagsLabel => Localization.Loc.Get("Memory.Panel.AllTags");
+
+    public MemoryPanelViewModel()
+    {
+        SelectedScene = AllScenesLabel;
+        SelectedTag   = AllTagsLabel;
+    }
+
+    public void Clear()
+    {
+        allGroups.Clear();
         Groups.Clear();
+        AvailableScenes.Clear();
+        AvailableTags.Clear();
+    }
+
+    public void SetGroups(IEnumerable<MemorySceneGroupViewModel> groups)
+    {
+        allGroups.Clear();
+        allGroups.AddRange(groups);
+
+
+        var previousScene = SelectedScene;
+        AvailableScenes.Clear();
+        AvailableScenes.Add(AllScenesLabel);
+        foreach (var g in allGroups)
+        {
+            if (!string.IsNullOrWhiteSpace(g.SceneLabel))
+                AvailableScenes.Add(g.SceneLabel);
+        }
+        SelectedScene = AvailableScenes.Contains(previousScene) ? previousScene : AllScenesLabel;
+
+
+        var previousTag = SelectedTag;
+        AvailableTags.Clear();
+        AvailableTags.Add(AllTagsLabel);
+        
+        var tags = allGroups.SelectMany(g => g.Items)
+                            .Where(i => i != null && !string.IsNullOrWhiteSpace(i.TagsDisplay))
+                            .SelectMany(i => i.TagsDisplay.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                            .Distinct()
+                            .OrderBy(t => t);
+        foreach (var t in tags)
+        {
+            AvailableTags.Add(t);
+        }
+        SelectedTag = AvailableTags.Contains(previousTag) ? previousTag : AllTagsLabel;
+
+        ApplyFilter();
+    }
+
+    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    partial void OnSelectedSceneChanged(string value) => ApplyFilter();
+    partial void OnSelectedTagChanged(string value) => ApplyFilter();
+
+    private void ApplyFilter()
+    {
+        Groups.Clear();
+        var filter = SearchText?.Trim();
+        var sceneFilter = SelectedScene;
+        var tagFilter = SelectedTag;
+        var allScenesVal = AllScenesLabel;
+        var allTagsVal = AllTagsLabel;
+
+        foreach (var g in allGroups)
+        {
+            if (!string.IsNullOrWhiteSpace(sceneFilter) && sceneFilter != allScenesVal && g.SceneLabel != sceneFilter)
+                continue;
+
+            var filteredItems = g.Items.Where(i => {
+                if (!string.IsNullOrWhiteSpace(filter) && !i.Content.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                if (!string.IsNullOrWhiteSpace(tagFilter) && tagFilter != allTagsVal)
+                {
+                    var itemTags = i.TagsDisplay.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                    if (!itemTags.Contains(tagFilter, StringComparer.OrdinalIgnoreCase))
+                        return false;
+                }
+
+                return true;
+            }).ToList();
+
+            if (filteredItems.Count == 0)
+                continue;
+
+            var newGroup = new MemorySceneGroupViewModel
+            {
+                SceneLabel = g.SceneLabel,
+                IsExpanded = true
+            };
+
+            foreach (var item in filteredItems)
+                newGroup.Items.Add(item);
+
+            Groups.Add(newGroup);
+        }
+    }
 
     public void RemoveItem(MemoryPanelItemViewModel item)
     {
-        foreach (var group in Groups)
+
+        foreach (var group in allGroups)
         {
-            if (!group.Items.Remove(item))
-                continue;
-
-            if (group.Items.Count == 0)
-                Groups.Remove(group);
-
-            break;
+            if (group.Items.Remove(item))
+            {
+                if (group.Items.Count == 0)
+                    allGroups.Remove(group);
+                break;
+            }
         }
+
+
+        ApplyFilter();
     }
 }
