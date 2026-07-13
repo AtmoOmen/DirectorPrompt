@@ -58,6 +58,9 @@ public sealed class GenerationStage
         {
             var updates = client.GetStreamingResponseAsync(messages, options, cancellationToken);
 
+            var lastNarrativeLen = 0;
+            var lastReasoningLen = 0;
+
             await foreach (var update in updates)
             {
                 updateCount++;
@@ -70,11 +73,18 @@ public sealed class GenerationStage
                         narrativeBuilder.Append(text.Text);
                 }
 
-                context.OnStreamingUpdate?.Invoke
-                (
-                    narrativeBuilder.ToString(),
-                    reasoningBuilder.ToString()
-                );
+                var narrativeDelta = lastNarrativeLen < narrativeBuilder.Length
+                    ? narrativeBuilder.ToString(lastNarrativeLen, narrativeBuilder.Length - lastNarrativeLen)
+                    : string.Empty;
+
+                var reasoningDelta = lastReasoningLen < reasoningBuilder.Length
+                    ? reasoningBuilder.ToString(lastReasoningLen, reasoningBuilder.Length - lastReasoningLen)
+                    : string.Empty;
+
+                lastNarrativeLen = narrativeBuilder.Length;
+                lastReasoningLen = reasoningBuilder.Length;
+
+                context.OnStreamingUpdate?.Invoke(narrativeDelta, reasoningDelta, false);
             }
         }
 
@@ -101,7 +111,7 @@ public sealed class GenerationStage
             apiReasoning = ExtractReasoning(assistantMessage);
             rawText      = assistantMessage?.Text ?? string.Empty;
 
-            context.OnStreamingUpdate?.Invoke(rawText, apiReasoning);
+            context.OnStreamingUpdate?.Invoke(rawText, apiReasoning, true);
         }
 
         var (thinking, narrative) = ThinkingParser.Merge(apiReasoning, rawText);

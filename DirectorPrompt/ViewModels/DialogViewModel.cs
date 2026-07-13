@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Threading;
@@ -13,6 +14,10 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 {
     private string thinking = string.Empty;
     private string errorMessage = string.Empty;
+    private string streamingText = string.Empty;
+    private string renderedMarkdownContent = string.Empty;
+    private long lastMarkdownRenderTicks;
+    private const double MarkdownRenderIntervalMs = 1000;
 
     public long ID { get; init; }
 
@@ -54,6 +59,22 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
     }
 
     public bool HasThinking => !string.IsNullOrWhiteSpace(thinking);
+
+    public string StreamingText
+    {
+        get => streamingText;
+        private set
+        {
+            if (streamingText != value)
+            {
+                streamingText = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StreamingText)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasStreamingText)));
+            }
+        }
+    }
+
+    public bool HasStreamingText => !string.IsNullOrEmpty(streamingText);
 
     public string ErrorMessage
     {
@@ -149,20 +170,37 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
                 block.RenderMarkdown();
         }
         else
-        {
-            Document = MarkdownRenderer.Render(Content);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
-        }
+            RenderNarrativeMarkdown();
 
+        lastMarkdownRenderTicks = Stopwatch.GetTimestamp();
         IsStreaming = false;
     }
 
-    public void UpdateStreamingContent(string narrative, string thinking)
+    public void UpdateStreamingContent(string narrative, string thinking, bool replaceContent = false)
     {
         Content  = narrative;
         Thinking = thinking;
 
-        Document = MarkdownRenderer.Render(narrative);
+        var now = Stopwatch.GetTimestamp();
+        var elapsedMs = (now - lastMarkdownRenderTicks) * 1000.0 / Stopwatch.Frequency;
+
+        if (replaceContent ||
+            elapsedMs >= MarkdownRenderIntervalMs ||
+            lastMarkdownRenderTicks == 0 ||
+            !narrative.StartsWith(renderedMarkdownContent, StringComparison.Ordinal))
+        {
+            RenderNarrativeMarkdown();
+            lastMarkdownRenderTicks = now;
+        }
+        else
+            StreamingText = narrative[renderedMarkdownContent.Length..];
+    }
+
+    private void RenderNarrativeMarkdown()
+    {
+        Document = MarkdownRenderer.Render(Content);
+        renderedMarkdownContent = Content;
+        StreamingText = string.Empty;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
     }
 

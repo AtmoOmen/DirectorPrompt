@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents;
@@ -502,6 +504,14 @@ public sealed partial class MainViewModel
         long                  expectedRoundID = 0;
         List<DirectiveItem>?  items           = null;
 
+        var streamingNarrativeSB = new StringBuilder();
+        var streamingThinkingSB  = new StringBuilder();
+        var streamingLock        = new object();
+        var hasStreamingUpdate   = false;
+        var hasFullSnapshot      = false;
+        DispatcherTimer? streamingTimer = null;
+        EventHandler? streamingTimerTick = null;
+
         try
         {
             items = DirectiveInput.Directives
@@ -526,10 +536,20 @@ public sealed partial class MainViewModel
             streamingEntry = Dialog.BeginStreamingNarrative(0);
 
             var dispatcher = Application.Current.Dispatcher;
+            streamingTimer = new DispatcherTimer(DispatcherPriority.Background, dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(50)
+            };
+            streamingTimerTick = (_, _) => FlushStreamingUpdate();
+            streamingTimer.Tick += streamingTimerTick;
+            streamingTimer.Start();
 
             expectedRoundID = await eventRepository.GetLatestRoundIDAsync(sessionID, token) + 1;
 
             var result = await orchestrator.ProcessBatchAsync(batch, sessionID, StreamingUpdate, StageUpdate, token);
+
+            StopStreamingTimer();
+            FlushStreamingUpdate();
 
             if (CurrentSession?.ID != sessionID)
             {
@@ -554,15 +574,60 @@ public sealed partial class MainViewModel
 
             StatusMessage = Loc.Get("Status.Complete");
 
-            void StreamingUpdate(string narrative, string thinking) =>
-                dispatcher.BeginInvoke
-                (
-                    () =>
+            void StreamingUpdate(string narrativeDelta, string thinkingDelta, bool isFullSnapshot)
+            {
+                lock (streamingLock)
+                {
+                    if (isFullSnapshot)
                     {
-                        if (CurrentSession?.ID == sessionID)
-                            streamingEntry.UpdateStreamingContent(narrative, thinking);
+                        streamingNarrativeSB.Clear();
+                        streamingThinkingSB.Clear();
+                        hasFullSnapshot = true;
                     }
-                );
+
+                    if (!string.IsNullOrEmpty(narrativeDelta))
+                        streamingNarrativeSB.Append(narrativeDelta);
+
+                    if (!string.IsNullOrEmpty(thinkingDelta))
+                        streamingThinkingSB.Append(thinkingDelta);
+
+                    hasStreamingUpdate = true;
+                }
+            }
+
+            void FlushStreamingUpdate()
+            {
+                string narrative;
+                string thinking;
+                bool isFullSnapshot;
+
+                lock (streamingLock)
+                {
+                    if (!hasStreamingUpdate)
+                        return;
+
+                    narrative          = streamingNarrativeSB.ToString();
+                    thinking           = streamingThinkingSB.ToString();
+                    isFullSnapshot     = hasFullSnapshot;
+                    hasStreamingUpdate = false;
+                    hasFullSnapshot    = false;
+                }
+
+                if (CurrentSession?.ID == sessionID && streamingEntry is not null)
+                    streamingEntry.UpdateStreamingContent(narrative, thinking, isFullSnapshot);
+            }
+
+            void StopStreamingTimer()
+            {
+                if (streamingTimer is null)
+                    return;
+
+                if (streamingTimerTick is not null)
+                    streamingTimer.Tick -= streamingTimerTick;
+
+                streamingTimer.Stop();
+                streamingTimer = null;
+            }
 
             void StageUpdate(PipelineStageUpdate update) =>
                 dispatcher.BeginInvoke
@@ -623,6 +688,14 @@ public sealed partial class MainViewModel
         }
         finally
         {
+            if (streamingTimer is not null)
+            {
+                if (streamingTimerTick is not null)
+                    streamingTimer.Tick -= streamingTimerTick;
+
+                streamingTimer.Stop();
+            }
+
             if (CurrentSession?.ID == sessionID)
                 IsProcessing = false;
         }
