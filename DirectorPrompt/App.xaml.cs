@@ -15,6 +15,7 @@ using DirectorPrompt.Infrastructure.Localization;
 using DirectorPrompt.Infrastructure.Logging;
 using DirectorPrompt.Infrastructure.Repositories;
 using DirectorPrompt.Localization;
+using DirectorPrompt.Services;
 using DirectorPrompt.ViewModels;
 using DirectorPrompt.Views;
 using Microsoft.Extensions.Configuration;
@@ -229,6 +230,7 @@ public partial class App
         services.AddSingleton<HistoryBuilder>();
 
         services.AddSingleton<Orchestrator>();
+        services.AddSingleton<TaskCompletionNotifier>();
 
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();

@@ -12,6 +12,7 @@ using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Localization;
+using DirectorPrompt.Services;
 using DirectorPrompt.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
@@ -31,8 +32,9 @@ public sealed partial class MainViewModel
     IDirectiveRepository directiveRepository,
     IMemoryRepository    memoryRepository,
     IServiceProvider     serviceProvider,
-    UserSettings         userSettings,
-    IProjectPortService  projectPortService
+    UserSettings           userSettings,
+    IProjectPortService    projectPortService,
+    TaskCompletionNotifier taskCompletionNotifier
 )
     : ObservableObject
 {
@@ -553,6 +555,11 @@ public sealed partial class MainViewModel
             await RefreshSidebarAsync(token);
 
             StatusMessage = Loc.Get("Status.Complete");
+            taskCompletionNotifier.NotifyIfApplicationInBackground
+            (
+                Loc.Get("Notification.TaskComplete.Title"),
+                Loc.Get("Notification.TaskComplete.Message")
+            );
 
             void StreamingUpdate(string narrative, string thinking) =>
                 dispatcher.BeginInvoke

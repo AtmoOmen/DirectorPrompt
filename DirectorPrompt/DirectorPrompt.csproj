@@ -10,6 +10,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\DirectorPrompt.Agents\DirectorPrompt.Agents.csproj"/>
         <ProjectReference Include="..\DirectorPrompt.Domain\DirectorPrompt.Domain.csproj"/>
         <ProjectReference Include="..\DirectorPrompt.Infrastructure\DirectorPrompt.Infrastructure.csproj"/>
