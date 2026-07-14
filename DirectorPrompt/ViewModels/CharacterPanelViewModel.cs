@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DirectorPrompt.Domain.Models;
+using DirectorPrompt.Localization;
 
 namespace DirectorPrompt.ViewModels;
 
@@ -165,7 +166,7 @@ public sealed partial class CharacterPanelViewModel : ObservableObject
 
     public ObservableCollection<CharacterCategoryGroupViewModel> Groups { get; } = [];
 
-    private string AllCategoriesLabel => Localization.Loc.Get("Character.Panel.AllCategories");
+    private string AllCategoriesLabel => Loc.Get("Character.Panel.AllCategories");
 
     public CharacterPanelViewModel() =>
         SelectedCategory = AllCategoriesLabel;
@@ -186,24 +187,29 @@ public sealed partial class CharacterPanelViewModel : ObservableObject
         var previousCategory = SelectedCategory;
         AvailableCategories.Clear();
         AvailableCategories.Add(AllCategoriesLabel);
+
         foreach (var g in allGroups)
         {
             if (!string.IsNullOrWhiteSpace(g.CategoryName))
                 AvailableCategories.Add(g.CategoryName);
         }
-        SelectedCategory = AvailableCategories.Contains(previousCategory) ? previousCategory : AllCategoriesLabel;
+
+        SelectedCategory = AvailableCategories.Contains(previousCategory) ?
+                               previousCategory :
+                               AllCategoriesLabel;
 
         ApplyFilter();
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
+
     partial void OnSelectedCategoryChanged(string value) => ApplyFilter();
 
     private void ApplyFilter()
     {
         Groups.Clear();
-        var filter = SearchText?.Trim();
-        var categoryFilter = SelectedCategory;
+        var filter           = SearchText?.Trim();
+        var categoryFilter   = SelectedCategory;
         var allCategoriesVal = AllCategoriesLabel;
 
         foreach (var g in allGroups)
@@ -212,11 +218,12 @@ public sealed partial class CharacterPanelViewModel : ObservableObject
             if (!string.IsNullOrWhiteSpace(categoryFilter) && categoryFilter != allCategoriesVal && g.CategoryName != categoryFilter)
                 continue;
 
-            var filteredItems = g.Items.Where(i =>
-                string.IsNullOrWhiteSpace(filter) ||
-                i.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                i.Description.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                i.Categories.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            var filteredItems = g.Items.Where
+            (i =>
+                 string.IsNullOrWhiteSpace(filter)                                  ||
+                 i.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)        ||
+                 i.Description.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                 i.Categories.Contains(filter, StringComparison.OrdinalIgnoreCase)
             ).ToList();
 
             if (filteredItems.Count == 0)

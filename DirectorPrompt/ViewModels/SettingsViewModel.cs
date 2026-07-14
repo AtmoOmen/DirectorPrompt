@@ -313,13 +313,13 @@ public sealed partial class SettingsViewModel : ObservableObject
                 MinRelevance = Knowledge.MinRelevance
             };
 
-            userSettings.Orchestrator.MemoryConfig   = memoryConfig;
+            userSettings.Orchestrator.MemoryConfig    = memoryConfig;
             userSettings.Orchestrator.KnowledgeConfig = knowledgeConfig;
 
-            orchestratorConfig.Providers  = providers;
-            orchestratorConfig.Models     = models;
-            orchestratorConfig.Prompts    = prompts;
-            orchestratorConfig.AgentTasks = tasks;
+            orchestratorConfig.Providers       = providers;
+            orchestratorConfig.Models          = models;
+            orchestratorConfig.Prompts         = prompts;
+            orchestratorConfig.AgentTasks      = tasks;
             orchestratorConfig.MemoryConfig    = memoryConfig;
             orchestratorConfig.KnowledgeConfig = knowledgeConfig;
 

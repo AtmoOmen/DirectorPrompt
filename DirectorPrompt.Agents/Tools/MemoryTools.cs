@@ -9,10 +9,10 @@ namespace DirectorPrompt.Agents.Tools;
 
 public sealed class MemoryTools
 (
-    IMemoryRepository       memoryRepository,
-    ICharacterRepository    characterRepository,
-    MemoryRetrievalService  retrievalService,
-    EmbeddingIndexService   embeddingIndexService
+    IMemoryRepository      memoryRepository,
+    ICharacterRepository   characterRepository,
+    MemoryRetrievalService retrievalService,
+    EmbeddingIndexService  embeddingIndexService
 )
 {
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -86,19 +86,19 @@ public sealed class MemoryTools
 
         var results = await retrievalService.SearchAsync(context, query);
         var response = results.Select
-                       (r =>
-                           new
-                           {
-                               id                 = r.ID,
-                               content            = r.Content,
-                               tags               = r.Tags,
-                               sceneID            = r.SceneID,
-                               matchedSource      = r.MatchedSource,
-                               semanticSimilarity = Math.Round(r.SemanticSimilarity, 4),
-                               recencyWeight      = Math.Round(r.RecencyWeight, 4),
-                               finalScore          = Math.Round(r.FinalScore, 4)
-                           }
-                       );
+        (r =>
+             new
+             {
+                 id                 = r.ID,
+                 content            = r.Content,
+                 tags               = r.Tags,
+                 sceneID            = r.SceneID,
+                 matchedSource      = r.MatchedSource,
+                 semanticSimilarity = Math.Round(r.SemanticSimilarity, 4),
+                 recencyWeight      = Math.Round(r.RecencyWeight,      4),
+                 finalScore         = Math.Round(r.FinalScore,         4)
+             }
+        );
 
         Log.Information("工具调用完成: query_memory, 返回条目数={Count}", results.Count);
 

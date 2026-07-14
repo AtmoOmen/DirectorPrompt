@@ -8,7 +8,7 @@ namespace DirectorPrompt.Services;
 public sealed class NotificationService : IDisposable
 {
     private Action<ActivationArgs>? activationHandler;
-    
+
     private bool disposed;
 
     public NotificationService() =>
@@ -34,7 +34,7 @@ public sealed class NotificationService : IDisposable
         if (disposed)
             return;
 
-        disposed = true;
+        disposed                                   =  true;
         ToastNotificationManagerCompat.OnActivated -= OnNotificationActivated;
     }
 
@@ -52,8 +52,8 @@ public sealed class NotificationService : IDisposable
             return;
 
         var builder = new ToastContentBuilder()
-            .AddText(title)
-            .AddText(message);
+                      .AddText(title)
+                      .AddText(message);
 
         if (level is Level.Warning or Level.Error)
             builder.SetToastDuration(ToastDuration.Long);
@@ -83,12 +83,15 @@ public sealed class NotificationService : IDisposable
     private void OnNotificationActivated(ToastNotificationActivatedEventArgsCompat args)
     {
         var parsed = ToastArguments.Parse(args.Argument);
-        var context = parsed.Contains("context") ? parsed["context"] : null;
-        var action = parsed.Contains("action") ? parsed["action"] : null;
+        var context = parsed.Contains("context") ?
+                          parsed["context"] :
+                          null;
+        var action = parsed.Contains("action") ?
+                         parsed["action"] :
+                         null;
 
         Application.Current.Dispatcher.BeginInvoke
-        (
-            () =>
+        (() =>
             {
                 BringMainWindowToFront();
                 activationHandler?.Invoke(new ActivationArgs(context, action));
@@ -114,9 +117,9 @@ public sealed class NotificationService : IDisposable
         if (hwnd == nint.Zero)
             return;
 
-        var foregroundHwnd = GetForegroundWindow();
+        var foregroundHwnd     = GetForegroundWindow();
         var foregroundThreadID = GetWindowThreadProcessID(foregroundHwnd, nint.Zero);
-        var currentThreadID = GetCurrentThreadID();
+        var currentThreadID    = GetCurrentThreadID();
 
         if (foregroundThreadID != currentThreadID)
         {
@@ -125,9 +128,7 @@ public sealed class NotificationService : IDisposable
             AttachThreadInput(currentThreadID, foregroundThreadID, false);
         }
         else
-        {
             SetForegroundWindow(hwnd);
-        }
     }
 
     [DllImport("user32.dll", EntryPoint = "GetForegroundWindow")]
@@ -144,7 +145,7 @@ public sealed class NotificationService : IDisposable
 
     [DllImport("kernel32.dll", EntryPoint = "GetCurrentThreadId")]
     private static extern uint GetCurrentThreadID();
-    
+
     public enum Level
     {
         Info,
@@ -153,7 +154,15 @@ public sealed class NotificationService : IDisposable
         Error
     }
 
-    public sealed record Button(string Content, string Arguments);
+    public sealed record Button
+    (
+        string Content,
+        string Arguments
+    );
 
-    public sealed record ActivationArgs(string? Context, string? Action);
+    public sealed record ActivationArgs
+    (
+        string? Context,
+        string? Action
+    );
 }

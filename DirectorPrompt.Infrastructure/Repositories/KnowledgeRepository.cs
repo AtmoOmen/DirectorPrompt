@@ -327,11 +327,11 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
 
     public async Task SaveEmbeddingsAsync
     (
-        long                                           projectID,
-        long                                           entryID,
+        long                                             projectID,
+        long                                             entryID,
         IReadOnlyList<(string source, byte[] embedding)> vectors,
-        string                                         contentHash,
-        CancellationToken                               cancellationToken = default
+        string                                           contentHash,
+        CancellationToken                                cancellationToken = default
     )
     {
         if (vectors.Count == 0)
@@ -370,7 +370,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
             await connection.ExecuteAsync
             (
                 $"INSERT INTO \"{tableName}\" (entry_id, source, embedding) VALUES (@entryID, @source, @embedding)",
-                vectors.Select(v => new { entryID, source = v.source, embedding = v.embedding }),
+                vectors.Select(v => new { entryID, v.source, v.embedding }),
                 transaction
             );
 

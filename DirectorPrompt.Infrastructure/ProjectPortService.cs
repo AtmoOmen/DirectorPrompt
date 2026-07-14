@@ -11,8 +11,8 @@ namespace DirectorPrompt.Infrastructure;
 
 public sealed class ProjectPortService
 (
-    SqliteConnectionFactory  connectionFactory,
-    ILocalizationService     localizationService
+    SqliteConnectionFactory connectionFactory,
+    ILocalizationService    localizationService
 ) : IProjectPortService
 {
     private const string PACKAGE_FORMAT = "DirectorPrompt-Project-Package";
@@ -313,11 +313,11 @@ public sealed class ProjectPortService
                      """,
                      new
                      {
-                         name            = project.Name,
-                         description     = project.Description,
-                         openingMessage  = project.OpeningMessage,
-                         createdAt       = now,
-                         updatedAt       = now
+                         name           = project.Name,
+                         description    = project.Description,
+                         openingMessage = project.OpeningMessage,
+                         createdAt      = now,
+                         updatedAt      = now
                      },
                      transaction
                  );
@@ -555,8 +555,8 @@ public sealed class ProjectPortService
 
         var data = card.Data ?? card;
 
-        var name = data.Name;
-        var description = BuildDescription(data.SystemPrompt, data.Description);
+        var name           = data.Name;
+        var description    = BuildDescription(data.SystemPrompt, data.Description);
         var openingMessage = data.FirstMes;
 
         var project = new Project
@@ -579,9 +579,9 @@ public sealed class ProjectPortService
             (
                 new KnowledgeGroup
                 {
-                    ID      = TEMP_GROUP_ID,
-                    Name    = localizationService.Get("Project.Import.SillyTavern.DefaultGroupName"),
-                    Active  = true
+                    ID     = TEMP_GROUP_ID,
+                    Name   = localizationService.Get("Project.Import.SillyTavern.DefaultGroupName"),
+                    Active = true
                 }
             );
 
@@ -649,8 +649,8 @@ public sealed class ProjectPortService
 
     private static string BuildDescription(string systemPrompt, string description)
     {
-        var hasSystem  = !string.IsNullOrWhiteSpace(systemPrompt);
-        var hasDesc    = !string.IsNullOrWhiteSpace(description);
+        var hasSystem = !string.IsNullOrWhiteSpace(systemPrompt);
+        var hasDesc   = !string.IsNullOrWhiteSpace(description);
 
         if (hasSystem && hasDesc)
             return systemPrompt + "\n\n" + description;
@@ -716,12 +716,12 @@ public sealed class ProjectPortService
         public Project ToProject() =>
             new()
             {
-                ID              = ID,
-                Name            = Name,
-                Description     = Description,
-                OpeningMessage  = Opening_Message,
-                CreatedAt       = DateTime.Parse(Created_At),
-                UpdatedAt       = DateTime.Parse(Updated_At)
+                ID             = ID,
+                Name           = Name,
+                Description    = Description,
+                OpeningMessage = Opening_Message,
+                CreatedAt      = DateTime.Parse(Created_At),
+                UpdatedAt      = DateTime.Parse(Updated_At)
             };
     }
 

@@ -177,7 +177,7 @@ public sealed class Orchestrator
 
     private static async Task RunStageAsync
     (
-        PipelineContext  context,
+        PipelineContext   context,
         PipelineStageKind kind,
         Func<Task>        action,
         Func<string?>?    detailFactory = null
@@ -208,13 +208,21 @@ public sealed class Orchestrator
         CancellationToken                                                  cancellationToken
     )
     {
-        await RunStageAsync(context, PipelineStageKind.Retrieval,
+        await RunStageAsync
+        (
+            context,
+            PipelineStageKind.Retrieval,
             () => retrievalStage.ExecuteAsync(context, cancellationToken),
-            () => $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}");
+            () => $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}"
+        );
 
-        await RunStageAsync(context, PipelineStageKind.Generation,
+        await RunStageAsync
+        (
+            context,
+            PipelineStageKind.Generation,
             () => generationStage.ExecuteAsync(context, cancellationToken),
-            () => $"叙事长度={context.NarrativeOutput?.Length ?? 0}");
+            () => $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
+        );
 
         var now = DateTime.UtcNow;
 
@@ -227,18 +235,18 @@ public sealed class Orchestrator
                 RoundID   = context.RoundID,
                 SceneID   = context.CurrentSceneID,
                 Type      = EventType.DirectorInput,
-                Data      = JsonSerializer.Serialize
-                            (
-                                context.DirectiveBatch.Directives.Select
-                                (d => new
-                                    {
-                                        type     = d.Type.ToString(),
-                                        content  = d.Content,
-                                        order    = d.Order,
-                                        isSystem = d.IsSystem
-                                    }
-                                )
-                            ),
+                Data = JsonSerializer.Serialize
+                (
+                    context.DirectiveBatch.Directives.Select
+                    (d => new
+                        {
+                            type     = d.Type.ToString(),
+                            content  = d.Content,
+                            order    = d.Order,
+                            isSystem = d.IsSystem
+                        }
+                    )
+                ),
                 CreatedAt = now
             },
             new()
@@ -272,10 +280,17 @@ public sealed class Orchestrator
 
         await eventRepository.AppendBatchAsync(events, cancellationToken);
 
-        await RunStageAsync(context, PipelineStageKind.PostProcessing,
-            () => postProcessingStage.ExecuteAsync(context, cancellationToken));
+        await RunStageAsync
+        (
+            context,
+            PipelineStageKind.PostProcessing,
+            () => postProcessingStage.ExecuteAsync(context, cancellationToken)
+        );
 
-        await RunStageAsync(context, PipelineStageKind.SystemState,
+        await RunStageAsync
+        (
+            context,
+            PipelineStageKind.SystemState,
             () => systemStateTransformer.ExecuteAsync
             (
                 context.DirectiveBatch.ProjectID,
@@ -284,7 +299,8 @@ public sealed class Orchestrator
                 context.RoundID,
                 SystemTrigger.RoundEnd,
                 cancellationToken
-            ));
+            )
+        );
 
         await directiveRepository.DecrementTTLAsync(context.SessionID, cancellationToken);
 
@@ -421,5 +437,4 @@ public sealed class Orchestrator
 
         return batch with { Directives = allDirectives };
     }
-
 }

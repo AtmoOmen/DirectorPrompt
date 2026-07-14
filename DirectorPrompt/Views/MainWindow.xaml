@@ -341,7 +341,8 @@
                                                     VerticalAlignment="Top"
                                                     IsEnabled="{Binding DataContext.IsNotProcessing, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}">
                                                 <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                    <Style TargetType="Button"
+                                                           BasedOn="{StaticResource {x:Type Button}}">
                                                         <Setter Property="Visibility"
                                                                 Value="{Binding IsLast, Converter={StaticResource BoolToVisibility}}" />
                                                         <Style.Triggers>
@@ -378,7 +379,8 @@
                                             FontSize="12"
                                             Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                                             <Expander.Style>
-                                                <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+                                                <Style TargetType="Expander"
+                                                       BasedOn="{StaticResource {x:Type Expander}}">
                                                     <Setter Property="Visibility"
                                                             Value="{Binding HasThinking, Converter={StaticResource BoolToVisibility}}" />
                                                     <Style.Triggers>
@@ -527,7 +529,7 @@
                                                           IsProcessing="{Binding IsProcessing}" />
                     </StackPanel>
                 </Border>
-                
+
             </Grid>
 
             <GridSplitter Grid.Column="2"
@@ -544,8 +546,8 @@
                 <TabItem>
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Pulse24" Margin="0,0,4,0"/>
-                            <TextBlock Text="{Binding [State.Panel.Title], Source={x:Static loc:Loc.Instance}}"/>
+                            <ui:SymbolIcon Symbol="Pulse24" Margin="0,0,4,0" />
+                            <TextBlock Text="{Binding [State.Panel.Title], Source={x:Static loc:Loc.Instance}}" />
                         </StackPanel>
                     </TabItem.Header>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
@@ -574,7 +576,8 @@
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0" Text="{Binding Name}"
                                                                TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="SemiBold"
+                                                    <TextBlock Grid.Column="1" Text="{Binding Value}"
+                                                               FontWeight="SemiBold"
                                                                Margin="8,0,0,0" />
                                                 </Grid>
                                             </DataTemplate>
@@ -583,9 +586,10 @@
                                 </StackPanel>
                             </ui:CardExpander>
 
-                            <ui:CardExpander Header="{Binding [Directive.Panel.Title], Source={x:Static loc:Loc.Instance}}"
-                                             IsExpanded="True"
-                                             Margin="0,0,0,8">
+                            <ui:CardExpander
+                                Header="{Binding [Directive.Panel.Title], Source={x:Static loc:Loc.Instance}}"
+                                IsExpanded="True"
+                                Margin="0,0,0,8">
                                 <ItemsControl ItemsSource="{Binding DirectivesPanel.Directives}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -616,8 +620,8 @@
                 <TabItem>
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="People24" Margin="0,0,4,0"/>
-                            <TextBlock Text="{Binding [Character.Panel.Title], Source={x:Static loc:Loc.Instance}}"/>
+                            <ui:SymbolIcon Symbol="People24" Margin="0,0,4,0" />
+                            <TextBlock Text="{Binding [Character.Panel.Title], Source={x:Static loc:Loc.Instance}}" />
                         </StackPanel>
                     </TabItem.Header>
                     <Grid Margin="0,8,0,0">
@@ -642,201 +646,208 @@
                         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding CharacterPanel.Groups}">
                                 <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Margin="0,4"
-                                                    Padding="0"
-                                                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                    BorderThickness="1"
-                                                    CornerRadius="6">
-                                                <StackPanel>
-                                                    <!-- 分组标题栏 -->
-                                                    <ToggleButton IsChecked="{Binding IsExpanded}"
-                                                                  Cursor="Hand"
-                                                                  Padding="14,10"
-                                                                  HorizontalAlignment="Stretch"
-                                                                  HorizontalContentAlignment="Stretch">
-                                                        <ToggleButton.Template>
-                                                            <ControlTemplate TargetType="ToggleButton">
-                                                                <Border x:Name="HeaderBg"
-                                                                        Background="Transparent"
-                                                                        CornerRadius="6,6,0,0"
-                                                                        Padding="{TemplateBinding Padding}">
+                                    <DataTemplate>
+                                        <Border Margin="0,4"
+                                                Padding="0"
+                                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="6">
+                                            <StackPanel>
+                                                <!-- 分组标题栏 -->
+                                                <ToggleButton IsChecked="{Binding IsExpanded}"
+                                                              Cursor="Hand"
+                                                              Padding="14,10"
+                                                              HorizontalAlignment="Stretch"
+                                                              HorizontalContentAlignment="Stretch">
+                                                    <ToggleButton.Template>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <Border x:Name="HeaderBg"
+                                                                    Background="Transparent"
+                                                                    CornerRadius="6,6,0,0"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <ui:SymbolIcon x:Name="Chevron"
+                                                                            Grid.Column="0"
+                                                                            Symbol="ChevronDown24"
+                                                                            FontSize="14"
+                                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                            VerticalAlignment="Center"
+                                                                            Margin="0,0,8,0" />
+                                                                    <TextBlock Grid.Column="1"
+                                                                               Text="{Binding CategoryName}"
+                                                                               FontWeight="SemiBold"
+                                                                               FontSize="13"
+                                                                               VerticalAlignment="Center"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                    <Border Grid.Column="2"
+                                                                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                                            CornerRadius="8"
+                                                                            Padding="6,1"
+                                                                            VerticalAlignment="Center"
+                                                                            Margin="8,0,0,0">
+                                                                        <TextBlock Text="{Binding ItemCount}"
+                                                                                FontSize="11"
+                                                                                FontWeight="SemiBold"
+                                                                                Foreground="White" />
+                                                                    </Border>
+                                                                </Grid>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter TargetName="Chevron" Property="Symbol"
+                                                                            Value="ChevronUp24" />
+                                                                </Trigger>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="HeaderBg" Property="Background"
+                                                                            Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </ToggleButton.Template>
+                                                </ToggleButton>
+
+                                                <!-- 人物条目列表 -->
+                                                <ItemsControl ItemsSource="{Binding Items}"
+                                                              Margin="10,0,10,10"
+                                                              Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Margin="0,3, 0, 3"
+                                                                    Padding="12, 10, 12, 10"
+                                                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="4">
+                                                                <StackPanel>
                                                                     <Grid>
                                                                         <Grid.ColumnDefinitions>
-                                                                            <ColumnDefinition Width="Auto" />
                                                                             <ColumnDefinition Width="*" />
                                                                             <ColumnDefinition Width="Auto" />
                                                                         </Grid.ColumnDefinitions>
-                                                                        <ui:SymbolIcon x:Name="Chevron"
-                                                                                       Grid.Column="0"
-                                                                                       Symbol="ChevronDown24"
-                                                                                       FontSize="14"
-                                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                                       VerticalAlignment="Center"
-                                                                                       Margin="0,0,8,0" />
-                                                                        <TextBlock Grid.Column="1"
-                                                                                   Text="{Binding CategoryName}"
-                                                                                   FontWeight="SemiBold"
-                                                                                   FontSize="13"
-                                                                                   VerticalAlignment="Center"
-                                                                                   TextTrimming="CharacterEllipsis" />
-                                                                        <Border Grid.Column="2"
-                                                                                Background="{DynamicResource AccentFillColorDefaultBrush}"
-                                                                                CornerRadius="8"
-                                                                                Padding="6,1"
-                                                                                VerticalAlignment="Center"
-                                                                                Margin="8,0,0,0">
-                                                                            <TextBlock Text="{Binding ItemCount}"
-                                                                                       FontSize="11"
-                                                                                       FontWeight="SemiBold"
-                                                                                       Foreground="White" />
-                                                                        </Border>
-                                                                    </Grid>
-                                                                </Border>
-                                                                <ControlTemplate.Triggers>
-                                                                    <Trigger Property="IsChecked" Value="True">
-                                                                        <Setter TargetName="Chevron" Property="Symbol"
-                                                                                Value="ChevronUp24" />
-                                                                    </Trigger>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter TargetName="HeaderBg" Property="Background"
-                                                                                Value="{DynamicResource ControlFillColorDefaultBrush}" />
-                                                                    </Trigger>
-                                                                </ControlTemplate.Triggers>
-                                                            </ControlTemplate>
-                                                        </ToggleButton.Template>
-                                                    </ToggleButton>
-
-                                                    <!-- 人物条目列表 -->
-                                                    <ItemsControl ItemsSource="{Binding Items}"
-                                                                  Margin="10,0,10,10"
-                                                                  Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <Border Margin="0,3, 0, 3"
-                                                                        Padding="12, 10, 12, 10"
-                                                                        Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                                                        BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                                        BorderThickness="1"
-                                                                        CornerRadius="4">
-                                                                    <StackPanel>
-                                                                        <Grid>
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="*" />
-                                                                                <ColumnDefinition Width="Auto" />
-                                                                            </Grid.ColumnDefinitions>
-                                                                            <StackPanel Grid.Column="0"
-                                                                                    Orientation="Horizontal">
-                                                                                <TextBlock Text="{Binding Name}"
-                                                                                        FontWeight="SemiBold"
-                                                                                        Margin="0,0,8,0" />
-                                                                            </StackPanel>
-                                                                            <ToggleButton Grid.Column="1"
-                                                                                    IsChecked="{Binding IsExpanded}"
-                                                                                    Padding="0"
-                                                                                    Cursor="Hand"
-                                                                                    VerticalAlignment="Center">
-                                                                                <ToggleButton.Template>
-                                                                                    <ControlTemplate TargetType="ToggleButton">
-                                                                                        <ui:SymbolIcon x:Name="DetailChevron"
-                                                                                            Symbol="ChevronDown24"
-                                                                                            FontSize="12"
-                                                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                                                                        <ControlTemplate.Triggers>
-                                                                                            <Trigger Property="IsChecked"
-                                                                                                Value="True">
-                                                                                                <Setter
-                                                                                                    TargetName="DetailChevron"
-                                                                                                    Property="Symbol"
-                                                                                                    Value="ChevronUp24" />
-                                                                                            </Trigger>
-                                                                                            <Trigger Property="IsMouseOver"
-                                                                                                Value="True">
-                                                                                                <Setter
-                                                                                                    TargetName="DetailChevron"
-                                                                                                    Property="Foreground"
-                                                                                                    Value="{DynamicResource AccentFillColorDefaultBrush}" />
-                                                                                            </Trigger>
-                                                                                        </ControlTemplate.Triggers>
-                                                                                    </ControlTemplate>
-                                                                                </ToggleButton.Template>
-                                                                            </ToggleButton>
-                                                                        </Grid>
-                                                                        <TextBlock Text="{Binding Description}"
-                                                                                   TextWrapping="Wrap"
-                                                                                   FontSize="12"
-                                                                                   Foreground="Gray"
-                                                                                   Margin="0,4,0,0" />
-                                                                        <TextBlock Visibility="Collapsed" Text="{Binding Categories}"
-                                                                                   TextWrapping="Wrap"
-                                                                                   FontSize="11"
-                                                                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
-                                                                                   Margin="0,4,0,0" />
-
-                                                                        <StackPanel
-                                                                            Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}"
-                                                                            Margin="0,8,0,0">
-                                                                            <TextBlock Text="{Binding [Character.Panel.StateHeader], Source={x:Static loc:Loc.Instance}}"
-                                                                                       FontSize="11"
-                                                                                       FontWeight="SemiBold"
-                                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                                       Margin="0,0,0,4"
-                                                                                       Visibility="{Binding HasStateValues, Converter={StaticResource BoolToVisibility}}" />
-                                                                            <ItemsControl ItemsSource="{Binding StateValues}">
-                                                                                <ItemsControl.ItemTemplate>
-                                                                                    <DataTemplate>
-                                                                                        <Grid Margin="0,2">
-                                                                                            <Grid.ColumnDefinitions>
-                                                                                                <ColumnDefinition Width="*" />
-                                                                                                <ColumnDefinition Width="Auto" />
-                                                                                            </Grid.ColumnDefinitions>
-                                                                                            <TextBlock Grid.Column="0"
-                                                                                                Text="{Binding Name}"
-                                                                                                FontSize="11"
-                                                                                                TextTrimming="CharacterEllipsis" />
-                                                                                            <TextBlock Grid.Column="1"
-                                                                                                Text="{Binding Value}"
-                                                                                                FontSize="11"
-                                                                                                FontWeight="SemiBold"
-                                                                                                Margin="8,0,0,0" />
-                                                                                        </Grid>
-                                                                                    </DataTemplate>
-                                                                                </ItemsControl.ItemTemplate>
-                                                                            </ItemsControl>
-
-                                                                            <TextBlock Text="{Binding [Character.Panel.RelationsHeader], Source={x:Static loc:Loc.Instance}}"
-                                                                                       FontSize="11"
-                                                                                       FontWeight="SemiBold"
-                                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                                       Margin="0,8,0,4"
-                                                                                       Visibility="{Binding HasRelations, Converter={StaticResource BoolToVisibility}}" />
-                                                                            <ItemsControl ItemsSource="{Binding Relations}">
-                                                                                <ItemsControl.ItemTemplate>
-                                                                                    <DataTemplate>
-                                                                                        <TextBlock FontSize="11"
-                                                                                            TextWrapping="Wrap">
-                                                                                            <Run Text="{Binding Direction}" />
-                                                                                            <Run Text="{Binding Target}"
-                                                                                                FontWeight="SemiBold" />
-                                                                                            <Run Text=": " />
-                                                                                            <Run Text="{Binding Type}" />
-                                                                                        </TextBlock>
-                                                                                    </DataTemplate>
-                                                                                </ItemsControl.ItemTemplate>
-                                                                            </ItemsControl>
+                                                                        <StackPanel Grid.Column="0"
+                                                                                Orientation="Horizontal">
+                                                                            <TextBlock Text="{Binding Name}"
+                                                                                    FontWeight="SemiBold"
+                                                                                    Margin="0,0,8,0" />
                                                                         </StackPanel>
+                                                                        <ToggleButton Grid.Column="1"
+                                                                                IsChecked="{Binding IsExpanded}"
+                                                                                Padding="0"
+                                                                                Cursor="Hand"
+                                                                                VerticalAlignment="Center">
+                                                                            <ToggleButton.Template>
+                                                                                <ControlTemplate
+                                                                                    TargetType="ToggleButton">
+                                                                                    <ui:SymbolIcon
+                                                                                        x:Name="DetailChevron"
+                                                                                        Symbol="ChevronDown24"
+                                                                                        FontSize="12"
+                                                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                                                    <ControlTemplate.Triggers>
+                                                                                        <Trigger Property="IsChecked"
+                                                                                            Value="True">
+                                                                                            <Setter
+                                                                                                TargetName="DetailChevron"
+                                                                                                Property="Symbol"
+                                                                                                Value="ChevronUp24" />
+                                                                                        </Trigger>
+                                                                                        <Trigger Property="IsMouseOver"
+                                                                                            Value="True">
+                                                                                            <Setter
+                                                                                                TargetName="DetailChevron"
+                                                                                                Property="Foreground"
+                                                                                                Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                                                                        </Trigger>
+                                                                                    </ControlTemplate.Triggers>
+                                                                                </ControlTemplate>
+                                                                            </ToggleButton.Template>
+                                                                        </ToggleButton>
+                                                                    </Grid>
+                                                                    <TextBlock Text="{Binding Description}"
+                                                                               TextWrapping="Wrap"
+                                                                               FontSize="12"
+                                                                               Foreground="Gray"
+                                                                               Margin="0,4,0,0" />
+                                                                    <TextBlock Visibility="Collapsed"
+                                                                               Text="{Binding Categories}"
+                                                                               TextWrapping="Wrap"
+                                                                               FontSize="11"
+                                                                               Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                                               Margin="0,4,0,0" />
+
+                                                                    <StackPanel
+                                                                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}"
+                                                                        Margin="0,8,0,0">
+                                                                        <TextBlock
+                                                                            Text="{Binding [Character.Panel.StateHeader], Source={x:Static loc:Loc.Instance}}"
+                                                                            FontSize="11"
+                                                                            FontWeight="SemiBold"
+                                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                            Margin="0,0,0,4"
+                                                                            Visibility="{Binding HasStateValues, Converter={StaticResource BoolToVisibility}}" />
+                                                                        <ItemsControl
+                                                                            ItemsSource="{Binding StateValues}">
+                                                                            <ItemsControl.ItemTemplate>
+                                                                                <DataTemplate>
+                                                                                    <Grid Margin="0,2">
+                                                                                        <Grid.ColumnDefinitions>
+                                                                                            <ColumnDefinition Width="*" />
+                                                                                            <ColumnDefinition
+                                                                                                Width="Auto" />
+                                                                                        </Grid.ColumnDefinitions>
+                                                                                        <TextBlock Grid.Column="0"
+                                                                                            Text="{Binding Name}"
+                                                                                            FontSize="11"
+                                                                                            TextTrimming="CharacterEllipsis" />
+                                                                                        <TextBlock Grid.Column="1"
+                                                                                            Text="{Binding Value}"
+                                                                                            FontSize="11"
+                                                                                            FontWeight="SemiBold"
+                                                                                            Margin="8,0,0,0" />
+                                                                                    </Grid>
+                                                                                </DataTemplate>
+                                                                            </ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
+
+                                                                        <TextBlock
+                                                                            Text="{Binding [Character.Panel.RelationsHeader], Source={x:Static loc:Loc.Instance}}"
+                                                                            FontSize="11"
+                                                                            FontWeight="SemiBold"
+                                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                            Margin="0,8,0,4"
+                                                                            Visibility="{Binding HasRelations, Converter={StaticResource BoolToVisibility}}" />
+                                                                        <ItemsControl ItemsSource="{Binding Relations}">
+                                                                            <ItemsControl.ItemTemplate>
+                                                                                <DataTemplate>
+                                                                                    <TextBlock FontSize="11"
+                                                                                        TextWrapping="Wrap">
+                                                                                        <Run Text="{Binding Direction}" />
+                                                                                        <Run Text="{Binding Target}"
+                                                                                            FontWeight="SemiBold" />
+                                                                                        <Run Text=": " />
+                                                                                        <Run Text="{Binding Type}" />
+                                                                                    </TextBlock>
+                                                                                </DataTemplate>
+                                                                            </ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
                                                                     </StackPanel>
-                                                                </Border>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </StackPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
                     </Grid>
                 </TabItem>
 
@@ -844,8 +855,8 @@
                 <TabItem>
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="BookLetter24" Margin="0,0,4,0"/>
-                            <TextBlock Text="{Binding [Memory.Panel.Title], Source={x:Static loc:Loc.Instance}}"/>
+                            <ui:SymbolIcon Symbol="BookLetter24" Margin="0,0,4,0" />
+                            <TextBlock Text="{Binding [Memory.Panel.Title], Source={x:Static loc:Loc.Instance}}" />
                         </StackPanel>
                     </TabItem.Header>
                     <Grid Margin="0,8,0,0">
@@ -886,183 +897,184 @@
                                           VirtualizingStackPanel.IsVirtualizing="True"
                                           VirtualizingStackPanel.VirtualizationMode="Recycling"
                                           ScrollViewer.CanContentScroll="True">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <VirtualizingStackPanel />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Margin="0,4"
-                                                    Padding="0"
-                                                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                    BorderThickness="1"
-                                                    CornerRadius="6">
-                                                <StackPanel>
-                                                    <!-- 分组标题栏 -->
-                                                    <ToggleButton IsChecked="{Binding IsExpanded}"
-                                                                  Cursor="Hand"
-                                                                  Padding="14,10"
-                                                                  HorizontalAlignment="Stretch"
-                                                                  HorizontalContentAlignment="Stretch">
-                                                        <ToggleButton.Template>
-                                                            <ControlTemplate TargetType="ToggleButton">
-                                                                <Border x:Name="HeaderBg"
-                                                                        Background="Transparent"
-                                                                        CornerRadius="6,6,0,0"
-                                                                        Padding="{TemplateBinding Padding}">
-                                                                    <Grid>
-                                                                        <Grid.ColumnDefinitions>
-                                                                            <ColumnDefinition Width="Auto" />
-                                                                            <ColumnDefinition Width="*" />
-                                                                            <ColumnDefinition Width="Auto" />
-                                                                        </Grid.ColumnDefinitions>
-                                                                        <ui:SymbolIcon x:Name="Chevron"
-                                                                                       Grid.Column="0"
-                                                                                       Symbol="ChevronDown24"
-                                                                                       FontSize="14"
-                                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                                       VerticalAlignment="Center"
-                                                                                       Margin="0,0,8,0" />
-                                                                        <TextBlock Grid.Column="1"
-                                                                                   Text="{Binding SceneLabel}"
-                                                                                   FontWeight="SemiBold"
-                                                                                   FontSize="13"
-                                                                                   VerticalAlignment="Center"
-                                                                                   TextTrimming="CharacterEllipsis" />
-                                                                        <Border Grid.Column="2"
-                                                                                Background="{DynamicResource AccentFillColorDefaultBrush}"
-                                                                                CornerRadius="8"
-                                                                                Padding="6,1"
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <VirtualizingStackPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,4"
+                                                Padding="0"
+                                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="6">
+                                            <StackPanel>
+                                                <!-- 分组标题栏 -->
+                                                <ToggleButton IsChecked="{Binding IsExpanded}"
+                                                              Cursor="Hand"
+                                                              Padding="14,10"
+                                                              HorizontalAlignment="Stretch"
+                                                              HorizontalContentAlignment="Stretch">
+                                                    <ToggleButton.Template>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <Border x:Name="HeaderBg"
+                                                                    Background="Transparent"
+                                                                    CornerRadius="6,6,0,0"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <ui:SymbolIcon x:Name="Chevron"
+                                                                            Grid.Column="0"
+                                                                            Symbol="ChevronDown24"
+                                                                            FontSize="14"
+                                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                            VerticalAlignment="Center"
+                                                                            Margin="0,0,8,0" />
+                                                                    <TextBlock Grid.Column="1"
+                                                                               Text="{Binding SceneLabel}"
+                                                                               FontWeight="SemiBold"
+                                                                               FontSize="13"
+                                                                               VerticalAlignment="Center"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                    <Border Grid.Column="2"
+                                                                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                                            CornerRadius="8"
+                                                                            Padding="6,1"
+                                                                            VerticalAlignment="Center"
+                                                                            Margin="8,0,0,0">
+                                                                        <TextBlock Text="{Binding ItemCount}"
+                                                                                FontSize="11"
+                                                                                FontWeight="SemiBold"
+                                                                                Foreground="White" />
+                                                                    </Border>
+                                                                </Grid>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter TargetName="Chevron" Property="Symbol"
+                                                                            Value="ChevronUp24" />
+                                                                </Trigger>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="HeaderBg" Property="Background"
+                                                                            Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </ToggleButton.Template>
+                                                </ToggleButton>
+
+                                                <!-- 记忆条目列表 -->
+                                                <ItemsControl ItemsSource="{Binding Items}"
+                                                              Margin="10,0,10,10"
+                                                              Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Margin="0,3"
+                                                                    Padding="12,10"
+                                                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="4">
+                                                                <StackPanel>
+                                                                    <!-- 非编辑模式 -->
+                                                                    <StackPanel
+                                                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                                                                        <DockPanel>
+                                                                            <TextBlock
+                                                                                Text="{Binding UpdatedAtDisplay}"
+                                                                                FontSize="10"
+                                                                                Foreground="Gray"
                                                                                 VerticalAlignment="Center"
-                                                                                Margin="8,0,0,0">
-                                                                            <TextBlock Text="{Binding ItemCount}"
-                                                                                       FontSize="11"
-                                                                                       FontWeight="SemiBold"
-                                                                                       Foreground="White" />
-                                                                        </Border>
-                                                                    </Grid>
-                                                                </Border>
-                                                                <ControlTemplate.Triggers>
-                                                                    <Trigger Property="IsChecked" Value="True">
-                                                                        <Setter TargetName="Chevron" Property="Symbol"
-                                                                                Value="ChevronUp24" />
-                                                                    </Trigger>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter TargetName="HeaderBg" Property="Background"
-                                                                                Value="{DynamicResource ControlFillColorDefaultBrush}" />
-                                                                    </Trigger>
-                                                                </ControlTemplate.Triggers>
-                                                            </ControlTemplate>
-                                                        </ToggleButton.Template>
-                                                    </ToggleButton>
-
-                                                    <!-- 记忆条目列表 -->
-                                                    <ItemsControl ItemsSource="{Binding Items}"
-                                                                  Margin="10,0,10,10"
-                                                                  Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <Border Margin="0,3"
-                                                                        Padding="12,10"
-                                                                        Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                                                        BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                                        BorderThickness="1"
-                                                                        CornerRadius="4">
-                                                                    <StackPanel>
-                                                                        <!-- 非编辑模式 -->
-                                                                        <StackPanel
-                                                                            Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
-                                                                            <DockPanel>
-                                                                                <TextBlock Text="{Binding UpdatedAtDisplay}"
-                                                                                        FontSize="10"
-                                                                                        Foreground="Gray"
-                                                                                        VerticalAlignment="Center"
-                                                                                        DockPanel.Dock="Left" />
-                                                                                <StackPanel Orientation="Horizontal"
-                                                                                        HorizontalAlignment="Right"
-                                                                                        DockPanel.Dock="Right">
-                                                                                    <ui:Button Appearance="Secondary"
-                                                                                            Padding="6,2"
-                                                                                            Margin="4,0,0,0"
-                                                                                            Click="OnEditMemory"
-                                                                                            Tag="{Binding}"
-                                                                                            ToolTip="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}">
-                                                                                        <ui:SymbolIcon Symbol="Edit24"
-                                                                                            FontSize="12" />
-                                                                                    </ui:Button>
-                                                                                    <ui:Button Appearance="Secondary"
-                                                                                            Padding="6,2"
-                                                                                            Margin="4,0,0,0"
-                                                                                            Click="OnDeleteMemory"
-                                                                                            Tag="{Binding}"
-                                                                                            ToolTip="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}">
-                                                                                        <ui:SymbolIcon Symbol="Delete24"
-                                                                                            FontSize="12" />
-                                                                                    </ui:Button>
-                                                                                </StackPanel>
-                                                                            </DockPanel>
-                                                                            <TextBlock Text="{Binding Content}"
-                                                                                       TextWrapping="Wrap"
-                                                                                       Margin="0,4,0,0" />
-                                                                            <TextBlock Text="{Binding TagsDisplay}"
-                                                                                       FontSize="11"
-                                                                                       Foreground="{DynamicResource AccentFillColorDefaultBrush}"
-                                                                                       TextWrapping="Wrap"
-                                                                                       Margin="0,4,0,0"
-                                                                                       Visibility="{Binding HasTags, Converter={StaticResource BoolToVisibility}}" />
-                                                                            <TextBlock Text="{Binding RelatedCharacters}"
-                                                                                       FontSize="11"
-                                                                                       Foreground="Gray"
-                                                                                       TextWrapping="Wrap"
-                                                                                       Margin="0,4,0,0"
-                                                                                       Visibility="{Binding HasRelatedCharacters, Converter={StaticResource BoolToVisibility}}" />
-                                                                        </StackPanel>
-
-                                                                        <!-- 编辑模式 -->
-                                                                        <StackPanel
-                                                                            Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
-                                                                            <ui:TextBox
-                                                                                Text="{Binding EditingContent, UpdateSourceTrigger=PropertyChanged}"
-                                                                                AcceptsReturn="True"
-                                                                                TextWrapping="Wrap"
-                                                                                MinHeight="80" />
-                                                                            <ui:TextBox
-                                                                                Text="{Binding EditingTags, UpdateSourceTrigger=PropertyChanged}"
-                                                                                Margin="0,4,0,0"
-                                                                                PlaceholderText="{Binding [Memory.Panel.TagsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                                                DockPanel.Dock="Left" />
                                                                             <StackPanel Orientation="Horizontal"
                                                                                     HorizontalAlignment="Right"
-                                                                                    Margin="0,4,0,0">
-                                                                                <ui:Button
-                                                                                    Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
-                                                                                    Icon="{ui:SymbolIcon Symbol=Save24}"
-                                                                                    Appearance="Primary"
-                                                                                    Padding="12,6"
-                                                                                    Margin="0,0,4,0"
-                                                                                    Command="{Binding DataContext.SaveMemoryEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                                                    CommandParameter="{Binding}" />
-                                                                                <ui:Button
-                                                                                    Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
-                                                                                    Icon="{ui:SymbolIcon Symbol=Dismiss24}"
-                                                                                    Appearance="Secondary"
-                                                                                    Padding="12,6"
-                                                                                    Command="{Binding DataContext.CancelMemoryEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                                                    CommandParameter="{Binding}" />
+                                                                                    DockPanel.Dock="Right">
+                                                                                <ui:Button Appearance="Secondary"
+                                                                                    Padding="6,2"
+                                                                                    Margin="4,0,0,0"
+                                                                                    Click="OnEditMemory"
+                                                                                    Tag="{Binding}"
+                                                                                    ToolTip="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}">
+                                                                                    <ui:SymbolIcon Symbol="Edit24"
+                                                                                        FontSize="12" />
+                                                                                </ui:Button>
+                                                                                <ui:Button Appearance="Secondary"
+                                                                                    Padding="6,2"
+                                                                                    Margin="4,0,0,0"
+                                                                                    Click="OnDeleteMemory"
+                                                                                    Tag="{Binding}"
+                                                                                    ToolTip="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}">
+                                                                                    <ui:SymbolIcon Symbol="Delete24"
+                                                                                        FontSize="12" />
+                                                                                </ui:Button>
                                                                             </StackPanel>
+                                                                        </DockPanel>
+                                                                        <TextBlock Text="{Binding Content}"
+                                                                                TextWrapping="Wrap"
+                                                                                Margin="0,4,0,0" />
+                                                                        <TextBlock Text="{Binding TagsDisplay}"
+                                                                                FontSize="11"
+                                                                                Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                                                TextWrapping="Wrap"
+                                                                                Margin="0,4,0,0"
+                                                                                Visibility="{Binding HasTags, Converter={StaticResource BoolToVisibility}}" />
+                                                                        <TextBlock Text="{Binding RelatedCharacters}"
+                                                                                FontSize="11"
+                                                                                Foreground="Gray"
+                                                                                TextWrapping="Wrap"
+                                                                                Margin="0,4,0,0"
+                                                                                Visibility="{Binding HasRelatedCharacters, Converter={StaticResource BoolToVisibility}}" />
+                                                                    </StackPanel>
+
+                                                                    <!-- 编辑模式 -->
+                                                                    <StackPanel
+                                                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                                        <ui:TextBox
+                                                                            Text="{Binding EditingContent, UpdateSourceTrigger=PropertyChanged}"
+                                                                            AcceptsReturn="True"
+                                                                            TextWrapping="Wrap"
+                                                                            MinHeight="80" />
+                                                                        <ui:TextBox
+                                                                            Text="{Binding EditingTags, UpdateSourceTrigger=PropertyChanged}"
+                                                                            Margin="0,4,0,0"
+                                                                            PlaceholderText="{Binding [Memory.Panel.TagsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                                        <StackPanel Orientation="Horizontal"
+                                                                                HorizontalAlignment="Right"
+                                                                                Margin="0,4,0,0">
+                                                                            <ui:Button
+                                                                                Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
+                                                                                Icon="{ui:SymbolIcon Symbol=Save24}"
+                                                                                Appearance="Primary"
+                                                                                Padding="12,6"
+                                                                                Margin="0,0,4,0"
+                                                                                Command="{Binding DataContext.SaveMemoryEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                                                CommandParameter="{Binding}" />
+                                                                            <ui:Button
+                                                                                Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
+                                                                                Icon="{ui:SymbolIcon Symbol=Dismiss24}"
+                                                                                Appearance="Secondary"
+                                                                                Padding="12,6"
+                                                                                Command="{Binding DataContext.CancelMemoryEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                                                CommandParameter="{Binding}" />
                                                                         </StackPanel>
                                                                     </StackPanel>
-                                                                </Border>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </StackPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
                     </Grid>
                 </TabItem>
             </TabControl>

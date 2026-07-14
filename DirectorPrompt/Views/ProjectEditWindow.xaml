@@ -807,14 +807,14 @@
                                                                 Text="{Binding [Character.Category.ParentCategories], Source={x:Static loc:Loc.Instance}}"
                                                                 FontWeight="SemiBold"
                                                                 Margin="0,0,0,4" />
-                                                            
+
                                                             <TextBlock
                                                                 Text="{Binding [Character.Category.ParentCategories.Description], Source={x:Static loc:Loc.Instance}}"
                                                                 Foreground="Gray" FontSize="12"
                                                                 VerticalAlignment="Center"
                                                                 Margin="8,0,0,0" />
                                                         </StackPanel>
-                                                       
+
                                                         <components:MultiSelectComboBox
                                                             ItemsSource="{Binding AvailableParentCategories}"
                                                             DisplayMemberPath="Name"
@@ -908,7 +908,8 @@
                                                                             </Grid.ColumnDefinitions>
                                                                             <StackPanel Grid.Column="0"
                                                                                     Margin="0,0,4,0">
-                                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                                <StackPanel Orientation="Horizontal"
+                                                                                    Margin="0,0,0,4">
                                                                                     <TextBlock
                                                                                         Text="{Binding [State.Attribute.Identifier], Source={x:Static loc:Loc.Instance}}" />
                                                                                     <TextBlock
@@ -923,7 +924,8 @@
                                                                             </StackPanel>
                                                                             <StackPanel Grid.Column="1"
                                                                                     Margin="4,0,0,0">
-                                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                                <StackPanel Orientation="Horizontal"
+                                                                                    Margin="0,0,0,4">
                                                                                     <TextBlock
                                                                                         Text="{Binding [State.Attribute.DisplayName], Source={x:Static loc:Loc.Instance}}" />
                                                                                     <TextBlock
@@ -944,7 +946,8 @@
                                                                             </Grid.ColumnDefinitions>
                                                                             <StackPanel Grid.Column="0"
                                                                                     Margin="0,0,4,0">
-                                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                                <StackPanel Orientation="Horizontal"
+                                                                                    Margin="0,0,0,4">
                                                                                     <TextBlock
                                                                                         Text="{Binding [State.Attribute.ValueType], Source={x:Static loc:Loc.Instance}}" />
                                                                                     <TextBlock
@@ -963,7 +966,8 @@
                                                                             <StackPanel Grid.Column="1"
                                                                                     Margin="4,0,0,0"
                                                                                     Visibility="{Binding IsNumericConfig, Converter={StaticResource BoolToVisibility}}">
-                                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                                <StackPanel Orientation="Horizontal"
+                                                                                    Margin="0,0,0,4">
                                                                                     <TextBlock
                                                                                         Text="{Binding [State.Attribute.Driver], Source={x:Static loc:Loc.Instance}}" />
                                                                                     <TextBlock
@@ -983,7 +987,8 @@
 
                                                                         <StackPanel Margin="0,8,0,0"
                                                                                 Visibility="{Binding IsNumericConfig, Converter={StaticResource BoolToVisibility}}">
-                                                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                            <StackPanel Orientation="Horizontal"
+                                                                                    Margin="0,0,0,4">
                                                                                 <TextBlock
                                                                                     Text="{Binding [State.Attribute.MinValue], Source={x:Static loc:Loc.Instance}}" />
                                                                                 <TextBlock
@@ -997,7 +1002,8 @@
                                                                                     Minimum="-999999"
                                                                                     Maximum="999999"
                                                                                     ClearButtonEnabled="True" />
-                                                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                            <StackPanel Orientation="Horizontal"
+                                                                                    Margin="0,8,0,4">
                                                                                 <TextBlock
                                                                                     Text="{Binding [State.Attribute.MaxValue], Source={x:Static loc:Loc.Instance}}" />
                                                                                 <TextBlock
@@ -1011,7 +1017,8 @@
                                                                                     Minimum="-999999"
                                                                                     Maximum="999999"
                                                                                     ClearButtonEnabled="True" />
-                                                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                            <StackPanel Orientation="Horizontal"
+                                                                                    Margin="0,8,0,4">
                                                                                 <TextBlock
                                                                                     Text="{Binding [State.Attribute.Unit], Source={x:Static loc:Loc.Instance}}" />
                                                                                 <TextBlock
@@ -1024,7 +1031,8 @@
                                                                             <ui:TextBox
                                                                                 Text="{Binding Unit, UpdateSourceTrigger=PropertyChanged}"
                                                                                 PlaceholderText="{Binding [State.Attribute.UnitPlaceholder], Source={x:Static loc:Loc.Instance}}" />
-                                                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                            <StackPanel Orientation="Horizontal"
+                                                                                    Margin="0,8,0,4">
                                                                                 <TextBlock
                                                                                     Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
                                                                                 <TextBlock
@@ -1058,7 +1066,8 @@
                                                                             <ui:TextBox
                                                                                 Text="{Binding Options, UpdateSourceTrigger=PropertyChanged}"
                                                                                 PlaceholderText="{Binding [State.Attribute.OptionsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
-                                                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                            <StackPanel Orientation="Horizontal"
+                                                                                    Margin="0,8,0,4">
                                                                                 <TextBlock
                                                                                     Text="{Binding [State.Attribute.Trigger], Source={x:Static loc:Loc.Instance}}" />
                                                                                 <TextBlock

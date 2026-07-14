@@ -33,17 +33,17 @@ public sealed class KnowledgeTools
 
         var results = await retrievalService.SearchAsync(context, query);
         var response = results.Select
-                       (r =>
-                           new
-                           {
-                               id                 = r.ID,
-                               remarks            = r.Remarks,
-                               content            = r.Content,
-                               keywords           = r.Keywords,
-                               matchedSource      = r.MatchedSource,
-                               semanticSimilarity = Math.Round(r.SemanticSimilarity, 4)
-                           }
-                       );
+        (r =>
+             new
+             {
+                 id                 = r.ID,
+                 remarks            = r.Remarks,
+                 content            = r.Content,
+                 keywords           = r.Keywords,
+                 matchedSource      = r.MatchedSource,
+                 semanticSimilarity = Math.Round(r.SemanticSimilarity, 4)
+             }
+        );
 
         Log.Information("工具调用完成: query_knowledge, 返回条目数={Count}", results.Count);
 

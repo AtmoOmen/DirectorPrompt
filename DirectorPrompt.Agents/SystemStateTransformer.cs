@@ -122,8 +122,8 @@ public sealed class SystemStateTransformer
 
         var characterIDs   = characters.Select(c => c.ID).ToList();
         var allStateValues = await characterRepository.GetCharacterStateValuesBatchAsync(characterIDs, cancellationToken);
-        var valuesByChar   = allStateValues.GroupBy(v => v.CharacterID)
-                                           .ToDictionary(g => g.Key);
+        var valuesByChar = allStateValues.GroupBy(v => v.CharacterID)
+                                         .ToDictionary(g => g.Key);
 
         foreach (var character in characters)
         {
@@ -365,8 +365,8 @@ public sealed class SystemStateTransformer
         foreach (var attr in globalAttrs)
         {
             result[attr.Name] = valueMap.TryGetValue(attr.ID, out var sv) ?
-                                     sv.Value :
-                                     string.Empty;
+                                    sv.Value :
+                                    string.Empty;
         }
 
         return result;

@@ -36,42 +36,44 @@ public sealed class MemoryRetrievalService
         var queryEmbedding   = await embeddingService.GenerateEmbeddingAsync(query, cancellationToken);
         var queryBytes       = EmbeddingConversions.FloatsToBytes(queryEmbedding);
         var candidateIDs     = memories.Select(m => m.ID).ToList();
-        var searchResults    = await memoryRepository.SearchByVectorAsync
-                               (
-                                   context.ProjectID,
-                                   queryBytes,
-                                   memories.Count,
-                                   candidateIDs,
-                                   cancellationToken
-                               );
+        var searchResults = await memoryRepository.SearchByVectorAsync
+                            (
+                                context.ProjectID,
+                                queryBytes,
+                                memories.Count,
+                                candidateIDs,
+                                cancellationToken
+                            );
         var memoryMap = memories.ToDictionary(m => m.ID);
         var lambda    = config.TimeDecayLambda;
-        var ranked    = searchResults
-                        .Where(r => memoryMap.ContainsKey(r.EntryID))
-                        .Select
-                        (r =>
-                            {
-                                var memory             = memoryMap[r.EntryID];
-                                var semanticSimilarity = 1f - r.Distance;
-                                var sceneDistance      = (context.TimelinePosition - memory.TimelinePos) / (double)TimelineCalculator.GAP;
-                                var recencyWeight      = lambda > 0 ? Math.Exp(-lambda * sceneDistance) : 1d;
-                                var finalScore         = semanticSimilarity * recencyWeight;
+        var ranked = searchResults
+                     .Where(r => memoryMap.ContainsKey(r.EntryID))
+                     .Select
+                     (r =>
+                         {
+                             var memory             = memoryMap[r.EntryID];
+                             var semanticSimilarity = 1f - r.Distance;
+                             var sceneDistance      = (context.TimelinePosition - memory.TimelinePos) / (double)TimelineCalculator.GAP;
+                             var recencyWeight = lambda > 0 ?
+                                                     Math.Exp(-lambda * sceneDistance) :
+                                                     1d;
+                             var finalScore = semanticSimilarity * recencyWeight;
 
-                                return new MemoryRetrievalResult
-                                (
-                                    memory.ID,
-                                    memory.Content,
-                                    memory.Tags,
-                                    memory.SceneID,
-                                    r.Source,
-                                    semanticSimilarity,
-                                    recencyWeight,
-                                    finalScore
-                                );
-                            }
-                        )
-                        .Where(r => config.MinRelevance <= 0 || r.FinalScore >= config.MinRelevance)
-                        .OrderByDescending(r => r.FinalScore);
+                             return new MemoryRetrievalResult
+                             (
+                                 memory.ID,
+                                 memory.Content,
+                                 memory.Tags,
+                                 memory.SceneID,
+                                 r.Source,
+                                 semanticSimilarity,
+                                 recencyWeight,
+                                 finalScore
+                             );
+                         }
+                     )
+                     .Where(r => config.MinRelevance <= 0 || r.FinalScore >= config.MinRelevance)
+                     .OrderByDescending(r => r.FinalScore);
         var usedTokens = 0;
         var result = ranked
                      .Where

@@ -337,10 +337,10 @@ public sealed partial class ProjectEditViewModel
         {
             var project = new Project
             {
-                ID              = projectID,
-                Name            = Name.Trim(),
-                Description     = Description,
-                OpeningMessage  = OpeningMessage
+                ID             = projectID,
+                Name           = Name.Trim(),
+                Description    = Description,
+                OpeningMessage = OpeningMessage
             };
 
             await projectRepository.UpdateAsync(project);

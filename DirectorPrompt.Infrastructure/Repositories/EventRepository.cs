@@ -42,7 +42,7 @@ public sealed class EventRepository : IEventRepository
     public async Task AppendBatchAsync
     (
         IReadOnlyList<PlaythroughEvent> events,
-        CancellationToken                cancellationToken = default
+        CancellationToken               cancellationToken = default
     )
     {
         if (events.Count == 0)

@@ -69,56 +69,64 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                     <TextBlock Text="{Binding [Phase.Name], Source={x:Static loc:Loc.Instance}}"
                                                FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                               Foreground="Gray"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"
-                                               Margin="8,0,0,0" />
+                                    <TextBlock
+                                        Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                        Foreground="Gray"
+                                        FontSize="12"
+                                        VerticalAlignment="Center"
+                                        Margin="8,0,0,0" />
                                 </StackPanel>
                                 <ui:TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                             PlaceholderText="{Binding [Phase.NamePlaceholder], Source={x:Static loc:Loc.Instance}}" />
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
                                     <TextBlock Text="{Binding [Phase.Expression], Source={x:Static loc:Loc.Instance}}"
                                                FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                               Foreground="Gray"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"
-                                               Margin="8,0,0,0" />
+                                    <TextBlock
+                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                        Foreground="Gray"
+                                        FontSize="12"
+                                        VerticalAlignment="Center"
+                                        Margin="8,0,0,0" />
                                 </StackPanel>
                                 <ui:TextBox Text="{Binding Expression, UpdateSourceTrigger=PropertyChanged}"
                                             PlaceholderText="{Binding [Phase.ExpressionPlaceholder], Source={x:Static loc:Loc.Instance}}" />
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                                    <TextBlock Text="{Binding [Phase.KnowledgeLink], Source={x:Static loc:Loc.Instance}}"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                               Foreground="Gray"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"
-                                               Margin="8,0,0,0" />
+                                    <TextBlock
+                                        Text="{Binding [Phase.KnowledgeLink], Source={x:Static loc:Loc.Instance}}"
+                                        FontWeight="SemiBold" />
+                                    <TextBlock
+                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                        Foreground="Gray"
+                                        FontSize="12"
+                                        VerticalAlignment="Center"
+                                        Margin="8,0,0,0" />
                                 </StackPanel>
                                 <components:MultiSelectComboBox ItemsSource="{Binding KnowledgeItems}"
                                                                 DisplayMemberPath="DisplayWithType"
                                                                 SelectedMemberPath="IsSelected"
                                                                 Watermark="{Binding [Phase.KnowledgeLinkPlaceholder], Source={x:Static loc:Loc.Instance}}" />
                                 <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
-                                    <TextBlock Text="{Binding [Phase.EnterDirectives], Source={x:Static loc:Loc.Instance}}"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                               Foreground="Gray"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"
-                                               Margin="8,0,0,0" />
+                                    <TextBlock
+                                        Text="{Binding [Phase.EnterDirectives], Source={x:Static loc:Loc.Instance}}"
+                                        FontWeight="SemiBold" />
+                                    <TextBlock
+                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                        Foreground="Gray"
+                                        FontSize="12"
+                                        VerticalAlignment="Center"
+                                        Margin="8,0,0,0" />
                                 </StackPanel>
                                 <components:DirectiveInputControl DirectiveInput="{Binding EnterDirectiveInput}" />
                                 <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
-                                    <TextBlock Text="{Binding [Phase.ExitDirectives], Source={x:Static loc:Loc.Instance}}"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                               Foreground="Gray"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"
-                                               Margin="8,0,0,0" />
+                                    <TextBlock
+                                        Text="{Binding [Phase.ExitDirectives], Source={x:Static loc:Loc.Instance}}"
+                                        FontWeight="SemiBold" />
+                                    <TextBlock
+                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                        Foreground="Gray"
+                                        FontSize="12"
+                                        VerticalAlignment="Center"
+                                        Margin="8,0,0,0" />
                                 </StackPanel>
                                 <components:DirectiveInputControl DirectiveInput="{Binding ExitDirectiveInput}" />
                             </StackPanel>

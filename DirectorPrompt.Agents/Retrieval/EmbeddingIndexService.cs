@@ -62,7 +62,6 @@ public sealed class EmbeddingIndexService
             var vectors = new List<(string source, byte[] embedding)>();
 
             for (var i = 0; i < texts.Count; i++)
-            {
                 vectors.Add
                 (
                     (
@@ -70,7 +69,6 @@ public sealed class EmbeddingIndexService
                         EmbeddingConversions.FloatsToBytes(embeddings[offset + i])
                     )
                 );
-            }
 
             var hash = ComputeHash(texts, embeddingConfig.Fingerprint, KNOWLEDGE_INDEX_VERSION);
             await knowledgeRepository.SaveEmbeddingsAsync(entry.ProjectID, entry.ID, vectors, hash, cancellationToken);
@@ -105,7 +103,6 @@ public sealed class EmbeddingIndexService
             var vectors = new List<(string source, byte[] embedding)>();
 
             for (var i = 0; i < texts.Count; i++)
-            {
                 vectors.Add
                 (
                     (
@@ -113,7 +110,6 @@ public sealed class EmbeddingIndexService
                         EmbeddingConversions.FloatsToBytes(embeddings[offset + i])
                     )
                 );
-            }
 
             var hash = ComputeHash(texts, embeddingConfig.Fingerprint, MEMORY_INDEX_VERSION);
             await memoryRepository.SaveEmbeddingsAsync(entry.ProjectID, entry.ID, vectors, hash, cancellationToken);
@@ -160,8 +156,8 @@ public sealed class EmbeddingIndexService
     private static string ComputeHash
     (
         IReadOnlyList<(string source, string text)> texts,
-        string                                       fingerprint,
-        string                                       indexVersion
+        string                                      fingerprint,
+        string                                      indexVersion
     )
     {
         var combined = string.Join('\0', texts.Select(t => t.text));

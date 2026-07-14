@@ -109,7 +109,9 @@ public sealed class PostProcessingStage
 
             foreach (var attr in attributes)
             {
-                var value      = valueMap.TryGetValue(attr.ID, out var sv) ? sv : null;
+                var value = valueMap.TryGetValue(attr.ID, out var sv) ?
+                                sv :
+                                null;
                 var type       = FormatType(attr);
                 var constraint = FormatConstraint(attr);
                 var rules      = FormatRules(attr);
@@ -178,10 +180,10 @@ public sealed class PostProcessingStage
             var attrLookup      = categoryAttrs.ToDictionary(a => a.ID);
             var characterIDs    = characters.Select(c => c.ID).ToList();
             var allStateValues  = await characterRepository.GetCharacterStateValuesBatchAsync(characterIDs, cancellationToken);
-            var valuesByChar    = allStateValues
-                                  .Where(v => categoryAttrIDs.Contains(v.AttributeID))
-                                  .GroupBy(v => v.CharacterID)
-                                  .ToDictionary(g => g.Key);
+            var valuesByChar = allStateValues
+                               .Where(v => categoryAttrIDs.Contains(v.AttributeID))
+                               .GroupBy(v => v.CharacterID)
+                               .ToDictionary(g => g.Key);
 
             sb.AppendLine("## 人物当前状态值");
 

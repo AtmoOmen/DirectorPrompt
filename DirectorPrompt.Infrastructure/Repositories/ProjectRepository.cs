@@ -53,11 +53,11 @@ public sealed class ProjectRepository : IProjectRepository
                      """,
                      new
                      {
-                         name            = project.Name,
-                         description     = project.Description,
-                         openingMessage  = project.OpeningMessage,
-                         createdAt       = now,
-                         updatedAt       = now
+                         name           = project.Name,
+                         description    = project.Description,
+                         openingMessage = project.OpeningMessage,
+                         createdAt      = now,
+                         updatedAt      = now
                      }
                  );
 
@@ -80,11 +80,11 @@ public sealed class ProjectRepository : IProjectRepository
             """,
             new
             {
-                id              = project.ID,
-                name            = project.Name,
-                description     = project.Description,
-                openingMessage  = project.OpeningMessage,
-                updatedAt       = DateTime.UtcNow.ToString("O")
+                id             = project.ID,
+                name           = project.Name,
+                description    = project.Description,
+                openingMessage = project.OpeningMessage,
+                updatedAt      = DateTime.UtcNow.ToString("O")
             }
         );
     }
@@ -199,12 +199,12 @@ public sealed class ProjectRepository : IProjectRepository
         public Project ToProject() =>
             new()
             {
-                ID              = ID,
-                Name            = Name,
-                Description     = Description,
-                OpeningMessage  = Opening_Message,
-                CreatedAt       = DateTime.Parse(Created_At),
-                UpdatedAt       = DateTime.Parse(Updated_At)
+                ID             = ID,
+                Name           = Name,
+                Description    = Description,
+                OpeningMessage = Opening_Message,
+                CreatedAt      = DateTime.Parse(Created_At),
+                UpdatedAt      = DateTime.Parse(Updated_At)
             };
     }
 }

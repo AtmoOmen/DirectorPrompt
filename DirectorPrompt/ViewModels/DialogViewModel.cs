@@ -11,7 +11,7 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed class DialogEntryViewModel : INotifyPropertyChanged
 {
-    private string thinking = string.Empty;
+    private string thinking     = string.Empty;
     private string errorMessage = string.Empty;
 
     public long ID { get; init; }
@@ -168,7 +168,7 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     public void SetError(string message)
     {
-        IsStreaming = false;
+        IsStreaming  = false;
         ErrorMessage = message;
     }
 

@@ -715,8 +715,9 @@
                                           Maximum="1"
                                           Margin="0,0,0,12" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock Text="{Binding [Memory.TimeDecayLambda], Source={x:Static loc:Loc.Instance}}"
-                                           FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Memory.TimeDecayLambda], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
                             </StackPanel>
                             <ui:NumberBox Value="{Binding Memory.TimeDecayLambda}"
                                           Minimum="0"

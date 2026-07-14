@@ -32,14 +32,14 @@ public sealed class KnowledgeRetrievalService
         var queryEmbedding   = await embeddingService.GenerateEmbeddingAsync(query, cancellationToken);
         var queryBytes       = EmbeddingConversions.FloatsToBytes(queryEmbedding);
         var candidateIDs     = entries.Select(e => e.ID).ToList();
-        var searchResults    = await knowledgeRepository.SearchByVectorAsync
-                               (
-                                   context.ProjectID,
-                                   queryBytes,
-                                   config.SemanticTopK,
-                                   candidateIDs,
-                                   cancellationToken
-                               );
+        var searchResults = await knowledgeRepository.SearchByVectorAsync
+                            (
+                                context.ProjectID,
+                                queryBytes,
+                                config.SemanticTopK,
+                                candidateIDs,
+                                cancellationToken
+                            );
         var entryMap   = entries.ToDictionary(e => e.ID);
         var usedTokens = 0;
 

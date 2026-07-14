@@ -22,13 +22,13 @@ public sealed class RetrievalStage
     {
         Log.Information("RetrievalStage 开始: 对话={SessionID}, 轮次={RoundID}", context.SessionID, context.RoundID);
 
-        var toolContext   = context.ToolContext;
-        var indexingTask  = embeddingIndexService.SynchronizeProjectAsync
-                            (
-                                toolContext.ProjectID,
-                                toolContext.EmbeddingConfig,
-                                cancellationToken
-                            );
+        var toolContext = context.ToolContext;
+        var indexingTask = embeddingIndexService.SynchronizeProjectAsync
+        (
+            toolContext.ProjectID,
+            toolContext.EmbeddingConfig,
+            cancellationToken
+        );
         var queryTask     = BuildRetrievalQueryAsync(context, cancellationToken);
         var injectionTask = BuildSystemInjectionAsync(toolContext, cancellationToken);
 
@@ -180,7 +180,9 @@ public sealed class RetrievalStage
 
             foreach (var attr in attributes)
             {
-                var value = valueMap.TryGetValue(attr.ID, out var sv) ? sv : null;
+                var value = valueMap.TryGetValue(attr.ID, out var sv) ?
+                                sv :
+                                null;
                 sb.AppendLine($"- {attr.DisplayName} ({attr.Name}): {value?.Value ?? "未设置"}");
             }
 
@@ -238,13 +240,13 @@ public sealed class RetrievalStage
         if (attributes.Count == 0)
             return;
 
-        var attrLookup      = attributes.ToDictionary(a => a.ID);
-        var characterIDs    = characters.Select(c => c.ID).ToList();
-        var allStateValues  = await characterRepository.GetCharacterStateValuesBatchAsync(characterIDs, cancellationToken);
-        var valuesByChar    = allStateValues
-                              .Where(v => attrLookup.ContainsKey(v.AttributeID))
-                              .GroupBy(v => v.CharacterID)
-                              .ToDictionary(g => g.Key);
+        var attrLookup     = attributes.ToDictionary(a => a.ID);
+        var characterIDs   = characters.Select(c => c.ID).ToList();
+        var allStateValues = await characterRepository.GetCharacterStateValuesBatchAsync(characterIDs, cancellationToken);
+        var valuesByChar = allStateValues
+                           .Where(v => attrLookup.ContainsKey(v.AttributeID))
+                           .GroupBy(v => v.CharacterID)
+                           .ToDictionary(g => g.Key);
 
         sb.AppendLine("## 在场人物状态");
 
@@ -308,5 +310,4 @@ public sealed class RetrievalStage
 
         sb.AppendLine();
     }
-
 }
