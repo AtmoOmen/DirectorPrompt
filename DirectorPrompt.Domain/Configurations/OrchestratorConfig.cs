@@ -13,4 +13,6 @@ public record OrchestratorConfig
     public MemoryConfig MemoryConfig { get; set; } = new();
 
     public KnowledgeRetrievalConfig KnowledgeConfig { get; set; } = new();
+
+    public HistoryContextConfig HistoryContext { get; set; } = new();
 }

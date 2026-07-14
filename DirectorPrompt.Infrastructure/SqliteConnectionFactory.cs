@@ -6,30 +6,36 @@ namespace DirectorPrompt.Infrastructure;
 
 public sealed class SqliteConnectionFactory
 {
-    private readonly string connectionString;
-    private readonly bool   enableVecExtension;
+    private readonly string  connectionString;
+    private readonly bool    enableVecExtension;
+    private readonly string? vecPath;
 
     public SqliteConnectionFactory(string connectionString, bool enableVecExtension = true)
     {
         this.connectionString   = connectionString;
         this.enableVecExtension = enableVecExtension;
+        vecPath = enableVecExtension ?
+                      FindVecLibrary() :
+                      null;
     }
 
-    public async Task<SqliteConnection> CreateAsync(CancellationToken cancellationToken = default)
+    public async Task<SqliteConnection> CreateAsync
+    (
+        CancellationToken cancellationToken   = default,
+        bool              loadVectorExtension = false
+    )
     {
         var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
 
-        if (enableVecExtension)
-            TryLoadVecExtension(connection);
+        if (enableVecExtension && loadVectorExtension)
+            TryLoadVecExtension(connection, vecPath);
 
         return connection;
     }
 
-    private static void TryLoadVecExtension(SqliteConnection connection)
+    private static void TryLoadVecExtension(SqliteConnection connection, string? vecPath)
     {
-        var vecPath = FindVecLibrary();
-
         if (vecPath is null)
         {
             Log.Warning("sqlite-vec 原生库未找到, 向量检索功能不可用");

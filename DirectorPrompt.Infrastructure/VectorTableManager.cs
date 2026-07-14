@@ -5,10 +5,10 @@ namespace DirectorPrompt.Infrastructure;
 
 public sealed class VectorTableManager
 {
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SqliteDatabaseScheduler scheduler;
 
-    public VectorTableManager(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public VectorTableManager(SqliteDatabaseScheduler scheduler) =>
+        this.scheduler = scheduler;
 
     public static string GetKnowledgeTableName(long projectID) => $"knowledge_vec_{projectID}";
 
@@ -16,10 +16,22 @@ public sealed class VectorTableManager
 
     public static string GetCharacterTableName(long projectID) => $"character_vec_{projectID}";
 
-    public async Task EnsureTableAsync(string tableName, int dimension, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+    public Task EnsureTableAsync(string tableName, int dimension, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            (connection, token) => EnsureTableAsync(connection, tableName, dimension, token),
+            SqliteWorkPriority.Maintenance,
+            cancellationToken
+        );
 
+    internal static async Task EnsureTableAsync
+    (
+        SqliteConnection  connection,
+        string            tableName,
+        int               dimension,
+        CancellationToken cancellationToken
+    )
+    {
         var existingSQL       = await GetCreateSQLAsync(connection, tableName, cancellationToken);
         var existingDimension = await GetDimensionAsync(connection, tableName, cancellationToken);
 
@@ -51,14 +63,29 @@ public sealed class VectorTableManager
         await metaCommand.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public async Task EnsureMultiVectorTableAsync(string tableName, int dimension, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+    public Task EnsureMultiVectorTableAsync(string tableName, int dimension, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            (connection, token) => EnsureMultiVectorTableAsync(connection, tableName, dimension, token),
+            SqliteWorkPriority.Maintenance,
+            cancellationToken
+        );
 
+    internal static async Task EnsureMultiVectorTableAsync
+    (
+        SqliteConnection  connection,
+        string            tableName,
+        int               dimension,
+        CancellationToken cancellationToken
+    )
+    {
         var existingSQL = await GetCreateSQLAsync(connection, tableName, cancellationToken);
 
-        if (existingSQL is not null                                            &&
-            existingSQL.Contains("source", StringComparison.OrdinalIgnoreCase) &&
+        if (existingSQL is not null                                                  &&
+            existingSQL.Contains("source",       StringComparison.OrdinalIgnoreCase) &&
+            existingSQL.Contains("session_id",   StringComparison.OrdinalIgnoreCase) &&
+            existingSQL.Contains("timeline_pos", StringComparison.OrdinalIgnoreCase) &&
+            existingSQL.Contains("searchable",   StringComparison.OrdinalIgnoreCase) &&
             UsesCosineDistance(existingSQL))
         {
             var existingDimension = await GetDimensionAsync(connection, tableName, cancellationToken);
@@ -103,11 +130,21 @@ public sealed class VectorTableManager
         await metaCommand.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public async Task<bool> TableExistsAsync(string tableName, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-        return await GetDimensionAsync(connection, tableName, cancellationToken) is not null;
-    }
+    public Task<bool> TableExistsAsync(string tableName, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            (connection, token) => TableExistsAsync(connection, tableName, token),
+            SqliteWorkPriority.Maintenance,
+            cancellationToken
+        );
+
+    internal static async Task<bool> TableExistsAsync
+    (
+        SqliteConnection  connection,
+        string            tableName,
+        CancellationToken cancellationToken
+    ) =>
+        await GetDimensionAsync(connection, tableName, cancellationToken) is not null;
 
     private static async Task<int?> GetDimensionAsync
     (
@@ -153,7 +190,7 @@ public sealed class VectorTableManager
     {
         await using var command = connection.CreateCommand();
         command.CommandText =
-            $"CREATE VIRTUAL TABLE IF NOT EXISTS \"{tableName}\" USING vec0(id INTEGER PRIMARY KEY, entry_id INTEGER, source TEXT, embedding FLOAT[{dimension}] distance_metric=cosine)";
+            $"CREATE VIRTUAL TABLE IF NOT EXISTS \"{tableName}\" USING vec0(id INTEGER PRIMARY KEY, entry_id INTEGER, source TEXT, session_id INTEGER partition key, timeline_pos INTEGER, searchable INTEGER, embedding FLOAT[{dimension}] distance_metric=cosine)";
         await command.ExecuteNonQueryAsync(cancellationToken);
 
         Log.Information("创建多向量 vec0 虚拟表: {Table}, 维度={Dimension}", tableName, dimension);

@@ -7,11 +7,6 @@ using Serilog;
 
 namespace DirectorPrompt.Agents;
 
-public sealed record PhaseEvaluationResult : TransitionResult
-{
-    public required IReadOnlyList<long> ActivatedEntryIDs { get; init; }
-}
-
 public sealed class PhaseEvaluator
 (
     IStateRepository     stateRepository,

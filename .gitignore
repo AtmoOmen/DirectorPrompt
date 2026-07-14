@@ -12,3 +12,4 @@ bin/
 .reasonix
 bin
 DESIGN
+BenchmarkDotNet.Artifacts/

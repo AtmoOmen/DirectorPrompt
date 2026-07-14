@@ -1,5 +1,4 @@
 using DirectorPrompt.Domain.Configurations;
-using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 
 namespace DirectorPrompt.Agents;
@@ -57,17 +56,3 @@ public sealed class PipelineContext
 
     public IReadOnlyList<long>? PhaseActivatedEntryIDs { get; set; }
 }
-
-public record ChatHistoryEntry
-(
-    long   RoundID,
-    string DirectorInput,
-    string NarrativeOutput
-);
-
-public record PipelineStageUpdate
-(
-    PipelineStageKind   Stage,
-    PipelineStageStatus Status,
-    string?             Detail = null
-);

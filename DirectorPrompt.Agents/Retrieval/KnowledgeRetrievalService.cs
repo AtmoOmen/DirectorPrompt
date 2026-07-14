@@ -1,5 +1,4 @@
 using System.Text;
-using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using Serilog;
@@ -22,24 +21,46 @@ public sealed class KnowledgeRetrievalService
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("检索内容不能为空", nameof(query));
 
-        var entries = await GetSearchableEntriesAsync(context, cancellationToken);
-        var config  = context.KnowledgeConfig;
+        var config = context.KnowledgeConfig;
 
-        if (entries.Count == 0 || config.SemanticTopK <= 0 || config.TokenBudget <= 0)
+        if (config.SemanticTopK <= 0 || config.TokenBudget <= 0)
             return [];
 
         var embeddingService = embeddingServiceFactory.Create(context.EmbeddingConfig);
         var queryEmbedding   = await embeddingService.GenerateEmbeddingAsync(query, cancellationToken);
         var queryBytes       = EmbeddingConversions.FloatsToBytes(queryEmbedding);
-        var candidateIDs     = entries.Select(e => e.ID).ToList();
+        return await SearchAsync(context, queryBytes, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<KnowledgeRetrievalResult>> SearchAsync
+    (
+        ToolExecutionContext context,
+        byte[]               queryVector,
+        CancellationToken    cancellationToken = default
+    )
+    {
+        var config = context.KnowledgeConfig;
+
+        if (config.SemanticTopK <= 0 || config.TokenBudget <= 0)
+            return [];
+
+        var candidateLimit = Math.Max(128, config.SemanticTopK * 16);
         var searchResults = await knowledgeRepository.SearchByVectorAsync
                             (
                                 context.ProjectID,
-                                queryBytes,
-                                config.SemanticTopK,
-                                candidateIDs,
+                                queryVector,
+                                candidateLimit,
                                 cancellationToken
                             );
+        var candidateIDs  = searchResults.Select(result => result.EntryID).Distinct().ToList();
+        var phaseEntryIDs = context.PhaseActivatedEntryIDs ?? [];
+        var entries = await knowledgeRepository.GetSearchableEntriesByIdsAsync
+                      (
+                          context.ProjectID,
+                          candidateIDs,
+                          phaseEntryIDs,
+                          cancellationToken
+                      );
         var entryMap   = entries.ToDictionary(e => e.ID);
         var usedTokens = 0;
 
@@ -63,6 +84,8 @@ public sealed class KnowledgeRetrievalService
                          }
                      )
                      .Where(r => config.MinRelevance <= 0 || r.SemanticSimilarity >= config.MinRelevance)
+                     .OrderByDescending(result => result.SemanticSimilarity)
+                     .Take(config.SemanticTopK)
                      .Where
                      (r =>
                          {
@@ -80,35 +103,6 @@ public sealed class KnowledgeRetrievalService
         Log.Information("知识检索完成: 候选={CandidateCount}, 返回={ResultCount}", entries.Count, result.Count);
 
         return result;
-    }
-
-    private async Task<IReadOnlyList<KnowledgeEntry>> GetSearchableEntriesAsync
-    (
-        ToolExecutionContext context,
-        CancellationToken    cancellationToken
-    )
-    {
-        var activeEntries = await knowledgeRepository.GetActiveEntriesAsync(context.ProjectID, cancellationToken);
-
-        if (context.PhaseActivatedEntryIDs is not { Count: > 0 })
-            return activeEntries;
-
-        var phaseEntries = await knowledgeRepository.GetEntriesByIdsAsync
-                           (
-                               context.ProjectID,
-                               context.PhaseActivatedEntryIDs,
-                               cancellationToken
-                           );
-        var seen   = new HashSet<long>(activeEntries.Select(e => e.ID));
-        var merged = new List<KnowledgeEntry>(activeEntries);
-
-        foreach (var entry in phaseEntries)
-        {
-            if (seen.Add(entry.ID))
-                merged.Add(entry);
-        }
-
-        return merged;
     }
 
     private static int EstimateTokens(string text) =>

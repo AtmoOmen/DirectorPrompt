@@ -478,10 +478,10 @@
                                                     </Style>
                                                 </StackPanel.Style>
                                                 <FlowDocumentScrollViewer Document="{Binding Document}"
-                                                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                                                           IsSelectionEnabled="True"
-                                                                           VerticalScrollBarVisibility="Disabled"
-                                                                           PreviewMouseWheel="OnFlowDocumentPreviewMouseWheel" />
+                                                                          Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                                          IsSelectionEnabled="True"
+                                                                          VerticalScrollBarVisibility="Disabled"
+                                                                          PreviewMouseWheel="OnFlowDocumentPreviewMouseWheel" />
                                                 <TextBlock Text="{Binding StreamingText}"
                                                            Visibility="{Binding HasStreamingText, Converter={StaticResource BoolToVisibility}}"
                                                            TextWrapping="Wrap"

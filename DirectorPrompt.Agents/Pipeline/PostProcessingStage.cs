@@ -39,8 +39,6 @@ public sealed class PostProcessingStage
             resolved.ModelConfig.ModelName
         );
 
-        Log.Debug("后处理输入 (叙事文本):\n{Narrative}", context.NarrativeOutput ?? "(空)");
-
         var client      = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
         var toolContext = context.ToolContext;
 

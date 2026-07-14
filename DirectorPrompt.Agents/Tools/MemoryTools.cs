@@ -121,7 +121,12 @@ public sealed class MemoryTools
 
         foreach (var characterID in idList)
         {
-            var memories = await memoryRepository.GetByCharacterAsync(characterID, context.TimelinePosition);
+            var memories = await memoryRepository.GetRecentByCharacterAsync
+                           (
+                               characterID,
+                               context.TimelinePosition,
+                               100
+                           );
 
             foreach (var memory in memories)
             {
@@ -160,11 +165,9 @@ public sealed class MemoryTools
     {
         Log.Information
         (
-            "工具调用: create_memory(sceneID={SceneID}, content={Content})",
+            "工具调用: create_memory(sceneID={SceneID}, length={Length})",
             sceneID,
-            content.Length > 100 ?
-                content[..100] + "..." :
-                content
+            content.Length
         );
 
         var characterList = ParseCharacterIDs(characterIDs);

@@ -15,6 +15,7 @@ public sealed class EmbeddingIndexService
 {
     private const string KNOWLEDGE_INDEX_VERSION = "knowledge-v3";
     private const string MEMORY_INDEX_VERSION    = "memory-v3";
+    private const int    REPAIR_BATCH_SIZE       = 32;
 
     public async Task SynchronizeProjectAsync
     (
@@ -23,8 +24,21 @@ public sealed class EmbeddingIndexService
         CancellationToken       cancellationToken = default
     )
     {
-        var knowledgeTask = knowledgeRepository.GetByProjectAsync(projectID, cancellationToken);
-        var memoryTask    = memoryRepository.GetByProjectAsync(projectID, cancellationToken);
+        var fingerprint = embeddingConfig.Fingerprint;
+        var knowledgeTask = knowledgeRepository.GetPendingIndexEntriesAsync
+        (
+            projectID,
+            fingerprint,
+            REPAIR_BATCH_SIZE,
+            cancellationToken
+        );
+        var memoryTask = memoryRepository.GetPendingIndexEntriesAsync
+        (
+            projectID,
+            fingerprint,
+            REPAIR_BATCH_SIZE,
+            cancellationToken
+        );
 
         await Task.WhenAll(knowledgeTask, memoryTask);
 
@@ -71,7 +85,15 @@ public sealed class EmbeddingIndexService
                 );
 
             var hash = ComputeHash(texts, embeddingConfig.Fingerprint, KNOWLEDGE_INDEX_VERSION);
-            await knowledgeRepository.SaveEmbeddingsAsync(entry.ProjectID, entry.ID, vectors, hash, cancellationToken);
+            await knowledgeRepository.SaveEmbeddingsAsync
+            (
+                entry.ProjectID,
+                entry.ID,
+                vectors,
+                hash,
+                embeddingConfig.Fingerprint,
+                cancellationToken
+            );
             offset += texts.Count;
         }
     }
@@ -112,7 +134,17 @@ public sealed class EmbeddingIndexService
                 );
 
             var hash = ComputeHash(texts, embeddingConfig.Fingerprint, MEMORY_INDEX_VERSION);
-            await memoryRepository.SaveEmbeddingsAsync(entry.ProjectID, entry.ID, vectors, hash, cancellationToken);
+            await memoryRepository.SaveEmbeddingsAsync
+            (
+                entry.ProjectID,
+                entry.ID,
+                entry.SessionID,
+                entry.TimelinePos,
+                vectors,
+                hash,
+                embeddingConfig.Fingerprint,
+                cancellationToken
+            );
             offset += texts.Count;
         }
     }

@@ -32,11 +32,7 @@ public sealed class GenerationStage
         var systemPrompt = BuildSystemPrompt(context, resolved.SystemPrompt);
         var userMessage  = BuildNarratorInput(context);
 
-        Log.Information
-        (
-            "Narrator 输入:\n{Input}",
-            userMessage
-        );
+        Log.Debug("Narrator 输入长度={Length}", userMessage.Length);
 
         var messages = BuildMessages(systemPrompt, resolved.ModelPrompt, context);
 
@@ -73,13 +69,13 @@ public sealed class GenerationStage
                         narrativeBuilder.Append(text.Text);
                 }
 
-                var narrativeDelta = lastNarrativeLen < narrativeBuilder.Length
-                    ? narrativeBuilder.ToString(lastNarrativeLen, narrativeBuilder.Length - lastNarrativeLen)
-                    : string.Empty;
+                var narrativeDelta = lastNarrativeLen < narrativeBuilder.Length ?
+                                         narrativeBuilder.ToString(lastNarrativeLen, narrativeBuilder.Length - lastNarrativeLen) :
+                                         string.Empty;
 
-                var reasoningDelta = lastReasoningLen < reasoningBuilder.Length
-                    ? reasoningBuilder.ToString(lastReasoningLen, reasoningBuilder.Length - lastReasoningLen)
-                    : string.Empty;
+                var reasoningDelta = lastReasoningLen < reasoningBuilder.Length ?
+                                         reasoningBuilder.ToString(lastReasoningLen, reasoningBuilder.Length - lastReasoningLen) :
+                                         string.Empty;
 
                 lastNarrativeLen = narrativeBuilder.Length;
                 lastReasoningLen = reasoningBuilder.Length;
@@ -126,10 +122,6 @@ public sealed class GenerationStage
             thinking.Length
         );
 
-        Log.Information("Narrator 叙事输出:\n{Narrative}", narrative);
-
-        if (!string.IsNullOrEmpty(thinking))
-            Log.Debug("Narrator 思考内容:\n{Thinking}", thinking);
     }
 
     private static List<ChatMessage> BuildMessages(string systemPrompt, string? modelPrompt, PipelineContext context)

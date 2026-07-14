@@ -20,6 +20,8 @@ public record MemoryEntry
 
     public string? ContentHash { get; init; }
 
+    public string? EmbeddingFingerprint { get; init; }
+
     public DateTime CreatedAt { get; init; }
 
     public DateTime UpdatedAt { get; init; }

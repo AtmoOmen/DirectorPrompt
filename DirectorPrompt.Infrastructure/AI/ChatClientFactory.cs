@@ -1,6 +1,5 @@
 using System.ClientModel;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
+using System.Collections.Immutable;
 using Anthropic;
 using Anthropic.Core;
 using DirectorPrompt.Agents;
@@ -11,9 +10,53 @@ using Serilog;
 
 namespace DirectorPrompt.Infrastructure.AI;
 
-public sealed class ChatClientFactory : IChatClientFactory
+public sealed class ChatClientFactory : IChatClientFactory, IDisposable
 {
+    private ImmutableDictionary<string, IChatClient> clients = ImmutableDictionary<string, IChatClient>.Empty;
+
     public IChatClient Create(ProviderConfig provider, ModelConfig model)
+    {
+        var key = string.Join
+        (
+            '\0',
+            provider.Provider,
+            provider.Endpoint,
+            provider.APIKey,
+            provider.CustomHeaders,
+            model.ModelName,
+            model.ExtraParameters,
+            model.ReasoningEffort
+        );
+
+        while (true)
+        {
+            var snapshot = clients;
+
+            if (snapshot.TryGetValue(key, out var existing))
+                return existing;
+
+            var created = CreateClient(provider, model);
+            var updated = snapshot.Add(key, created);
+
+            if (ReferenceEquals(Interlocked.CompareExchange(ref clients, updated, snapshot), snapshot))
+                return created;
+
+            created.Dispose();
+        }
+    }
+
+    public void Reset()
+    {
+        var previous = Interlocked.Exchange(ref clients, ImmutableDictionary<string, IChatClient>.Empty);
+
+        foreach (var client in previous.Values)
+            client.Dispose();
+    }
+
+    public void Dispose() =>
+        Reset();
+
+    private static IChatClient CreateClient(ProviderConfig provider, ModelConfig model)
     {
         var providerType = provider.Provider.ToLowerInvariant();
 
@@ -94,96 +137,5 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         return new AnthropicClient(options)
             .AsIChatClient(model.ModelName, 8192);
-    }
-}
-
-public sealed class ModelOptionsChatClient
-(
-    IChatClient inner,
-    ModelConfig modelConfig
-) : IChatClient
-{
-    public async Task<ChatResponse> GetResponseAsync
-    (
-        IEnumerable<ChatMessage> messages,
-        ChatOptions?             options           = null,
-        CancellationToken        cancellationToken = default
-    )
-    {
-        options = ApplyModelOptions(options);
-
-        return await inner.GetResponseAsync(messages, options, cancellationToken);
-    }
-
-    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync
-    (
-        IEnumerable<ChatMessage>                   messages,
-        ChatOptions?                               options           = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default
-    )
-    {
-        options = ApplyModelOptions(options);
-
-        await foreach (var update in inner.GetStreamingResponseAsync(messages, options, cancellationToken))
-            yield return update;
-    }
-
-    public object? GetService(Type serviceType, object? serviceKey = null) =>
-        inner.GetService(serviceType, serviceKey);
-
-    public void Dispose() =>
-        inner.Dispose();
-
-    private ChatOptions ApplyModelOptions(ChatOptions? options)
-    {
-        options ??= new ChatOptions();
-
-        if (!string.IsNullOrWhiteSpace(modelConfig.ExtraParameters))
-        {
-            try
-            {
-                var extra = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(modelConfig.ExtraParameters);
-
-                if (extra is not null)
-                {
-                    options.AdditionalProperties ??= [];
-
-                    foreach (var (key, value) in extra)
-                        options.AdditionalProperties[key] = value;
-                }
-            }
-            catch (JsonException ex)
-            {
-                Log.Warning(ex, "解析模型自定义参数失败: {ExtraParameters}", modelConfig.ExtraParameters);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(modelConfig.ReasoningEffort))
-        {
-            var effort = modelConfig.ReasoningEffort!.Trim().ToLowerInvariant();
-
-            var mapped = effort switch
-            {
-                "none"                                 => (ReasoningEffort?)ReasoningEffort.None,
-                "low"                                  => ReasoningEffort.Low,
-                "medium"                               => ReasoningEffort.Medium,
-                "high"                                 => ReasoningEffort.High,
-                "xhigh" or "extra_high" or "extrahigh" => ReasoningEffort.ExtraHigh,
-                _                                      => null
-            };
-
-            if (mapped is { } effortValue)
-            {
-                options.Reasoning        ??= new ReasoningOptions();
-                options.Reasoning.Effort =   effortValue;
-            }
-            else
-            {
-                options.AdditionalProperties                     ??= [];
-                options.AdditionalProperties["reasoning_effort"] =   effort;
-            }
-        }
-
-        return options;
     }
 }

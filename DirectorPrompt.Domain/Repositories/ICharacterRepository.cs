@@ -15,6 +15,15 @@ public interface ICharacterRepository
 
     Task<IReadOnlyList<Character>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Character>> GetByIDsAsync
+    (
+        long                sessionID,
+        IReadOnlyList<long> characterIDs,
+        CancellationToken   cancellationToken = default
+    );
+
+    Task<CharacterPage> GetPageAsync(CharacterPageQuery query, CancellationToken cancellationToken = default);
+
     Task<Character> CreateAsync(Character character, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Character character, CancellationToken cancellationToken = default);

@@ -8,152 +8,177 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class ProjectRepository : IProjectRepository
 {
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SqliteDatabaseScheduler scheduler;
 
-    public ProjectRepository(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public ProjectRepository(SqliteDatabaseScheduler scheduler) =>
+        this.scheduler = scheduler;
 
-    public async Task<Project?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var row = await connection.QueryFirstOrDefaultAsync<ProjectRow>
-                  (
-                      "SELECT * FROM projects WHERE id = @id",
-                      new { id }
-                  );
-
-        return row?.ToProject();
-    }
-
-    public async Task<IReadOnlyList<Project>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var rows = await connection.QueryAsync<ProjectRow>
-                   (
-                       "SELECT * FROM projects ORDER BY updated_at DESC"
-                   );
-
-        return rows.Select(r => r.ToProject()).ToList();
-    }
-
-    public async Task<Project> CreateAsync(Project project, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var now = DateTime.UtcNow.ToString("O");
-
-        var id = await connection.ExecuteScalarAsync<long>
-                 (
-                     """
-                     INSERT INTO projects (name, description, opening_message, created_at, updated_at)
-                     VALUES (@name, @description, @openingMessage, @createdAt, @updatedAt);
-                     SELECT last_insert_rowid();
-                     """,
-                     new
-                     {
-                         name           = project.Name,
-                         description    = project.Description,
-                         openingMessage = project.OpeningMessage,
-                         createdAt      = now,
-                         updatedAt      = now
-                     }
-                 );
-
-        return project with { ID = id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-    }
-
-    public async Task UpdateAsync(Project project, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
+    public Task<Project?> GetByIDAsync(long id, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
         (
-            """
-            UPDATE projects
-            SET name = @name,
-                description = @description,
-                opening_message = @openingMessage,
-                updated_at = @updatedAt
-            WHERE id = @id
-            """,
-            new
+            async (connection, token) =>
             {
-                id             = project.ID,
-                name           = project.Name,
-                description    = project.Description,
-                openingMessage = project.OpeningMessage,
-                updatedAt      = DateTime.UtcNow.ToString("O")
-            }
+                var row = await connection.QueryFirstOrDefaultAsync<ProjectRow>
+                          (
+                              new CommandDefinition
+                              (
+                                  "SELECT * FROM projects WHERE id = @id",
+                                  new { id },
+                                  cancellationToken: token
+                              )
+                          );
+
+                return row?.ToProject();
+            },
+            cancellationToken: cancellationToken
         );
-    }
 
-    public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
-    {
-        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+    public Task<IReadOnlyList<Project>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync<IReadOnlyList<Project>>
+        (
+            async (connection, token) =>
+            {
+                var rows = await connection.QueryAsync<ProjectRow>
+                           (
+                               new CommandDefinition
+                               (
+                                   "SELECT * FROM projects ORDER BY updated_at DESC",
+                                   cancellationToken: token
+                               )
+                           );
 
-        try
-        {
-            await connection.ExecuteAsync
-            (
-                """
-                DELETE FROM round_changes
-                WHERE round_id IN (SELECT id FROM rounds WHERE project_id = @id);
+                return rows.Select(row => row.ToProject()).ToList();
+            },
+            cancellationToken: cancellationToken
+        );
 
-                DELETE FROM character_relation_logs
-                WHERE relation_id IN (SELECT id FROM character_relations WHERE project_id = @id);
+    public Task<Project> CreateAsync(Project project, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                var now = DateTime.UtcNow;
+                var id = await connection.ExecuteScalarAsync<long>
+                         (
+                             new CommandDefinition
+                             (
+                                 """
+                                 INSERT INTO projects (name, description, opening_message, created_at, updated_at)
+                                 VALUES (@name, @description, @openingMessage, @createdAt, @updatedAt);
+                                 SELECT last_insert_rowid();
+                                 """,
+                                 new
+                                 {
+                                     name           = project.Name,
+                                     description    = project.Description,
+                                     openingMessage = project.OpeningMessage,
+                                     createdAt      = now.ToString("O"),
+                                     updatedAt      = now.ToString("O")
+                                 },
+                                 cancellationToken: token
+                             )
+                         );
 
-                DELETE FROM character_state_values
-                WHERE character_id IN (SELECT id FROM characters WHERE project_id = @id)
-                   OR attribute_id IN (SELECT id FROM state_attributes WHERE project_id = @id);
+                return project with { ID = id, CreatedAt = now, UpdatedAt = now };
+            },
+            cancellationToken: cancellationToken
+        );
 
-                DELETE FROM character_category_resolutions
-                WHERE character_id IN (SELECT id FROM characters WHERE project_id = @id);
+    public Task UpdateAsync(Project project, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition
+                    (
+                        """
+                        UPDATE projects
+                        SET name = @name,
+                            description = @description,
+                            opening_message = @openingMessage,
+                            updated_at = @updatedAt
+                        WHERE id = @id
+                        """,
+                        new
+                        {
+                            id             = project.ID,
+                            name           = project.Name,
+                            description    = project.Description,
+                            openingMessage = project.OpeningMessage,
+                            updatedAt      = DateTime.UtcNow.ToString("O")
+                        },
+                        cancellationToken: token
+                    )
+                );
+            },
+            cancellationToken: cancellationToken
+        );
 
-                DELETE FROM character_scene_presence
-                WHERE character_id IN (SELECT id FROM characters WHERE project_id = @id)
-                   OR scene_id IN (SELECT id FROM scenes WHERE project_id = @id);
+    public Task DeleteAsync(long id, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(token);
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition
+                    (
+                        """
+                        DELETE FROM round_changes
+                        WHERE round_id IN (SELECT id FROM rounds WHERE project_id = @id);
 
-                DELETE FROM state_values
-                WHERE attribute_id IN (SELECT id FROM state_attributes WHERE project_id = @id);
+                        DELETE FROM character_relation_logs
+                        WHERE relation_id IN (SELECT id FROM character_relations WHERE project_id = @id);
 
-                DELETE FROM state_change_logs
-                WHERE attribute_id IN (SELECT id FROM state_attributes WHERE project_id = @id);
+                        DELETE FROM character_state_values
+                        WHERE character_id IN (SELECT id FROM characters WHERE project_id = @id)
+                           OR attribute_id IN (SELECT id FROM state_attributes WHERE project_id = @id);
 
-                DELETE FROM knowledge_entity_index
-                WHERE entry_id IN (SELECT id FROM knowledge_entries WHERE project_id = @id);
+                        DELETE FROM character_category_resolutions
+                        WHERE character_id IN (SELECT id FROM characters WHERE project_id = @id);
 
-                DELETE FROM character_relations WHERE project_id = @id;
-                DELETE FROM characters WHERE project_id = @id;
-                DELETE FROM memory_entries WHERE project_id = @id;
-                DELETE FROM active_directives WHERE project_id = @id;
-                DELETE FROM playthrough_events WHERE project_id = @id;
-                DELETE FROM state_attributes WHERE project_id = @id;
-                DELETE FROM knowledge_entries WHERE project_id = @id;
-                DELETE FROM knowledge_groups WHERE project_id = @id;
-                DELETE FROM character_categories WHERE project_id = @id;
-                DELETE FROM rounds WHERE project_id = @id;
-                DELETE FROM scenes WHERE project_id = @id;
-                DELETE FROM sessions WHERE project_id = @id;
-                DELETE FROM projects WHERE id = @id;
-                """,
-                new { id },
-                transaction
-            );
+                        DELETE FROM character_scene_presence
+                        WHERE character_id IN (SELECT id FROM characters WHERE project_id = @id)
+                           OR scene_id IN (SELECT id FROM scenes WHERE project_id = @id);
 
-            await DropVectorTableAsync(connection, transaction, VectorTableManager.GetKnowledgeTableName(id), cancellationToken);
-            await DropVectorTableAsync(connection, transaction, VectorTableManager.GetMemoryTableName(id),    cancellationToken);
+                        DELETE FROM state_values
+                        WHERE attribute_id IN (SELECT id FROM state_attributes WHERE project_id = @id);
 
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
-    }
+                        DELETE FROM state_change_logs
+                        WHERE attribute_id IN (SELECT id FROM state_attributes WHERE project_id = @id);
+
+                        DELETE FROM knowledge_entity_index
+                        WHERE entry_id IN (SELECT id FROM knowledge_entries WHERE project_id = @id);
+
+                        DELETE FROM character_relations WHERE project_id = @id;
+                        DELETE FROM characters WHERE project_id = @id;
+                        DELETE FROM memory_entries WHERE project_id = @id;
+                        DELETE FROM active_directives WHERE project_id = @id;
+                        DELETE FROM playthrough_events WHERE project_id = @id;
+                        DELETE FROM state_attributes WHERE project_id = @id;
+                        DELETE FROM knowledge_entries WHERE project_id = @id;
+                        DELETE FROM knowledge_groups WHERE project_id = @id;
+                        DELETE FROM character_categories WHERE project_id = @id;
+                        DELETE FROM rounds WHERE project_id = @id;
+                        DELETE FROM scenes WHERE project_id = @id;
+                        DELETE FROM sessions WHERE project_id = @id;
+                        DELETE FROM projects WHERE id = @id;
+                        """,
+                        new { id },
+                        transaction,
+                        cancellationToken: token
+                    )
+                );
+
+                await DropVectorTableAsync(connection, transaction, VectorTableManager.GetKnowledgeTableName(id), token);
+                await DropVectorTableAsync(connection, transaction, VectorTableManager.GetMemoryTableName(id),    token);
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
+        );
 
     private static async Task DropVectorTableAsync
     (

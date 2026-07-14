@@ -12,11 +12,11 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed class DialogEntryViewModel : INotifyPropertyChanged
 {
-    private string thinking     = string.Empty;
-    private string errorMessage = string.Empty;
-    private string streamingText = string.Empty;
-    private string renderedMarkdownContent = string.Empty;
-    private long lastMarkdownRenderTicks;
+    private       string thinking                = string.Empty;
+    private       string errorMessage            = string.Empty;
+    private       string streamingText           = string.Empty;
+    private       string renderedMarkdownContent = string.Empty;
+    private       long   lastMarkdownRenderTicks;
     private const double MarkdownRenderIntervalMs = 1000;
 
     public long ID { get; init; }
@@ -173,7 +173,7 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
             RenderNarrativeMarkdown();
 
         lastMarkdownRenderTicks = Stopwatch.GetTimestamp();
-        IsStreaming = false;
+        IsStreaming             = false;
     }
 
     public void UpdateStreamingContent(string narrative, string thinking, bool replaceContent = false)
@@ -181,12 +181,12 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
         Content  = narrative;
         Thinking = thinking;
 
-        var now = Stopwatch.GetTimestamp();
+        var now       = Stopwatch.GetTimestamp();
         var elapsedMs = (now - lastMarkdownRenderTicks) * 1000.0 / Stopwatch.Frequency;
 
-        if (replaceContent ||
-            elapsedMs >= MarkdownRenderIntervalMs ||
-            lastMarkdownRenderTicks == 0 ||
+        if (replaceContent                                      ||
+            elapsedMs               >= MarkdownRenderIntervalMs ||
+            lastMarkdownRenderTicks == 0                        ||
             !narrative.StartsWith(renderedMarkdownContent, StringComparison.Ordinal))
         {
             RenderNarrativeMarkdown();
@@ -198,9 +198,9 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     private void RenderNarrativeMarkdown()
     {
-        Document = MarkdownRenderer.Render(Content);
+        Document                = MarkdownRenderer.Render(Content);
         renderedMarkdownContent = Content;
-        StreamingText = string.Empty;
+        StreamingText           = string.Empty;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
     }
 

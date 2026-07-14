@@ -202,11 +202,11 @@ public sealed partial class ProjectEditViewModel
 
         KnowledgeGroups.Clear();
 
-        var groups  = await knowledgeRepository.GetGroupsAsync(projectID);
-        var entries = await knowledgeRepository.GetByProjectAsync(projectID);
+        var groups = await knowledgeRepository.GetGroupsAsync(projectID);
 
         foreach (var group in groups)
         {
+            var entries = await knowledgeRepository.GetByGroupAsync(group.ID);
             var groupVM = new KnowledgeGroupEditViewModel
             {
                 ID          = group.ID,

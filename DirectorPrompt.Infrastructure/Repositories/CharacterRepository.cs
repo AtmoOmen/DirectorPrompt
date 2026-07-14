@@ -1,28 +1,30 @@
+using System.Data.Common;
 using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
+using Microsoft.Data.Sqlite;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class CharacterRepository : ICharacterRepository
 {
     private readonly SqliteConnectionFactory connectionFactory;
-    private readonly IRoundChangeRepository  roundChangeRepository;
     private readonly VectorTableManager      vectorTableManager;
+    private readonly SqliteDatabaseScheduler scheduler;
 
     public CharacterRepository
     (
         SqliteConnectionFactory connectionFactory,
-        IRoundChangeRepository  roundChangeRepository,
-        VectorTableManager      vectorTableManager
+        VectorTableManager      vectorTableManager,
+        SqliteDatabaseScheduler scheduler
     )
     {
-        this.connectionFactory     = connectionFactory;
-        this.roundChangeRepository = roundChangeRepository;
-        this.vectorTableManager    = vectorTableManager;
+        this.connectionFactory  = connectionFactory;
+        this.vectorTableManager = vectorTableManager;
+        this.scheduler          = scheduler;
     }
 
     public async Task<Character?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
@@ -96,220 +98,366 @@ public sealed class CharacterRepository : ICharacterRepository
         return rows.Select(r => r.ToCharacter()).ToList();
     }
 
-    public async Task<Character> CreateAsync(Character character, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Character>> GetByIDsAsync
+    (
+        long                sessionID,
+        IReadOnlyList<long> characterIDs,
+        CancellationToken   cancellationToken = default
+    )
     {
+        if (characterIDs.Count == 0)
+            return [];
+
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        var rows = await connection.QueryAsync<CharacterRow>
+                   (
+                       new CommandDefinition
+                       (
+                           "SELECT * FROM characters WHERE session_id = @sessionID AND id IN @characterIDs",
+                           new { sessionID, characterIDs },
+                           cancellationToken: cancellationToken
+                       )
+                   );
 
-        var now = DateTime.UtcNow.ToString("O");
-
-        var id = await connection.ExecuteScalarAsync<long>
-                 (
-                     """
-                     INSERT INTO characters (project_id, session_id, name, description, aliases, category_ids, status, touch_count, last_touched_round, created_at, updated_at)
-                     VALUES (@projectID, @sessionID, @name, @description, @aliases, @categoryIDs, @status, @touchCount, @lastTouchedRound, @createdAt, @updatedAt);
-                     SELECT last_insert_rowid();
-                     """,
-                     new
-                     {
-                         projectID        = character.ProjectID,
-                         sessionID        = character.SessionID,
-                         name             = character.Name,
-                         description      = character.Description,
-                         aliases          = JsonHelper.Serialize(character.Aliases),
-                         categoryIDs      = JsonHelper.Serialize(character.CategoryIDs),
-                         status           = character.Status.ToString().ToLowerInvariant(),
-                         touchCount       = character.TouchCount,
-                         lastTouchedRound = character.LastTouchedRound,
-                         createdAt        = now,
-                         updatedAt        = now
-                     }
-                 );
-
-        await roundChangeRepository.RecordCreateAsync(RoundContext.Current ?? 0, "characters", id, cancellationToken: cancellationToken);
-
-        return character with { ID = id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        return rows.Select(row => row.ToCharacter()).ToList();
     }
 
-    public async Task UpdateAsync(Character character, CancellationToken cancellationToken = default)
+    public async Task<CharacterPage> GetPageAsync(CharacterPageQuery query, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
-        var oldRow = await RowReader.ReadRowAsync
-                     (
-                         connection,
-                         "SELECT * FROM characters WHERE id = @id",
-                         new { id = character.ID },
-                         cancellationToken: cancellationToken
-                     );
+        var pageSize = Math.Clamp(query.PageSize, 1, 200);
+        var searchPattern = string.IsNullOrWhiteSpace(query.SearchText) ?
+                                null :
+                                $"%{query.SearchText.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_")}%";
+        var rows = await connection.QueryAsync<CharacterRow>
+                   (
+                       new CommandDefinition
+                       (
+                           """
+                           SELECT c.*
+                           FROM characters c
+                           WHERE c.session_id = @SessionID
+                             AND c.status = 'active'
+                             AND (@AfterID IS NULL OR c.id > @AfterID)
+                             AND
+                             (
+                                 @CategoryID IS NULL
+                                 OR EXISTS
+                                 (
+                                     SELECT 1
+                                     FROM json_each(c.category_ids)
+                                     WHERE value = @CategoryID
+                                 )
+                             )
+                             AND
+                             (
+                                 @SearchPattern IS NULL
+                                 OR c.name LIKE @SearchPattern ESCAPE '\'
+                                 OR c.description LIKE @SearchPattern ESCAPE '\'
+                             )
+                           ORDER BY c.id
+                           LIMIT @Take
+                           """,
+                           new
+                           {
+                               query.SessionID,
+                               query.AfterID,
+                               query.CategoryID,
+                               SearchPattern = searchPattern,
+                               Take          = pageSize + 1
+                           },
+                           cancellationToken: cancellationToken
+                       )
+                   );
 
-        await connection.ExecuteAsync
+        var items   = rows.Select(row => row.ToCharacter()).ToList();
+        var hasMore = items.Count > pageSize;
+
+        if (hasMore)
+            items.RemoveAt(items.Count - 1);
+
+        return new CharacterPage
         (
-            """
-            UPDATE characters
-            SET name = @name,
-                description = @description,
-                aliases = @aliases,
-                category_ids = @categoryIDs,
-                status = @status,
-                updated_at = @updatedAt
-            WHERE id = @id
-            """,
-            new
-            {
-                id          = character.ID,
-                name        = character.Name,
-                description = character.Description,
-                aliases     = JsonHelper.Serialize(character.Aliases),
-                categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
-                status      = character.Status.ToString().ToLowerInvariant(),
-                updatedAt   = DateTime.UtcNow.ToString("O")
-            }
-        );
-
-        if (oldRow is not null)
-        {
-            await roundChangeRepository.RecordUpdateAsync
-                (RoundContext.Current ?? 0, "characters", character.ID, JsonSerializer.Serialize(oldRow), cancellationToken);
-        }
-    }
-
-    public async Task TouchAsync(long characterID, long roundID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
-        (
-            """
-            UPDATE characters
-            SET touch_count = touch_count + 1,
-                last_touched_round = @roundID,
-                status = 'active',
-                updated_at = @updatedAt
-            WHERE id = @characterID
-            """,
-            new
-            {
-                characterID,
-                roundID,
-                updatedAt = DateTime.UtcNow.ToString("O")
-            }
+            items,
+            hasMore ?
+                items[^1].ID :
+                null
         );
     }
 
-    public async Task ArchiveAsync(long characterID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var oldRow = await RowReader.ReadRowAsync
-                     (
-                         connection,
-                         "SELECT * FROM characters WHERE id = @characterID",
-                         new { characterID },
-                         cancellationToken: cancellationToken
-                     );
-
-        await connection.ExecuteAsync
+    public Task<Character> CreateAsync(Character character, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
         (
-            "UPDATE characters SET status = 'archived', updated_at = @updatedAt WHERE id = @characterID",
-            new
+            async (connection, token) =>
             {
-                characterID,
-                updatedAt = DateTime.UtcNow.ToString("O")
-            }
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                var             now         = DateTime.UtcNow;
+                var id = await connection.ExecuteScalarAsync<long>
+                         (
+                             new CommandDefinition
+                             (
+                                 """
+                                 INSERT INTO characters (project_id, session_id, name, description, aliases, category_ids, status, touch_count, last_touched_round, created_at, updated_at)
+                                 VALUES (@projectID, @sessionID, @name, @description, @aliases, @categoryIDs, @status, @touchCount, @lastTouchedRound, @createdAt, @updatedAt);
+                                 SELECT last_insert_rowid();
+                                 """,
+                                 new
+                                 {
+                                     projectID        = character.ProjectID,
+                                     sessionID        = character.SessionID,
+                                     name             = character.Name,
+                                     description      = character.Description,
+                                     aliases          = JsonHelper.Serialize(character.Aliases),
+                                     categoryIDs      = JsonHelper.Serialize(character.CategoryIDs),
+                                     status           = character.Status.ToString().ToLowerInvariant(),
+                                     touchCount       = character.TouchCount,
+                                     lastTouchedRound = character.LastTouchedRound,
+                                     createdAt        = now.ToString("O"),
+                                     updatedAt        = now.ToString("O")
+                                 },
+                                 transaction,
+                                 cancellationToken: token
+                             )
+                         );
+                await RoundChangeRepository.RecordAsync
+                (
+                    connection,
+                    transaction,
+                    RoundContext.SessionID ?? character.SessionID,
+                    RoundContext.Current   ?? 0,
+                    "characters",
+                    id,
+                    "create",
+                    null,
+                    token
+                );
+                await transaction.CommitAsync(token);
+
+                return character with { ID = id, CreatedAt = now, UpdatedAt = now };
+            },
+            cancellationToken: cancellationToken
         );
 
-        if (oldRow is not null)
-            await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "characters", characterID, JsonSerializer.Serialize(oldRow), cancellationToken);
-
-        var presenceRows = await connection.QueryAsync
-                           (
-                               "SELECT character_id, scene_id FROM character_scene_presence WHERE character_id = @characterID",
-                               new { characterID }
-                           );
-
-        if (presenceRows.Any())
-        {
-            await connection.ExecuteAsync
-            (
-                "DELETE FROM character_scene_presence WHERE character_id = @characterID",
-                new { characterID }
-            );
-
-            foreach (var row in presenceRows)
+    public Task UpdateAsync(Character character, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
             {
-                var oldData = JsonSerializer.Serialize(new { character_id = (long)row.character_id, scene_id = (long)row.scene_id });
-                await roundChangeRepository.RecordDeleteAsync(RoundContext.Current ?? 0, "character_scene_presence", 0, oldData, cancellationToken);
-            }
-        }
-    }
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                var oldRow = await RowReader.ReadRowAsync
+                             (
+                                 connection,
+                                 "SELECT * FROM characters WHERE id = @id",
+                                 new { id = character.ID },
+                                 transaction,
+                                 token
+                             );
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition
+                    (
+                        """
+                        UPDATE characters
+                        SET name = @name,
+                            description = @description,
+                            aliases = @aliases,
+                            category_ids = @categoryIDs,
+                            status = @status,
+                            updated_at = @updatedAt
+                        WHERE id = @id
+                        """,
+                        new
+                        {
+                            id          = character.ID,
+                            name        = character.Name,
+                            description = character.Description,
+                            aliases     = JsonHelper.Serialize(character.Aliases),
+                            categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
+                            status      = character.Status.ToString().ToLowerInvariant(),
+                            updatedAt   = DateTime.UtcNow.ToString("O")
+                        },
+                        transaction,
+                        cancellationToken: token
+                    )
+                );
 
-    public async Task ArchiveStaleAsync
+                if (oldRow is not null)
+                {
+                    await RoundChangeRepository.RecordAsync
+                    (
+                        connection,
+                        transaction,
+                        RoundContext.SessionID ?? character.SessionID,
+                        RoundContext.Current   ?? 0,
+                        "characters",
+                        character.ID,
+                        "update",
+                        JsonSerializer.Serialize(oldRow),
+                        token
+                    );
+                }
+
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task TouchAsync(long characterID, long roundID, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                var oldRow = await RowReader.ReadRowAsync
+                             (
+                                 connection,
+                                 "SELECT * FROM characters WHERE id = @characterID",
+                                 new { characterID },
+                                 transaction,
+                                 token
+                             );
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition
+                    (
+                        """
+                        UPDATE characters
+                        SET touch_count = touch_count + 1,
+                            last_touched_round = @roundID,
+                            status = 'active',
+                            updated_at = @updatedAt
+                        WHERE id = @characterID
+                        """,
+                        new { characterID, roundID, updatedAt = DateTime.UtcNow.ToString("O") },
+                        transaction,
+                        cancellationToken: token
+                    )
+                );
+
+                if (oldRow is not null)
+                {
+                    await RoundChangeRepository.RecordAsync
+                    (
+                        connection,
+                        transaction,
+                        RoundContext.SessionID ?? Convert.ToInt64(oldRow["session_id"]),
+                        roundID,
+                        "characters",
+                        characterID,
+                        "update",
+                        JsonSerializer.Serialize(oldRow),
+                        token
+                    );
+                }
+
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task ArchiveAsync(long characterID, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                await ArchiveAsync(connection, transaction, characterID, token);
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task ArchiveStaleAsync
     (
         long              sessionID,
         long              currentRound,
         int               threshold,
         CancellationToken cancellationToken = default
-    )
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var staleIDs = await connection.QueryAsync<long>
-                       (
-                           """
-                           SELECT id FROM characters
-                           WHERE session_id = @sessionID
-                             AND status = 'active'
-                             AND ( @currentRound - last_touched_round ) > @threshold
-                           """,
-                           new { sessionID, currentRound, threshold }
-                       );
-
-        foreach (var id in staleIDs)
-            await ArchiveAsync(id, cancellationToken);
-    }
-
-    public async Task AddAliasAsync(long characterID, string alias, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var oldRow = await RowReader.ReadRowAsync
-                     (
-                         connection,
-                         "SELECT * FROM characters WHERE id = @characterID",
-                         new { characterID },
-                         cancellationToken: cancellationToken
-                     );
-
-        if (oldRow is null)
-            return;
-
-        var aliases = JsonHelper.DeserializeStringArray((string)oldRow["aliases"]!);
-
-        if (aliases.Contains(alias))
-            return;
-
-        var updatedAliases = aliases.Append(alias).ToArray();
-
-        await connection.ExecuteAsync
+    ) =>
+        scheduler.ExecuteAsync
         (
-            "UPDATE characters SET aliases = @aliases, updated_at = @updatedAt WHERE id = @characterID",
-            new
+            async (connection, token) =>
             {
-                characterID,
-                aliases   = JsonHelper.Serialize(updatedAliases),
-                updatedAt = DateTime.UtcNow.ToString("O")
-            }
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                var staleIDs = await connection.QueryAsync<long>
+                               (
+                                   new CommandDefinition
+                                   (
+                                       """
+                                       SELECT id FROM characters
+                                       WHERE session_id = @sessionID
+                                         AND status = 'active'
+                                         AND (@currentRound - last_touched_round) > @threshold
+                                       """,
+                                       new { sessionID, currentRound, threshold },
+                                       transaction,
+                                       cancellationToken: token
+                                   )
+                               );
+
+                foreach (var id in staleIDs)
+                    await ArchiveAsync(connection, transaction, id, token);
+
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
         );
 
-        await roundChangeRepository.RecordUpdateAsync
+    public Task AddAliasAsync(long characterID, string alias, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
         (
-            RoundContext.Current ?? 0,
-            "characters",
-            characterID,
-            JsonSerializer.Serialize(oldRow),
-            cancellationToken
+            async (connection, token) =>
+            {
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                var oldRow = await RowReader.ReadRowAsync
+                             (
+                                 connection,
+                                 "SELECT * FROM characters WHERE id = @characterID",
+                                 new { characterID },
+                                 transaction,
+                                 token
+                             );
+
+                if (oldRow is null)
+                    return;
+
+                var aliases = JsonHelper.DeserializeStringArray((string)oldRow["aliases"]!);
+
+                if (aliases.Contains(alias))
+                    return;
+
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition
+                    (
+                        "UPDATE characters SET aliases = @aliases, updated_at = @updatedAt WHERE id = @characterID",
+                        new
+                        {
+                            characterID,
+                            aliases   = JsonHelper.Serialize(aliases.Append(alias).ToArray()),
+                            updatedAt = DateTime.UtcNow.ToString("O")
+                        },
+                        transaction,
+                        cancellationToken: token
+                    )
+                );
+                await RoundChangeRepository.RecordAsync
+                (
+                    connection,
+                    transaction,
+                    RoundContext.SessionID ?? Convert.ToInt64(oldRow["session_id"]),
+                    RoundContext.Current   ?? 0,
+                    "characters",
+                    characterID,
+                    "update",
+                    JsonSerializer.Serialize(oldRow),
+                    token
+                );
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
         );
-    }
 
     public async Task SaveEmbeddingAsync
     (
@@ -325,7 +473,7 @@ public sealed class CharacterRepository : ICharacterRepository
 
         await vectorTableManager.EnsureTableAsync(tableName, dimension, cancellationToken);
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken, true);
 
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
@@ -368,7 +516,7 @@ public sealed class CharacterRepository : ICharacterRepository
         if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
             return;
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken, true);
 
         await connection.ExecuteAsync
         (
@@ -391,7 +539,7 @@ public sealed class CharacterRepository : ICharacterRepository
         if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
             return [];
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken, true);
 
         var sql = candidateIDs is { Count: > 0 } ?
                       $"""
@@ -672,17 +820,41 @@ public sealed class CharacterRepository : ICharacterRepository
             );
         }
 
-        await transaction.CommitAsync(cancellationToken);
-
         var roundID = RoundContext.Current ?? 0;
 
         if (existing is not null)
         {
             var oldData = JsonSerializer.Serialize(existing);
-            await roundChangeRepository.RecordUpdateAsync(roundID, "character_relations", relationID, oldData, cancellationToken);
+            await RoundChangeRepository.RecordAsync
+            (
+                connection,
+                transaction,
+                RoundContext.SessionID ?? sessionID,
+                roundID,
+                "character_relations",
+                relationID,
+                "update",
+                oldData,
+                cancellationToken
+            );
         }
         else
-            await roundChangeRepository.RecordCreateAsync(roundID, "character_relations", relationID, cancellationToken: cancellationToken);
+        {
+            await RoundChangeRepository.RecordAsync
+            (
+                connection,
+                transaction,
+                RoundContext.SessionID ?? sessionID,
+                roundID,
+                "character_relations",
+                relationID,
+                "create",
+                null,
+                cancellationToken
+            );
+        }
+
+        await transaction.CommitAsync(cancellationToken);
 
         return new CharacterRelation
         {
@@ -735,37 +907,84 @@ public sealed class CharacterRepository : ICharacterRepository
         ).ToList();
     }
 
-    public async Task EnterSceneAsync(long characterID, long sceneID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
+    public Task EnterSceneAsync(long characterID, long sceneID, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
         (
-            """
-            INSERT OR IGNORE INTO character_scene_presence (character_id, scene_id)
-            VALUES (@characterID, @sceneID)
-            """,
-            new { characterID, sceneID }
+            async (connection, token) =>
+            {
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                var affected = await connection.ExecuteAsync
+                               (
+                                   new CommandDefinition
+                                   (
+                                       """
+                                       INSERT OR IGNORE INTO character_scene_presence (character_id, scene_id)
+                                       VALUES (@characterID, @sceneID)
+                                       """,
+                                       new { characterID, sceneID },
+                                       transaction,
+                                       cancellationToken: token
+                                   )
+                               );
+
+                if (affected > 0)
+                {
+                    await RoundChangeRepository.RecordAsync
+                    (
+                        connection,
+                        transaction,
+                        RoundContext.SessionID ?? 0,
+                        RoundContext.Current   ?? 0,
+                        "character_scene_presence",
+                        0,
+                        "create",
+                        JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID }),
+                        token
+                    );
+                }
+
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
         );
 
-        var rowData = JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID });
-        await roundChangeRepository.RecordCreateAsync(RoundContext.Current ?? 0, "character_scene_presence", 0, rowData, cancellationToken);
-    }
-
-    public async Task LeaveSceneAsync(long characterID, long sceneID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var oldData = JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID });
-
-        await connection.ExecuteAsync
+    public Task LeaveSceneAsync(long characterID, long sceneID, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
         (
-            "DELETE FROM character_scene_presence WHERE character_id = @characterID AND scene_id = @sceneID",
-            new { characterID, sceneID }
-        );
+            async (connection, token) =>
+            {
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                var affected = await connection.ExecuteAsync
+                               (
+                                   new CommandDefinition
+                                   (
+                                       "DELETE FROM character_scene_presence WHERE character_id = @characterID AND scene_id = @sceneID",
+                                       new { characterID, sceneID },
+                                       transaction,
+                                       cancellationToken: token
+                                   )
+                               );
 
-        await roundChangeRepository.RecordDeleteAsync(RoundContext.Current ?? 0, "character_scene_presence", 0, oldData, cancellationToken);
-    }
+                if (affected > 0)
+                {
+                    await RoundChangeRepository.RecordAsync
+                    (
+                        connection,
+                        transaction,
+                        RoundContext.SessionID ?? 0,
+                        RoundContext.Current   ?? 0,
+                        "character_scene_presence",
+                        0,
+                        "delete",
+                        JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID }),
+                        token
+                    );
+                }
+
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
+        );
 
     public async Task<CharacterCategoryResolution?> GetResolvedCategoriesAsync(long characterID, CancellationToken cancellationToken = default)
     {
@@ -858,59 +1077,150 @@ public sealed class CharacterRepository : ICharacterRepository
         ).ToList();
     }
 
-    public async Task SetCharacterStateValueAsync
+    public Task SetCharacterStateValueAsync
     (
         long              characterID,
         long              attributeID,
         string            value,
         CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                var oldRow = await RowReader.ReadRowAsync
+                             (
+                                 connection,
+                                 "SELECT * FROM character_state_values WHERE character_id = @characterID AND attribute_id = @attributeID",
+                                 new { characterID, attributeID },
+                                 transaction,
+                                 token
+                             );
+                var updatedAt = DateTime.UtcNow.ToString("O");
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition
+                    (
+                        """
+                        INSERT INTO character_state_values (character_id, attribute_id, value, updated_at)
+                        VALUES (@characterID, @attributeID, @value, @updatedAt)
+                        ON CONFLICT(character_id, attribute_id)
+                        DO UPDATE SET value = @value, updated_at = @updatedAt
+                        """,
+                        new { characterID, attributeID, value, updatedAt },
+                        transaction,
+                        cancellationToken: token
+                    )
+                );
+                await RoundChangeRepository.RecordAsync
+                (
+                    connection,
+                    transaction,
+                    RoundContext.SessionID ?? 0,
+                    RoundContext.Current   ?? 0,
+                    "character_state_values",
+                    0,
+                    oldRow is null ?
+                        "create" :
+                        "update",
+                    oldRow is null ?
+                        JsonSerializer.Serialize(new { character_id = characterID, attribute_id = attributeID, value, updated_at = updatedAt }) :
+                        JsonSerializer.Serialize(oldRow),
+                    token
+                );
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
+        );
+
+    private static async Task ArchiveAsync
+    (
+        SqliteConnection  connection,
+        DbTransaction     transaction,
+        long              characterID,
+        CancellationToken cancellationToken
     )
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
         var oldRow = await RowReader.ReadRowAsync
                      (
                          connection,
-                         "SELECT * FROM character_state_values WHERE character_id = @characterID AND attribute_id = @attributeID",
-                         new { characterID, attributeID },
-                         cancellationToken: cancellationToken
+                         "SELECT * FROM characters WHERE id = @characterID",
+                         new { characterID },
+                         transaction,
+                         cancellationToken
                      );
+
+        if (oldRow is null)
+            return;
+
+        var sessionID = Convert.ToInt64(oldRow["session_id"]);
+        var roundID   = RoundContext.Current ?? 0;
+        await connection.ExecuteAsync
+        (
+            new CommandDefinition
+            (
+                "UPDATE characters SET status = 'archived', updated_at = @updatedAt WHERE id = @characterID",
+                new { characterID, updatedAt = DateTime.UtcNow.ToString("O") },
+                transaction,
+                cancellationToken: cancellationToken
+            )
+        );
+        await RoundChangeRepository.RecordAsync
+        (
+            connection,
+            transaction,
+            RoundContext.SessionID ?? sessionID,
+            roundID,
+            "characters",
+            characterID,
+            "update",
+            JsonSerializer.Serialize(oldRow),
+            cancellationToken
+        );
+        var presenceRows = (await connection.QueryAsync
+                            (
+                                new CommandDefinition
+                                (
+                                    "SELECT character_id, scene_id FROM character_scene_presence WHERE character_id = @characterID",
+                                    new { characterID },
+                                    transaction,
+                                    cancellationToken: cancellationToken
+                                )
+                            )).ToList();
+
+        if (presenceRows.Count == 0)
+            return;
 
         await connection.ExecuteAsync
         (
-            """
-            INSERT INTO character_state_values (character_id, attribute_id, value, updated_at)
-            VALUES (@characterID, @attributeID, @value, @updatedAt)
-            ON CONFLICT(character_id, attribute_id)
-            DO UPDATE SET value = @value, updated_at = @updatedAt
-            """,
-            new
-            {
-                characterID,
-                attributeID,
-                value,
-                updatedAt = DateTime.UtcNow.ToString("O")
-            }
+            new CommandDefinition
+            (
+                "DELETE FROM character_scene_presence WHERE character_id = @characterID",
+                new { characterID },
+                transaction,
+                cancellationToken: cancellationToken
+            )
         );
 
-        var roundID = RoundContext.Current ?? 0;
-
-        if (oldRow is null)
+        foreach (var row in presenceRows)
         {
-            var rowData = JsonSerializer.Serialize
+            await RoundChangeRepository.RecordAsync
             (
-                new
-                {
-                    character_id = characterID,
-                    attribute_id = attributeID,
-                    value,
-                    updated_at = DateTime.UtcNow.ToString("O")
-                }
+                connection,
+                transaction,
+                RoundContext.SessionID ?? sessionID,
+                roundID,
+                "character_scene_presence",
+                0,
+                "delete",
+                JsonSerializer.Serialize
+                (
+                    new { character_id = (long)row.character_id, scene_id = (long)row.scene_id }
+                ),
+                cancellationToken
             );
-            await roundChangeRepository.RecordCreateAsync(roundID, "character_state_values", 0, rowData, cancellationToken);
         }
-        else
-            await roundChangeRepository.RecordUpdateAsync(roundID, "character_state_values", 0, JsonSerializer.Serialize(oldRow), cancellationToken);
     }
 
     private sealed class CharacterRow

@@ -33,11 +33,11 @@ public sealed class Orchestrator
 {
     public async Task<NarrationResult> ProcessBatchAsync
     (
-        DirectiveBatch               batch,
-        long                         sessionID,
+        DirectiveBatch                batch,
+        long                          sessionID,
         Action<string, string, bool>? onStreamingUpdate = null,
-        Action<PipelineStageUpdate>? onStageUpdate     = null,
-        CancellationToken            cancellationToken = default
+        Action<PipelineStageUpdate>?  onStageUpdate     = null,
+        CancellationToken             cancellationToken = default
     )
     {
         var project = await projectRepository.GetByIDAsync(batch.ProjectID, cancellationToken);
@@ -69,7 +69,7 @@ public sealed class Orchestrator
             );
 
             foreach (var d in batch.Directives)
-                Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
+                Log.Debug("指令元数据: 顺序={Order}, 类型={Type}, 长度={Length}", d.Order, d.Type, d.Content.Length);
 
             var embeddingConfig = ResolveEmbeddingConfig();
 
@@ -116,6 +116,14 @@ public sealed class Orchestrator
 
             var previousScene        = await sceneRepository.GetLastCompletedSceneAsync(sessionID, activeScene.ID, cancellationToken);
             var previousSceneSummary = previousScene?.Summary;
+
+            activeScene = await sceneSummaryStage.UpdateProgressSummaryAsync
+                          (
+                              sessionID,
+                              activeScene,
+                              roundID,
+                              cancellationToken
+                          );
 
             timelinePosition = activeScene.TimelinePosition;
 
@@ -342,12 +350,13 @@ public sealed class Orchestrator
         CancellationToken cancellationToken
     )
     {
-        var events = await eventRepository.GetBySessionAsync(sessionID, cancellationToken);
-
-        var transitionEvent = events
-                              .Where(e => e.Type == eventType && e.RoundID < currentRoundID)
-                              .OrderByDescending(e => e.RoundID)
-                              .FirstOrDefault();
+        var transitionEvent = await eventRepository.GetLatestByTypeBeforeRoundAsync
+                              (
+                                  sessionID,
+                                  eventType,
+                                  currentRoundID,
+                                  cancellationToken
+                              );
 
         if (transitionEvent is null)
             return null;

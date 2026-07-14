@@ -506,9 +506,9 @@ public sealed partial class MainViewModel
         long                  expectedRoundID = 0;
         List<DirectiveItem>?  items           = null;
 
-        var streamingBuffer = new StreamingBuffer();
-        DispatcherTimer? streamingTimer = null;
-        EventHandler? streamingTimerTick = null;
+        var              streamingBuffer    = new StreamingBuffer();
+        DispatcherTimer? streamingTimer     = null;
+        EventHandler?    streamingTimerTick = null;
 
         try
         {
@@ -538,7 +538,7 @@ public sealed partial class MainViewModel
             {
                 Interval = TimeSpan.FromMilliseconds(50)
             };
-            streamingTimerTick = (_, _) => FlushStreamingUpdate();
+            streamingTimerTick  =  (_, _) => FlushStreamingUpdate();
             streamingTimer.Tick += streamingTimerTick;
             streamingTimer.Start();
 
@@ -884,7 +884,21 @@ public sealed partial class MainViewModel
     {
         try
         {
-            var events = await eventRepository.GetBySessionAsync(sessionID, token);
+            var events = new List<PlaythroughEvent>();
+            events.AddRange(await eventRepository.GetByRoundAsync(sessionID, 0, token));
+            long? beforeRoundID = null;
+
+            do
+            {
+                var page = await eventRepository.GetDialogPageAsync
+                           (
+                               new DialogPageQuery(sessionID, beforeRoundID, 100),
+                               token
+                           );
+                events.AddRange(page.Events);
+                beforeRoundID = page.PreviousRoundID;
+            }
+            while (beforeRoundID is not null && !token.IsCancellationRequested);
 
             if (token.IsCancellationRequested)
                 return;
@@ -1202,9 +1216,32 @@ public sealed partial class MainViewModel
         if (CurrentSession is null || CurrentProject is null)
             return;
 
-        var memories   = await memoryRepository.GetBySessionAsync(CurrentSession.ID, long.MaxValue);
-        var scenes     = await sceneRepository.GetBySessionAsync(CurrentSession.ID);
-        var characters = await characterRepository.GetBySessionAsync(CurrentSession.ID);
+        var   sessionID              = CurrentSession.ID;
+        var   memories               = new List<MemoryEntry>();
+        long? beforeTimelinePosition = null;
+        long? beforeID               = null;
+
+        do
+        {
+            var page = await memoryRepository.GetPageAsync
+                       (
+                           new MemoryPageQuery
+                           (
+                               sessionID,
+                               long.MaxValue,
+                               beforeTimelinePosition,
+                               beforeID,
+                               PageSize: 200
+                           )
+                       );
+            memories.AddRange(page.Items);
+            beforeTimelinePosition = page.NextTimelinePosition;
+            beforeID               = page.NextID;
+        }
+        while (beforeTimelinePosition is not null && beforeID is not null);
+
+        var scenes     = await sceneRepository.GetBySessionAsync(sessionID);
+        var characters = await characterRepository.GetBySessionAsync(sessionID);
 
         var sceneLookup = scenes.ToDictionary(s => s.ID);
         var charLookup  = characters.ToDictionary(c => c.ID);
@@ -1328,9 +1365,9 @@ public sealed partial class MainViewModel
 
     private sealed class StreamingBuffer
     {
-        private readonly Lock streamingLock = new();
-        private readonly StringBuilder narrative = new();
-        private readonly StringBuilder thinking = new();
+        private readonly Lock          streamingLock = new();
+        private readonly StringBuilder narrative     = new();
+        private readonly StringBuilder thinking      = new();
 
         private bool hasUpdate;
         private bool hasFullSnapshot;
@@ -1362,17 +1399,17 @@ public sealed partial class MainViewModel
             {
                 if (!hasUpdate)
                 {
-                    narrativeText = string.Empty;
-                    thinkingText = string.Empty;
+                    narrativeText  = string.Empty;
+                    thinkingText   = string.Empty;
                     isFullSnapshot = false;
                     return false;
                 }
 
-                narrativeText     = narrative.ToString();
-                thinkingText      = thinking.ToString();
-                isFullSnapshot    = hasFullSnapshot;
-                hasUpdate         = false;
-                hasFullSnapshot   = false;
+                narrativeText   = narrative.ToString();
+                thinkingText    = thinking.ToString();
+                isFullSnapshot  = hasFullSnapshot;
+                hasUpdate       = false;
+                hasFullSnapshot = false;
                 return true;
             }
         }

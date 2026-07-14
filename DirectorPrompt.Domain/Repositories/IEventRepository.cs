@@ -1,3 +1,4 @@
+using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 
 namespace DirectorPrompt.Domain.Repositories;
@@ -8,11 +9,37 @@ public interface IEventRepository
 
     Task AppendBatchAsync(IReadOnlyList<PlaythroughEvent> events, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<PlaythroughEvent>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<PlaythroughEvent>> GetBySceneAsync(long sessionID, long sceneID, CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<PlaythroughEvent>> GetByRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default);
+
+    Task<DialogPage> GetDialogPageAsync(DialogPageQuery query, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PlaythroughEvent>> GetRecentBySceneAsync
+    (
+        long              sessionID,
+        long              sceneID,
+        long              beforeRoundID,
+        int               maxRounds,
+        CancellationToken cancellationToken = default
+    );
+
+    Task<IReadOnlyList<PlaythroughEvent>> GetSceneSummaryChunkAsync
+    (
+        long              sessionID,
+        long              sceneID,
+        long              afterRoundID,
+        long              beforeRoundID,
+        int               retainedRecentRounds,
+        int               chunkSize,
+        CancellationToken cancellationToken = default
+    );
+
+    Task<PlaythroughEvent?> GetLatestByTypeBeforeRoundAsync
+    (
+        long              sessionID,
+        EventType         type,
+        long              beforeRoundID,
+        CancellationToken cancellationToken = default
+    );
 
     Task RemoveByRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default);
 

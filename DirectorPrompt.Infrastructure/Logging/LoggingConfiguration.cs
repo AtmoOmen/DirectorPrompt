@@ -13,24 +13,33 @@ public static class LoggingConfiguration
 
         Directory.CreateDirectory(fullPath);
 
-        var logPath    = Path.Combine(fullPath, "directorprompt.log");
-        var oldLogPath = Path.Combine(fullPath, "directorprompt.old.log");
+        var logPath = Path.Combine(fullPath, "directorprompt.log");
 
-        if (File.Exists(logPath))
-            File.Move(logPath, oldLogPath, true);
+#if DEBUG
+        const LogEventLevel MINIMUM_LEVEL = LogEventLevel.Debug;
+#else
+        const LogEventLevel MINIMUM_LEVEL = LogEventLevel.Information;
+#endif
 
         return new LoggerConfiguration()
-               .MinimumLevel.Debug()
+               .MinimumLevel.Is(MINIMUM_LEVEL)
                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
                .MinimumLevel.Override("System", LogEventLevel.Warning)
                .Enrich.FromLogContext()
                .WriteTo.Async
-               (sink =>
-                    sink.File
-                    (
-                        logPath,
-                        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"
-                    )
+               (
+                   sink =>
+                       sink.File
+                       (
+                           logPath,
+                           rollingInterval: RollingInterval.Day,
+                           fileSizeLimitBytes: 5 * 1024 * 1024,
+                           rollOnFileSizeLimit: true,
+                           retainedFileCountLimit: 3,
+                           outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"
+                       ),
+                   1024,
+                   false
                )
                .CreateLogger();
     }

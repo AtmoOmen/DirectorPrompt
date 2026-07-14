@@ -27,157 +27,165 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         ["character_scene_presence"] = ["character_id", "scene_id"]
     };
 
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SqliteDatabaseScheduler scheduler;
 
-    public RoundChangeRepository(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public RoundChangeRepository(SqliteDatabaseScheduler scheduler) =>
+        this.scheduler = scheduler;
 
-    public async Task RecordCreateAsync
+    public Task RecordCreateAsync
     (
         long              roundID,
         string            tableName,
         long              recordID,
         string?           oldDataJSON       = null,
         CancellationToken cancellationToken = default
-    )
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
+    ) =>
+        scheduler.ExecuteAsync
         (
-            """
-            INSERT INTO round_changes (session_id, round_id, table_name, record_id, operation, old_data, created_at)
-            VALUES (@sessionID, @roundID, @tableName, @recordID, 'create', @oldData, @createdAt)
-            """,
-            new
-            {
-                sessionID = RoundContext.SessionID ?? 0,
+            (connection, token) => RecordAsync
+            (
+                connection,
+                null,
+                RoundContext.SessionID ?? 0,
                 roundID,
                 tableName,
                 recordID,
-                oldData   = oldDataJSON,
-                createdAt = DateTime.UtcNow.ToString("O")
-            }
+                "create",
+                oldDataJSON,
+                token
+            ),
+            cancellationToken: cancellationToken
         );
-    }
 
-    public async Task RecordUpdateAsync
+    public Task RecordUpdateAsync
     (
         long              roundID,
         string            tableName,
         long              recordID,
         string            oldDataJSON,
         CancellationToken cancellationToken = default
-    )
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
+    ) =>
+        scheduler.ExecuteAsync
         (
-            """
-            INSERT INTO round_changes (session_id, round_id, table_name, record_id, operation, old_data, created_at)
-            VALUES (@sessionID, @roundID, @tableName, @recordID, 'update', @oldData, @createdAt)
-            """,
-            new
-            {
-                sessionID = RoundContext.SessionID ?? 0,
+            (connection, token) => RecordAsync
+            (
+                connection,
+                null,
+                RoundContext.SessionID ?? 0,
                 roundID,
                 tableName,
                 recordID,
-                oldData   = oldDataJSON,
-                createdAt = DateTime.UtcNow.ToString("O")
-            }
+                "update",
+                oldDataJSON,
+                token
+            ),
+            cancellationToken: cancellationToken
         );
-    }
 
-    public async Task RecordDeleteAsync
+    public Task RecordDeleteAsync
     (
         long              roundID,
         string            tableName,
         long              recordID,
         string            oldDataJSON,
         CancellationToken cancellationToken = default
-    )
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
+    ) =>
+        scheduler.ExecuteAsync
         (
-            """
-            INSERT INTO round_changes (session_id, round_id, table_name, record_id, operation, old_data, created_at)
-            VALUES (@sessionID, @roundID, @tableName, @recordID, 'delete', @oldData, @createdAt)
-            """,
-            new
-            {
-                sessionID = RoundContext.SessionID ?? 0,
+            (connection, token) => RecordAsync
+            (
+                connection,
+                null,
+                RoundContext.SessionID ?? 0,
                 roundID,
                 tableName,
                 recordID,
-                oldData   = oldDataJSON,
-                createdAt = DateTime.UtcNow.ToString("O")
-            }
+                "delete",
+                oldDataJSON,
+                token
+            ),
+            cancellationToken: cancellationToken
         );
-    }
 
-    public async Task<IReadOnlyList<RoundChange>> GetByRoundAsync
+    public Task<IReadOnlyList<RoundChange>> GetByRoundAsync
     (
         long              sessionID,
         long              roundID,
         CancellationToken cancellationToken = default
-    )
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var rows = await connection.QueryAsync<RoundChangeRow>
-                   (
-                       "SELECT * FROM round_changes WHERE session_id = @sessionID AND round_id = @roundID ORDER BY id DESC",
-                       new { sessionID, roundID }
-                   );
-
-        return rows.Select(r => r.ToRoundChange()).ToList();
-    }
-
-    public async Task RollbackRoundAsync
-    (
-        long              sessionID,
-        long              roundID,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var changes = await GetByRoundAsync(sessionID, roundID, cancellationToken);
-
-        if (changes.Count == 0)
-            return;
-
-        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-
-        try
-        {
-            await CleanupUntrackedDependentsAsync(connection, transaction, changes);
-
-            foreach (var change in changes)
+    ) =>
+        scheduler.ExecuteAsync<IReadOnlyList<RoundChange>>
+        (
+            async (connection, token) =>
             {
-                if (!ValidTables.Contains(change.TableName))
+                var rows = await connection.QueryAsync<RoundChangeRow>
+                           (
+                               new CommandDefinition
+                               (
+                                   "SELECT * FROM round_changes WHERE session_id = @sessionID AND round_id = @roundID ORDER BY id DESC",
+                                   new { sessionID, roundID },
+                                   cancellationToken: token
+                               )
+                           );
+
+                return rows.Select(row => row.ToRoundChange()).ToList();
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task RollbackRoundAsync
+    (
+        long              sessionID,
+        long              roundID,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                var rows = await connection.QueryAsync<RoundChangeRow>
+                           (
+                               new CommandDefinition
+                               (
+                                   "SELECT * FROM round_changes WHERE session_id = @sessionID AND round_id = @roundID ORDER BY id DESC",
+                                   new { sessionID, roundID },
+                                   cancellationToken: token
+                               )
+                           );
+                var changes = rows.Select(row => row.ToRoundChange()).ToList();
+
+                if (changes.Count == 0)
+                    return;
+
+                await using var transaction = await connection.BeginTransactionAsync(token);
+
+                try
                 {
-                    Log.Warning("回滚跳过未知表: {TableName}", change.TableName);
-                    continue;
+                    await CleanupUntrackedDependentsAsync(connection, transaction, changes);
+
+                    foreach (var change in changes)
+                    {
+                        if (!ValidTables.Contains(change.TableName))
+                        {
+                            Log.Warning("回滚跳过未知表: {TableName}", change.TableName);
+                            continue;
+                        }
+
+                        if (CompositeKeys.TryGetValue(change.TableName, out var keyColumns))
+                            await ReverseCompositeKeyChangeAsync(connection, transaction, change, keyColumns, token);
+                        else
+                            await ReverseSimpleChangeAsync(connection, transaction, change, token);
+                    }
+
+                    await transaction.CommitAsync(token);
                 }
-
-                if (CompositeKeys.TryGetValue(change.TableName, out var keyColumns))
-                    await ReverseCompositeKeyChangeAsync(connection, transaction, change, keyColumns, cancellationToken);
-                else
-                    await ReverseSimpleChangeAsync(connection, transaction, change, cancellationToken);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
-    }
+                catch
+                {
+                    await transaction.RollbackAsync(token);
+                    throw;
+                }
+            },
+            cancellationToken: cancellationToken
+        );
 
     private static async Task CleanupUntrackedDependentsAsync
     (
@@ -217,21 +225,63 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         }
     }
 
-    public async Task RemoveByRoundAsync
+    public Task RemoveByRoundAsync
     (
         long              sessionID,
         long              roundID,
         CancellationToken cancellationToken = default
-    )
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+    ) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition
+                    (
+                        "DELETE FROM round_changes WHERE session_id = @sessionID AND round_id = @roundID",
+                        new { sessionID, roundID },
+                        cancellationToken: token
+                    )
+                );
+            },
+            cancellationToken: cancellationToken
+        );
 
+    internal static async Task RecordAsync
+    (
+        DbConnection      connection,
+        DbTransaction?    transaction,
+        long              sessionID,
+        long              roundID,
+        string            tableName,
+        long              recordID,
+        string            operation,
+        string?           oldDataJSON,
+        CancellationToken cancellationToken
+    ) =>
         await connection.ExecuteAsync
         (
-            "DELETE FROM round_changes WHERE session_id = @sessionID AND round_id = @roundID",
-            new { sessionID, roundID }
+            new CommandDefinition
+            (
+                """
+                INSERT INTO round_changes (session_id, round_id, table_name, record_id, operation, old_data, created_at)
+                VALUES (@sessionID, @roundID, @tableName, @recordID, @operation, @oldData, @createdAt)
+                """,
+                new
+                {
+                    sessionID,
+                    roundID,
+                    tableName,
+                    recordID,
+                    operation,
+                    oldData   = oldDataJSON,
+                    createdAt = DateTime.UtcNow.ToString("O")
+                },
+                transaction,
+                cancellationToken: cancellationToken
+            )
         );
-    }
 
     private static async Task ReverseSimpleChangeAsync
     (

@@ -75,9 +75,9 @@ public sealed class DirectiveProcessingStage
                 case DirectiveType.Tone or DirectiveType.TemporaryConstraint:
                     Log.Information
                     (
-                        "添加生效指令: 类型={Type}, 内容={Content}, TTL={TTL}",
+                        "添加生效指令: 类型={Type}, 长度={Length}, TTL={TTL}",
                         directive.Type,
-                        directive.Content,
+                        directive.Content.Length,
                         directive.TTL?.ToString() ?? "永久"
                     );
 

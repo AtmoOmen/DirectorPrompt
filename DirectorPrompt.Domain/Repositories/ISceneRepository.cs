@@ -16,6 +16,14 @@ public interface ISceneRepository
 
     Task UpdateAsync(Scene scene, CancellationToken cancellationToken = default);
 
+    Task UpdateProgressSummaryAsync
+    (
+        long              sceneID,
+        string            progressSummary,
+        long              throughRoundID,
+        CancellationToken cancellationToken = default
+    );
+
     Task CloseActiveSceneAsync(long sessionID, string? summary, CancellationToken cancellationToken = default);
 
     Task<Scene?> GetLastCompletedSceneAsync(long sessionID, long beforeSceneID, CancellationToken cancellationToken = default);

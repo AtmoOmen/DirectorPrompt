@@ -5,16 +5,17 @@ namespace DirectorPrompt.Infrastructure;
 
 public sealed class SchemaMigrator
 {
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SqliteDatabaseScheduler databaseScheduler;
     private readonly Assembly                assembly = Assembly.GetExecutingAssembly();
 
-    public SchemaMigrator(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public SchemaMigrator(SqliteDatabaseScheduler databaseScheduler) =>
+        this.databaseScheduler = databaseScheduler;
 
-    public async Task MigrateAsync(CancellationToken cancellationToken = default)
+    public Task MigrateAsync(CancellationToken cancellationToken = default) =>
+        databaseScheduler.ExecuteAsync(MigrateAsync, cancellationToken: cancellationToken);
+
+    private async Task MigrateAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
         await using (var fkCommand = connection.CreateCommand())
         {
             fkCommand.CommandText = "PRAGMA foreign_keys = OFF;";

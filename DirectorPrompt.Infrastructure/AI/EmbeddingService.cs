@@ -6,23 +6,26 @@ using OpenAI;
 
 namespace DirectorPrompt.Infrastructure.AI;
 
-public sealed class EmbeddingService
-(
-    string  provider,
-    string  endpoint,
-    string? apiKey,
-    string  modelName,
-    string? customHeaders = null
-)
-    : IEmbeddingService
+public sealed class EmbeddingService : IEmbeddingService
 {
+    private readonly IEmbeddingGenerator<string, Embedding<float>> generator;
+
+    public EmbeddingService
+    (
+        string  provider,
+        string  endpoint,
+        string? apiKey,
+        string  modelName,
+        string? customHeaders = null
+    ) =>
+        generator = CreateGenerator(provider, endpoint, apiKey, modelName, customHeaders);
+
     public EmbeddingService(ResolvedEmbeddingConfig config) : this(config.Provider, config.Endpoint, config.APIKey, config.ModelName, config.CustomHeaders)
     {
     }
 
     public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
-        var generator  = CreateGenerator();
         var embeddings = await generator.GenerateAsync([text], cancellationToken: cancellationToken);
         return embeddings[0].Vector.ToArray();
     }
@@ -36,8 +39,7 @@ public sealed class EmbeddingService
         if (texts.Count == 0)
             return [];
 
-        var generator = CreateGenerator();
-        var result    = new float[texts.Count][];
+        var result = new float[texts.Count][];
 
         const int BATCH_SIZE = 10;
 
@@ -55,7 +57,14 @@ public sealed class EmbeddingService
         return result;
     }
 
-    private IEmbeddingGenerator<string, Embedding<float>> CreateGenerator()
+    private static IEmbeddingGenerator<string, Embedding<float>> CreateGenerator
+    (
+        string  provider,
+        string  endpoint,
+        string? apiKey,
+        string  modelName,
+        string? customHeaders
+    )
     {
         var normalizedProvider = provider.ToLowerInvariant();
 
@@ -69,7 +78,7 @@ public sealed class EmbeddingService
 
         var openAIClient = normalizedProvider switch
         {
-            "openai" or "ollama" or "custom" => CreateOpenAIClient(effectiveEndpoint),
+            "openai" or "ollama" or "custom" => CreateOpenAIClient(effectiveEndpoint, apiKey, customHeaders),
             _                                => throw new ArgumentException($"不支持的 Embedding Provider: {provider}")
         };
 
@@ -78,7 +87,7 @@ public sealed class EmbeddingService
         return embeddingClient.AsIEmbeddingGenerator();
     }
 
-    private OpenAIClient CreateOpenAIClient(string endPoint)
+    private static OpenAIClient CreateOpenAIClient(string endPoint, string? apiKey, string? customHeaders)
     {
         OpenAIClientOptions options = new();
 
@@ -98,9 +107,4 @@ public sealed class EmbeddingService
 
         throw new ArgumentException("APIKey 不能为空");
     }
-}
-
-public sealed class EmbeddingServiceFactory : IEmbeddingServiceFactory
-{
-    public IEmbeddingService Create(ResolvedEmbeddingConfig config) => new EmbeddingService(config);
 }

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -8,7 +9,8 @@ namespace DirectorPrompt.Agents;
 
 public sealed class HistoryBuilder
 (
-    IEventRepository eventRepository
+    IEventRepository   eventRepository,
+    OrchestratorConfig orchestratorConfig
 )
 {
     public async Task<IReadOnlyList<ChatHistoryEntry>> BuildAsync
@@ -19,7 +21,15 @@ public sealed class HistoryBuilder
         CancellationToken cancellationToken = default
     )
     {
-        var events = await eventRepository.GetBySceneAsync(sessionID, sceneID, cancellationToken);
+        var config = orchestratorConfig.HistoryContext;
+        var events = await eventRepository.GetRecentBySceneAsync
+                     (
+                         sessionID,
+                         sceneID,
+                         currentRoundID,
+                         config.MaxRounds,
+                         cancellationToken
+                     );
 
         var directorEvents = events
                              .Where(e => e.Type == EventType.DirectorInput)
@@ -55,7 +65,23 @@ public sealed class HistoryBuilder
                 history.Add(new ChatHistoryEntry(roundID, directorInput, narrativeText));
         }
 
-        return history;
+        var selected   = new List<ChatHistoryEntry>();
+        var usedTokens = 0;
+
+        for (var index = history.Count - 1; index >= 0; index--)
+        {
+            var entry  = history[index];
+            var tokens = EstimateTokens(entry.DirectorInput) + EstimateTokens(entry.NarrativeOutput);
+
+            if (selected.Count > 0 && usedTokens + tokens > config.TokenBudget)
+                break;
+
+            selected.Add(entry);
+            usedTokens += tokens;
+        }
+
+        selected.Reverse();
+        return selected;
     }
 
     public static string BuildSceneHistoryText(IReadOnlyList<PlaythroughEvent> events)
@@ -97,4 +123,7 @@ public sealed class HistoryBuilder
             return json;
         }
     }
+
+    private static int EstimateTokens(string text) =>
+        (Encoding.UTF8.GetByteCount(text) + 3) / 4;
 }

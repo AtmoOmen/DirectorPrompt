@@ -1,21 +1,19 @@
 using System.Text;
 using DirectorPrompt.Agents.Retrieval;
-using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Domain.Services;
 using Serilog;
 
 namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class RetrievalStage
 (
-    ISceneRepository          sceneRepository,
-    IStateRepository          stateRepository,
-    ICharacterRepository      characterRepository,
-    IDirectiveRepository      directiveRepository,
-    EmbeddingIndexService     embeddingIndexService,
-    KnowledgeRetrievalService knowledgeRetrievalService,
-    MemoryRetrievalService    memoryRetrievalService
+    IRoundReadSnapshotRepository roundReadSnapshotRepository,
+    EmbeddingIndexService        embeddingIndexService,
+    KnowledgeRetrievalService    knowledgeRetrievalService,
+    MemoryRetrievalService       memoryRetrievalService,
+    IEmbeddingServiceFactory     embeddingServiceFactory
 )
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
@@ -29,20 +27,29 @@ public sealed class RetrievalStage
             toolContext.EmbeddingConfig,
             cancellationToken
         );
-        var queryTask     = BuildRetrievalQueryAsync(context, cancellationToken);
-        var injectionTask = BuildSystemInjectionAsync(toolContext, cancellationToken);
+        var snapshotTask = roundReadSnapshotRepository.GetAsync
+        (
+            toolContext.ProjectID,
+            toolContext.SessionID,
+            toolContext.SceneID,
+            cancellationToken
+        );
 
-        await Task.WhenAll(indexingTask, queryTask, injectionTask);
+        await Task.WhenAll(indexingTask, snapshotTask);
 
-        var query         = await queryTask;
-        var knowledgeTask = knowledgeRetrievalService.SearchAsync(toolContext, query, cancellationToken);
-        var memoryTask    = memoryRetrievalService.SearchAsync(toolContext, query, cancellationToken);
+        var snapshot         = await snapshotTask;
+        var query            = BuildRetrievalQuery(context, snapshot);
+        var embeddingService = embeddingServiceFactory.Create(toolContext.EmbeddingConfig);
+        var queryEmbedding   = await embeddingService.GenerateEmbeddingAsync(query, cancellationToken);
+        var queryVector      = EmbeddingConversions.FloatsToBytes(queryEmbedding);
+        var knowledgeTask    = knowledgeRetrievalService.SearchAsync(toolContext, queryVector, cancellationToken);
+        var memoryTask       = memoryRetrievalService.SearchAsync(toolContext, queryVector, cancellationToken);
 
         await Task.WhenAll(knowledgeTask, memoryTask);
 
         context.KnowledgeContext = FormatKnowledgeContext(await knowledgeTask);
         context.MemoryContext    = FormatMemoryContext(await memoryTask);
-        context.SystemInjection  = await injectionTask;
+        context.SystemInjection  = BuildSystemInjection(snapshot);
 
         Log.Information
         (
@@ -52,47 +59,27 @@ public sealed class RetrievalStage
             context.SystemInjection?.Length  ?? 0
         );
 
-        if (!string.IsNullOrWhiteSpace(context.KnowledgeContext))
-            Log.Debug("知识上下文内容:\n{Content}", context.KnowledgeContext);
-
-        if (!string.IsNullOrWhiteSpace(context.MemoryContext))
-            Log.Debug("记忆上下文内容:\n{Content}", context.MemoryContext);
-
-        if (!string.IsNullOrWhiteSpace(context.SystemInjection))
-            Log.Debug("系统注入内容:\n{Content}", context.SystemInjection);
     }
 
-    private async Task<string> BuildRetrievalQueryAsync(PipelineContext context, CancellationToken cancellationToken)
+    private static string BuildRetrievalQuery(PipelineContext context, RoundReadSnapshot snapshot)
     {
         var sb = new StringBuilder();
 
-        if (context.CurrentSceneID is not null)
+        if (snapshot.Scene is not null)
         {
-            var sceneTask      = sceneRepository.GetByIDAsync(context.CurrentSceneID.Value, cancellationToken);
-            var charactersTask = characterRepository.GetBySceneAsync(context.CurrentSceneID.Value, cancellationToken);
+            sb.AppendLine("当前场景:");
+            sb.AppendLine($"时间: {snapshot.Scene.TimeLabel}");
 
-            await Task.WhenAll(sceneTask, charactersTask);
+            if (!string.IsNullOrWhiteSpace(snapshot.Scene.ProgressSummary))
+                sb.AppendLine($"进展: {snapshot.Scene.ProgressSummary}");
+            else if (!string.IsNullOrWhiteSpace(snapshot.Scene.Summary))
+                sb.AppendLine($"摘要: {snapshot.Scene.Summary}");
 
-            var scene = await sceneTask;
-
-            if (scene is not null)
-            {
-                sb.AppendLine("当前场景:");
-                sb.AppendLine($"时间: {scene.TimeLabel}");
-
-                if (!string.IsNullOrWhiteSpace(scene.ProgressSummary))
-                    sb.AppendLine($"进展: {scene.ProgressSummary}");
-                else if (!string.IsNullOrWhiteSpace(scene.Summary))
-                    sb.AppendLine($"摘要: {scene.Summary}");
-            }
-
-            var characters = await charactersTask;
-
-            if (characters.Count > 0)
+            if (snapshot.SceneCharacters.Count > 0)
             {
                 sb.AppendLine("在场人物:");
 
-                foreach (var character in characters)
+                foreach (var character in snapshot.SceneCharacters)
                 {
                     var aliases = character.Aliases.Length > 0 ?
                                       $", 别称: {string.Join("、", character.Aliases)}" :
@@ -145,40 +132,32 @@ public sealed class RetrievalStage
         return sb.ToString().TrimEnd();
     }
 
-    private async Task<string> BuildSystemInjectionAsync(ToolExecutionContext context, CancellationToken cancellationToken)
+    private static string BuildSystemInjection(RoundReadSnapshot snapshot)
     {
         var sb = new StringBuilder();
 
-        var sceneTask = context.SceneID is not null ?
-                            sceneRepository.GetByIDAsync(context.SceneID.Value, cancellationToken) :
-                            Task.FromResult<Scene?>(null);
-
-        var stateTask      = stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Global, cancellationToken);
-        var directivesTask = directiveRepository.GetActiveAsync(context.SessionID, cancellationToken);
-
-        await Task.WhenAll(sceneTask, stateTask, directivesTask);
-
-        var scene = await sceneTask;
-
-        if (scene is not null)
+        if (snapshot.Scene is not null)
         {
             sb.AppendLine("## 场景信息");
-            sb.AppendLine($"时间标签: {scene.TimeLabel}");
-            sb.AppendLine($"状态: {scene.Status}");
+            sb.AppendLine($"时间标签: {snapshot.Scene.TimeLabel}");
+            sb.AppendLine($"状态: {snapshot.Scene.Status}");
+
+            if (!string.IsNullOrWhiteSpace(snapshot.Scene.ProgressSummary))
+            {
+                sb.AppendLine("进展摘要:");
+                sb.AppendLine(snapshot.Scene.ProgressSummary);
+            }
+
             sb.AppendLine();
         }
 
-        var attributes = await stateTask;
-
-        if (attributes.Count > 0)
+        if (snapshot.GlobalAttributes.Count > 0)
         {
-            var attrIDs     = attributes.Select(a => a.ID).ToList();
-            var stateValues = await stateRepository.GetStateValuesAsync(attrIDs, context.SessionID, cancellationToken);
-            var valueMap    = stateValues.ToDictionary(v => v.AttributeID);
+            var valueMap = snapshot.GlobalValues.ToDictionary(item => item.AttributeID);
 
             sb.AppendLine("## 全局状态");
 
-            foreach (var attr in attributes)
+            foreach (var attr in snapshot.GlobalAttributes)
             {
                 var value = valueMap.TryGetValue(attr.ID, out var sv) ?
                                 sv :
@@ -189,13 +168,11 @@ public sealed class RetrievalStage
             sb.AppendLine();
         }
 
-        var directives = await directivesTask;
-
-        if (directives.Count > 0)
+        if (snapshot.ActiveDirectives.Count > 0)
         {
             sb.AppendLine("## 生效指令");
 
-            foreach (var directive in directives)
+            foreach (var directive in snapshot.ActiveDirectives)
             {
                 var ttl = directive.TTL.HasValue ?
                               $" (剩余 {directive.TTL} 轮)" :
@@ -206,59 +183,40 @@ public sealed class RetrievalStage
             sb.AppendLine();
         }
 
-        if (context.SceneID is not null)
+        if (snapshot.SceneCharacters.Count > 0)
         {
-            var sceneCharacters = await characterRepository.GetBySceneAsync(context.SceneID.Value, cancellationToken);
+            sb.AppendLine("## 在场人物");
 
-            if (sceneCharacters.Count > 0)
-            {
-                sb.AppendLine("## 在场人物");
+            foreach (var character in snapshot.SceneCharacters)
+                sb.AppendLine($"- {character.Name}: {character.Description}");
 
-                foreach (var character in sceneCharacters)
-                    sb.AppendLine($"- {character.Name}: {character.Description}");
+            sb.AppendLine();
 
-                sb.AppendLine();
-
-                await InjectCharacterStateAsync(sb, context, sceneCharacters, cancellationToken);
-                await InjectCharacterRelationsAsync(sb, context, sceneCharacters, cancellationToken);
-            }
+            InjectCharacterState(sb, snapshot);
+            InjectCharacterRelations(sb, snapshot);
         }
 
         return sb.ToString();
     }
 
-    private async Task InjectCharacterStateAsync
-    (
-        StringBuilder            sb,
-        ToolExecutionContext     context,
-        IReadOnlyList<Character> characters,
-        CancellationToken        cancellationToken
-    )
+    private static void InjectCharacterState(StringBuilder sb, RoundReadSnapshot snapshot)
     {
-        var attributes = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category, cancellationToken);
-
-        if (attributes.Count == 0)
+        if (snapshot.CharacterAttributes.Count == 0)
             return;
 
-        var attrLookup     = attributes.ToDictionary(a => a.ID);
-        var characterIDs   = characters.Select(c => c.ID).ToList();
-        var allStateValues = await characterRepository.GetCharacterStateValuesBatchAsync(characterIDs, cancellationToken);
-        var valuesByChar = allStateValues
-                           .Where(v => attrLookup.ContainsKey(v.AttributeID))
-                           .GroupBy(v => v.CharacterID)
-                           .ToDictionary(g => g.Key);
+        var values = snapshot.CharacterValues.ToDictionary
+        (item => (item.CharacterID, item.AttributeID)
+        );
 
         sb.AppendLine("## 在场人物状态");
 
-        foreach (var character in characters)
+        foreach (var character in snapshot.SceneCharacters)
         {
             sb.AppendLine($"{character.Name}:");
 
-            foreach (var attr in attributes)
+            foreach (var attr in snapshot.CharacterAttributes)
             {
-                var value = valuesByChar.TryGetValue(character.ID, out var charValues) ?
-                                charValues.FirstOrDefault(v => v.AttributeID == attr.ID) :
-                                null;
+                values.TryGetValue((character.ID, attr.ID), out var value);
                 sb.AppendLine($"- {attr.DisplayName} ({attr.Name}): {value?.Value ?? "未设置"}");
             }
         }
@@ -266,21 +224,14 @@ public sealed class RetrievalStage
         sb.AppendLine();
     }
 
-    private async Task InjectCharacterRelationsAsync
-    (
-        StringBuilder            sb,
-        ToolExecutionContext     context,
-        IReadOnlyList<Character> characters,
-        CancellationToken        cancellationToken
-    )
+    private static void InjectCharacterRelations(StringBuilder sb, RoundReadSnapshot snapshot)
     {
-        var characterIDs = characters.Select(c => c.ID).ToList();
+        var characterIDs = snapshot.SceneCharacters.Select(item => item.ID).ToList();
         var idSet        = characterIDs.ToHashSet();
-        var allRelations = await characterRepository.GetRelationsByCharactersAsync(characterIDs, cancellationToken);
 
         var merged = new Dictionary<(long Source, long Target), CharacterRelation>();
 
-        foreach (var r in allRelations)
+        foreach (var r in snapshot.CharacterRelations)
         {
             if (idSet.Contains(r.SourceCharacterID) && idSet.Contains(r.TargetCharacterID))
                 merged[(r.SourceCharacterID, r.TargetCharacterID)] = r;
@@ -291,7 +242,7 @@ public sealed class RetrievalStage
 
         sb.AppendLine("## 人物关系");
 
-        var idToName = characters.ToDictionary(c => c.ID);
+        var idToName = snapshot.SceneCharacters.ToDictionary(c => c.ID);
 
         foreach (var r in merged.Values)
         {

@@ -6,13 +6,30 @@ public interface IMemoryRepository
 {
     Task<MemoryEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<MemoryEntry>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MemoryEntry>> GetPendingIndexEntriesAsync
+    (
+        long              projectID,
+        string            embeddingFingerprint,
+        int               limit,
+        CancellationToken cancellationToken = default
+    );
 
-    Task<IReadOnlyList<MemoryEntry>> GetBySessionAsync(long sessionID, long maxTimelinePos, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MemoryEntry>> GetByIdsAsync
+    (
+        long                sessionID,
+        IReadOnlyList<long> memoryIDs,
+        CancellationToken   cancellationToken = default
+    );
 
-    Task<IReadOnlyList<MemoryEntry>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MemoryEntry>> GetRecentByCharacterAsync
+    (
+        long              characterID,
+        long              maxTimelinePos,
+        int               limit,
+        CancellationToken cancellationToken = default
+    );
 
-    Task<IReadOnlyList<MemoryEntry>> GetByCharacterAsync(long characterID, long maxTimelinePos, CancellationToken cancellationToken = default);
+    Task<MemoryPage> GetPageAsync(MemoryPageQuery query, CancellationToken cancellationToken = default);
 
     Task<MemoryEntry> CreateAsync(MemoryEntry entry, CancellationToken cancellationToken = default);
 
@@ -26,8 +43,11 @@ public interface IMemoryRepository
     (
         long                                             projectID,
         long                                             entryID,
+        long                                             sessionID,
+        long                                             timelinePosition,
         IReadOnlyList<(string source, byte[] embedding)> vectors,
         string                                           contentHash,
+        string                                           embeddingFingerprint,
         CancellationToken                                cancellationToken = default
     );
 
@@ -35,10 +55,11 @@ public interface IMemoryRepository
 
     Task<IReadOnlyList<VectorSearchResult>> SearchByVectorAsync
     (
-        long                 projectID,
-        byte[]               queryVector,
-        int                  topK,
-        IReadOnlyList<long>? candidateIDs      = null,
-        CancellationToken    cancellationToken = default
+        long              projectID,
+        long              sessionID,
+        long              maxTimelinePosition,
+        byte[]            queryVector,
+        int               topK,
+        CancellationToken cancellationToken = default
     );
 }

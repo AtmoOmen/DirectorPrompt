@@ -8,10 +8,3 @@ public enum PipelineStageKind
     PostProcessing,
     SystemState
 }
-
-public enum PipelineStageStatus
-{
-    Running,
-    Complete,
-    Failed
-}

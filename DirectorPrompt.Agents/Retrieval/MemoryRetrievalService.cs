@@ -21,29 +21,45 @@ public sealed class MemoryRetrievalService
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("检索内容不能为空", nameof(query));
 
-        var memories = await memoryRepository.GetBySessionAsync
-                       (
-                           context.SessionID,
-                           context.TimelinePosition,
-                           cancellationToken
-                       );
         var config = context.MemoryConfig;
 
-        if (memories.Count == 0 || config.RecallTopK <= 0 || config.TokenBudget <= 0)
+        if (config.RecallTopK <= 0 || config.TokenBudget <= 0)
             return [];
 
         var embeddingService = embeddingServiceFactory.Create(context.EmbeddingConfig);
         var queryEmbedding   = await embeddingService.GenerateEmbeddingAsync(query, cancellationToken);
         var queryBytes       = EmbeddingConversions.FloatsToBytes(queryEmbedding);
-        var candidateIDs     = memories.Select(m => m.ID).ToList();
+        return await SearchAsync(context, queryBytes, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<MemoryRetrievalResult>> SearchAsync
+    (
+        ToolExecutionContext context,
+        byte[]               queryVector,
+        CancellationToken    cancellationToken = default
+    )
+    {
+        var config = context.MemoryConfig;
+
+        if (config.RecallTopK <= 0 || config.TokenBudget <= 0)
+            return [];
+
+        var candidateLimit = Math.Max(128, config.RecallTopK * 16);
         var searchResults = await memoryRepository.SearchByVectorAsync
                             (
                                 context.ProjectID,
-                                queryBytes,
-                                memories.Count,
-                                candidateIDs,
+                                context.SessionID,
+                                context.TimelinePosition,
+                                queryVector,
+                                candidateLimit,
                                 cancellationToken
                             );
+        var memories = await memoryRepository.GetByIdsAsync
+                       (
+                           context.SessionID,
+                           searchResults.Select(result => result.EntryID).Distinct().ToList(),
+                           cancellationToken
+                       );
         var memoryMap = memories.ToDictionary(m => m.ID);
         var lambda    = config.TimeDecayLambda;
         var ranked = searchResults

@@ -4,15 +4,6 @@ using DirectorPrompt.Domain.Enums;
 
 namespace DirectorPrompt.Agents;
 
-public sealed record ResolvedAgentTask
-(
-    AgentTaskType  TaskType,
-    ModelConfig    ModelConfig,
-    ProviderConfig ProviderConfig,
-    string         SystemPrompt,
-    string?        ModelPrompt
-);
-
 public sealed class AgentConfigResolver
 (
     OrchestratorConfig config

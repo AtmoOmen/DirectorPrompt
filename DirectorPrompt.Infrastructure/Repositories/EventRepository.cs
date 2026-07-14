@@ -8,156 +8,442 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class EventRepository : IEventRepository
 {
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SqliteDatabaseScheduler scheduler;
 
-    public EventRepository(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public EventRepository(SqliteDatabaseScheduler scheduler) =>
+        this.scheduler = scheduler;
 
-    public async Task<PlaythroughEvent> AppendAsync(PlaythroughEvent eventItem, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+    public Task<PlaythroughEvent> AppendAsync
+    (
+        PlaythroughEvent  eventItem,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                var id = await connection.ExecuteScalarAsync<long>
+                         (
+                             new CommandDefinition
+                             (
+                                 """
+                                 INSERT INTO playthrough_events (project_id, session_id, round_id, scene_id, type, data, created_at)
+                                 VALUES (@projectID, @sessionID, @roundID, @sceneID, @type, @data, @createdAt);
+                                 SELECT last_insert_rowid();
+                                 """,
+                                 CreateParameters(eventItem),
+                                 cancellationToken: token
+                             )
+                         );
 
-        var id = await connection.ExecuteScalarAsync<long>
-                 (
-                     """
-                     INSERT INTO playthrough_events (project_id, session_id, round_id, scene_id, type, data, created_at)
-                     VALUES (@projectID, @sessionID, @roundID, @sceneID, @type, @data, @createdAt);
-                     SELECT last_insert_rowid();
-                     """,
-                     new
-                     {
-                         projectID = eventItem.ProjectID,
-                         sessionID = eventItem.SessionID,
-                         roundID   = eventItem.RoundID,
-                         sceneID   = eventItem.SceneID,
-                         type      = JsonNamingPolicy.SnakeCaseLower.ConvertName(eventItem.Type.ToString()),
-                         data      = eventItem.Data,
-                         createdAt = eventItem.CreatedAt.ToString("O")
-                     }
-                 );
+                return eventItem with { ID = id };
+            },
+            cancellationToken: cancellationToken
+        );
 
-        return eventItem with { ID = id };
-    }
-
-    public async Task AppendBatchAsync
+    public Task AppendBatchAsync
     (
         IReadOnlyList<PlaythroughEvent> events,
         CancellationToken               cancellationToken = default
     )
     {
         if (events.Count == 0)
-            return;
+            return Task.CompletedTask;
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        return scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await using var transaction = await connection.BeginTransactionAsync(token);
 
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+                foreach (var eventItem in events)
+                {
+                    await connection.ExecuteAsync
+                    (
+                        new CommandDefinition
+                        (
+                            """
+                            INSERT INTO playthrough_events (project_id, session_id, round_id, scene_id, type, data, created_at)
+                            VALUES (@projectID, @sessionID, @roundID, @sceneID, @type, @data, @createdAt)
+                            """,
+                            CreateParameters(eventItem),
+                            transaction,
+                            cancellationToken: token
+                        )
+                    );
+                }
 
-        try
-        {
-            foreach (var eventItem in events)
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
+        );
+    }
+
+    public Task<IReadOnlyList<PlaythroughEvent>> GetByRoundAsync
+    (
+        long              sessionID,
+        long              roundID,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync<IReadOnlyList<PlaythroughEvent>>
+        (
+            async (connection, token) =>
+            {
+                var rows = await connection.QueryAsync<EventRow>
+                           (
+                               new CommandDefinition
+                               (
+                                   "SELECT * FROM playthrough_events WHERE session_id = @sessionID AND round_id = @roundID ORDER BY id",
+                                   new { sessionID, roundID },
+                                   cancellationToken: token
+                               )
+                           );
+
+                return rows.Select(row => row.ToEvent()).ToList();
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task<DialogPage> GetDialogPageAsync
+    (
+        DialogPageQuery   query,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                var pageSize = Math.Clamp(query.PageSize, 1, 100);
+                var rows = await connection.QueryAsync<EventRow>
+                           (
+                               new CommandDefinition
+                               (
+                                   """
+                                   WITH selected_rounds AS
+                                   (
+                                       SELECT DISTINCT round_id
+                                       FROM playthrough_events
+                                       WHERE session_id = @sessionID
+                                         AND round_id > 0
+                                         AND (@beforeRoundID IS NULL OR round_id < @beforeRoundID)
+                                         AND type IN ('director_input', 'narrative_output')
+                                       ORDER BY round_id DESC
+                                       LIMIT @pageSize
+                                   ),
+                                   ranked_events AS
+                                   (
+                                       SELECT pe.*,
+                                              ROW_NUMBER() OVER
+                                              (
+                                                  PARTITION BY pe.round_id, pe.type
+                                                  ORDER BY pe.id DESC
+                                              ) AS row_number
+                                       FROM playthrough_events pe
+                                       JOIN selected_rounds sr ON sr.round_id = pe.round_id
+                                       WHERE pe.session_id = @sessionID
+                                         AND pe.type IN ('director_input', 'narrative_output')
+                                   )
+                                   SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
+                                   FROM ranked_events
+                                   WHERE row_number = 1
+                                   ORDER BY round_id, id
+                                   """,
+                                   new
+                                   {
+                                       sessionID     = query.SessionID,
+                                       beforeRoundID = query.BeforeRoundID,
+                                       pageSize
+                                   },
+                                   cancellationToken: token
+                               )
+                           );
+
+                var events = rows.Select(row => row.ToEvent()).ToList();
+                long? oldestRoundID = events.Count == 0 ?
+                                          null :
+                                          events.Min(item => item.RoundID);
+                var hasPrevious = oldestRoundID is not null &&
+                                  await connection.ExecuteScalarAsync<long>
+                                  (
+                                      new CommandDefinition
+                                      (
+                                          """
+                                          SELECT EXISTS
+                                          (
+                                              SELECT 1
+                                              FROM playthrough_events
+                                              WHERE session_id = @sessionID
+                                                AND round_id > 0
+                                                AND round_id < @oldestRoundID
+                                                AND type IN ('director_input', 'narrative_output')
+                                          )
+                                          """,
+                                          new { sessionID = query.SessionID, oldestRoundID },
+                                          cancellationToken: token
+                                      )
+                                  ) !=
+                                  0;
+
+                return new DialogPage
+                (
+                    events,
+                    hasPrevious ?
+                        oldestRoundID :
+                        null
+                );
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task<IReadOnlyList<PlaythroughEvent>> GetRecentBySceneAsync
+    (
+        long              sessionID,
+        long              sceneID,
+        long              beforeRoundID,
+        int               maxRounds,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync<IReadOnlyList<PlaythroughEvent>>
+        (
+            async (connection, token) =>
+            {
+                var roundLimit = Math.Clamp(maxRounds, 1, 200);
+                var rows = await connection.QueryAsync<EventRow>
+                           (
+                               new CommandDefinition
+                               (
+                                   """
+                                   WITH selected_rounds AS
+                                   (
+                                       SELECT DISTINCT round_id
+                                       FROM playthrough_events
+                                       WHERE session_id = @sessionID
+                                         AND scene_id = @sceneID
+                                         AND round_id < @beforeRoundID
+                                         AND type IN ('director_input', 'narrative_output')
+                                       ORDER BY round_id DESC
+                                       LIMIT @roundLimit
+                                   ),
+                                   ranked_events AS
+                                   (
+                                       SELECT pe.*,
+                                              ROW_NUMBER() OVER
+                                              (
+                                                  PARTITION BY pe.round_id, pe.type
+                                                  ORDER BY pe.id DESC
+                                              ) AS row_number
+                                       FROM playthrough_events pe
+                                       JOIN selected_rounds sr ON sr.round_id = pe.round_id
+                                       WHERE pe.session_id = @sessionID
+                                         AND pe.scene_id = @sceneID
+                                         AND pe.type IN ('director_input', 'narrative_output')
+                                   )
+                                   SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
+                                   FROM ranked_events
+                                   WHERE row_number = 1
+                                   ORDER BY round_id, id
+                                   """,
+                                   new { sessionID, sceneID, beforeRoundID, roundLimit },
+                                   cancellationToken: token
+                               )
+                           );
+
+                return rows.Select(row => row.ToEvent()).ToList();
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task<PlaythroughEvent?> GetLatestByTypeBeforeRoundAsync
+    (
+        long              sessionID,
+        EventType         type,
+        long              beforeRoundID,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                var row = await connection.QueryFirstOrDefaultAsync<EventRow>
+                          (
+                              new CommandDefinition
+                              (
+                                  """
+                                  SELECT *
+                                  FROM playthrough_events
+                                  WHERE session_id = @sessionID
+                                    AND type = @type
+                                    AND round_id < @beforeRoundID
+                                  ORDER BY round_id DESC, id DESC
+                                  LIMIT 1
+                                  """,
+                                  new { sessionID, type = JsonNamingPolicy.SnakeCaseLower.ConvertName(type.ToString()), beforeRoundID },
+                                  cancellationToken: token
+                              )
+                          );
+
+                return row?.ToEvent();
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task<IReadOnlyList<PlaythroughEvent>> GetSceneSummaryChunkAsync
+    (
+        long              sessionID,
+        long              sceneID,
+        long              afterRoundID,
+        long              beforeRoundID,
+        int               retainedRecentRounds,
+        int               chunkSize,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync<IReadOnlyList<PlaythroughEvent>>
+        (
+            async (connection, token) =>
+            {
+                var rows = await connection.QueryAsync<EventRow>
+                           (
+                               new CommandDefinition
+                               (
+                                   """
+                                   WITH uncovered_rounds AS
+                                   (
+                                       SELECT DISTINCT round_id
+                                       FROM playthrough_events
+                                       WHERE session_id = @sessionID
+                                         AND scene_id = @sceneID
+                                         AND round_id > @afterRoundID
+                                         AND round_id < @beforeRoundID
+                                         AND type IN ('director_input', 'narrative_output')
+                                   ),
+                                   summarizable_rounds AS
+                                   (
+                                       SELECT round_id
+                                       FROM uncovered_rounds
+                                       ORDER BY round_id DESC
+                                       LIMIT -1 OFFSET @retainedRecentRounds
+                                   ),
+                                   selected_rounds AS
+                                   (
+                                       SELECT round_id
+                                       FROM summarizable_rounds
+                                       ORDER BY round_id
+                                       LIMIT @chunkSize
+                                   ),
+                                   ranked_events AS
+                                   (
+                                       SELECT pe.*,
+                                              ROW_NUMBER() OVER
+                                              (
+                                                  PARTITION BY pe.round_id, pe.type
+                                                  ORDER BY pe.id DESC
+                                              ) AS row_number
+                                       FROM playthrough_events pe
+                                       JOIN selected_rounds sr ON sr.round_id = pe.round_id
+                                       WHERE pe.session_id = @sessionID
+                                         AND pe.scene_id = @sceneID
+                                         AND pe.type IN ('director_input', 'narrative_output')
+                                   )
+                                   SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
+                                   FROM ranked_events
+                                   WHERE row_number = 1
+                                   ORDER BY round_id, id
+                                   """,
+                                   new
+                                   {
+                                       sessionID,
+                                       sceneID,
+                                       afterRoundID,
+                                       beforeRoundID,
+                                       retainedRecentRounds = Math.Clamp(retainedRecentRounds, 1, 200),
+                                       chunkSize            = Math.Clamp(chunkSize,            1, 100)
+                                   },
+                                   cancellationToken: token
+                               )
+                           );
+
+                return rows.Select(row => row.ToEvent()).ToList();
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task RemoveByRoundAsync
+    (
+        long              sessionID,
+        long              roundID,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
             {
                 await connection.ExecuteAsync
                 (
-                    """
-                    INSERT INTO playthrough_events (project_id, session_id, round_id, scene_id, type, data, created_at)
-                    VALUES (@projectID, @sessionID, @roundID, @sceneID, @type, @data, @createdAt)
-                    """,
-                    new
-                    {
-                        projectID = eventItem.ProjectID,
-                        sessionID = eventItem.SessionID,
-                        roundID   = eventItem.RoundID,
-                        sceneID   = eventItem.SceneID,
-                        type      = JsonNamingPolicy.SnakeCaseLower.ConvertName(eventItem.Type.ToString()),
-                        data      = eventItem.Data,
-                        createdAt = eventItem.CreatedAt.ToString("O")
-                    },
-                    transaction
+                    new CommandDefinition
+                    (
+                        "DELETE FROM playthrough_events WHERE session_id = @sessionID AND round_id = @roundID",
+                        new { sessionID, roundID },
+                        cancellationToken: token
+                    )
                 );
-            }
+            },
+            cancellationToken: cancellationToken
+        );
 
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch
+    public Task<long> GetLatestRoundIDAsync(long sessionID, CancellationToken cancellationToken = default) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                var result = await connection.QueryFirstOrDefaultAsync<long?>
+                             (
+                                 new CommandDefinition
+                                 (
+                                     "SELECT MAX(round_id) FROM playthrough_events WHERE session_id = @sessionID",
+                                     new { sessionID },
+                                     cancellationToken: token
+                                 )
+                             );
+
+                return result ?? 0;
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task UpdateEventDataAsync
+    (
+        long              eventID,
+        string            data,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition
+                    (
+                        "UPDATE playthrough_events SET data = @data WHERE id = @eventID",
+                        new { eventID, data },
+                        cancellationToken: token
+                    )
+                );
+            },
+            cancellationToken: cancellationToken
+        );
+
+    private static object CreateParameters(PlaythroughEvent eventItem) =>
+        new
         {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
-    }
-
-    public async Task<IReadOnlyList<PlaythroughEvent>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var rows = await connection.QueryAsync<EventRow>
-                   (
-                       "SELECT * FROM playthrough_events WHERE session_id = @sessionID ORDER BY id",
-                       new { sessionID }
-                   );
-
-        return rows.Select(r => r.ToEvent()).ToList();
-    }
-
-    public async Task<IReadOnlyList<PlaythroughEvent>> GetBySceneAsync(long sessionID, long sceneID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var rows = await connection.QueryAsync<EventRow>
-                   (
-                       "SELECT * FROM playthrough_events WHERE session_id = @sessionID AND scene_id = @sceneID ORDER BY id",
-                       new { sessionID, sceneID }
-                   );
-
-        return rows.Select(r => r.ToEvent()).ToList();
-    }
-
-    public async Task<IReadOnlyList<PlaythroughEvent>> GetByRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var rows = await connection.QueryAsync<EventRow>
-                   (
-                       "SELECT * FROM playthrough_events WHERE session_id = @sessionID AND round_id = @roundID ORDER BY id",
-                       new { sessionID, roundID }
-                   );
-
-        return rows.Select(r => r.ToEvent()).ToList();
-    }
-
-    public async Task RemoveByRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
-        (
-            "DELETE FROM playthrough_events WHERE session_id = @sessionID AND round_id = @roundID",
-            new { sessionID, roundID }
-        );
-    }
-
-    public async Task<long> GetLatestRoundIDAsync(long sessionID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var result = await connection.QueryFirstOrDefaultAsync<long?>
-                     (
-                         "SELECT MAX(round_id) FROM playthrough_events WHERE session_id = @sessionID",
-                         new { sessionID }
-                     );
-
-        return result ?? 0;
-    }
-
-    public async Task UpdateEventDataAsync(long eventID, string data, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        await connection.ExecuteAsync
-        (
-            "UPDATE playthrough_events SET data = @data WHERE id = @eventID",
-            new { eventID, data }
-        );
-    }
+            projectID = eventItem.ProjectID,
+            sessionID = eventItem.SessionID,
+            roundID   = eventItem.RoundID,
+            sceneID   = eventItem.SceneID,
+            type      = JsonNamingPolicy.SnakeCaseLower.ConvertName(eventItem.Type.ToString()),
+            data      = eventItem.Data,
+            createdAt = eventItem.CreatedAt.ToString("O")
+        };
 
     private sealed class EventRow
     {
