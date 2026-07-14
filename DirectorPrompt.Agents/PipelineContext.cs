@@ -32,7 +32,7 @@ public sealed class PipelineContext
 
     public string? PreviousSceneSummary { get; set; }
 
-    public Action<string, string>? OnStreamingUpdate { get; set; }
+    public Action<string, string, bool>? OnStreamingUpdate { get; set; }
 
     public Action<PipelineStageUpdate>? OnStageUpdate { get; set; }
 

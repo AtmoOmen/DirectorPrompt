@@ -458,14 +458,10 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
 
-                                            <!-- 叙事输出: 渲染后的 Markdown (含流式) -->
-                                            <FlowDocumentScrollViewer Document="{Binding Document}"
-                                                                      Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                                                      IsSelectionEnabled="True"
-                                                                      VerticalScrollBarVisibility="Disabled"
-                                                                      PreviewMouseWheel="OnFlowDocumentPreviewMouseWheel">
-                                                <FlowDocumentScrollViewer.Style>
-                                                    <Style TargetType="FlowDocumentScrollViewer">
+                                            <!-- 叙事输出: 已渲染 Markdown 与尚未渲染的流式文本尾部同时显示 -->
+                                            <StackPanel>
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
                                                         <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding HasDirectorBlocks}"
@@ -480,8 +476,20 @@
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </FlowDocumentScrollViewer.Style>
-                                            </FlowDocumentScrollViewer>
+                                                </StackPanel.Style>
+                                                <FlowDocumentScrollViewer Document="{Binding Document}"
+                                                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                                           IsSelectionEnabled="True"
+                                                                           VerticalScrollBarVisibility="Disabled"
+                                                                           PreviewMouseWheel="OnFlowDocumentPreviewMouseWheel" />
+                                                <TextBlock Text="{Binding StreamingText}"
+                                                           Visibility="{Binding HasStreamingText, Converter={StaticResource BoolToVisibility}}"
+                                                           TextWrapping="Wrap"
+                                                           FontSize="14"
+                                                           LineHeight="22"
+                                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                           Margin="0,4,0,4" />
+                                            </StackPanel>
 
                                             <!-- 编辑模式: TextBox 替换正文 -->
                                             <StackPanel

@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents;
@@ -504,6 +506,10 @@ public sealed partial class MainViewModel
         long                  expectedRoundID = 0;
         List<DirectiveItem>?  items           = null;
 
+        var streamingBuffer = new StreamingBuffer();
+        DispatcherTimer? streamingTimer = null;
+        EventHandler? streamingTimerTick = null;
+
         try
         {
             items = DirectiveInput.Directives
@@ -528,10 +534,20 @@ public sealed partial class MainViewModel
             streamingEntry = Dialog.BeginStreamingNarrative(0);
 
             var dispatcher = Application.Current.Dispatcher;
+            streamingTimer = new DispatcherTimer(DispatcherPriority.Background, dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(50)
+            };
+            streamingTimerTick = (_, _) => FlushStreamingUpdate();
+            streamingTimer.Tick += streamingTimerTick;
+            streamingTimer.Start();
 
             expectedRoundID = await eventRepository.GetLatestRoundIDAsync(sessionID, token) + 1;
 
             var result = await orchestrator.ProcessBatchAsync(batch, sessionID, StreamingUpdate, StageUpdate, token);
+
+            StopStreamingTimer();
+            FlushStreamingUpdate();
 
             if (CurrentSession?.ID != sessionID)
             {
@@ -561,14 +577,29 @@ public sealed partial class MainViewModel
                 Loc.Get("Notification.TaskComplete.Message")
             );
 
-            void StreamingUpdate(string narrative, string thinking) =>
-                dispatcher.BeginInvoke
-                (() =>
-                    {
-                        if (CurrentSession?.ID == sessionID)
-                            streamingEntry.UpdateStreamingContent(narrative, thinking);
-                    }
-                );
+            void StreamingUpdate(string narrativeDelta, string thinkingDelta, bool isFullSnapshot) =>
+                streamingBuffer.Append(narrativeDelta, thinkingDelta, isFullSnapshot);
+
+            void FlushStreamingUpdate()
+            {
+                if (!streamingBuffer.TryGetSnapshot(out var narrative, out var thinking, out var isFullSnapshot))
+                    return;
+
+                if (CurrentSession?.ID == sessionID && streamingEntry is not null)
+                    streamingEntry.UpdateStreamingContent(narrative, thinking, isFullSnapshot);
+            }
+
+            void StopStreamingTimer()
+            {
+                if (streamingTimer is null)
+                    return;
+
+                if (streamingTimerTick is not null)
+                    streamingTimer.Tick -= streamingTimerTick;
+
+                streamingTimer.Stop();
+                streamingTimer = null;
+            }
 
             void StageUpdate(PipelineStageUpdate update) =>
                 dispatcher.BeginInvoke
@@ -627,6 +658,14 @@ public sealed partial class MainViewModel
         }
         finally
         {
+            if (streamingTimer is not null)
+            {
+                if (streamingTimerTick is not null)
+                    streamingTimer.Tick -= streamingTimerTick;
+
+                streamingTimer.Stop();
+            }
+
             if (CurrentSession?.ID == sessionID)
                 IsProcessing = false;
         }
@@ -1284,6 +1323,58 @@ public sealed partial class MainViewModel
         {
             Log.Error(ex, "删除记忆失败: ID={MemoryID}", item.ID);
             StatusMessage = Loc.Get("Status.DeleteMemoryFailed", ex.Message);
+        }
+    }
+
+    private sealed class StreamingBuffer
+    {
+        private readonly Lock streamingLock = new();
+        private readonly StringBuilder narrative = new();
+        private readonly StringBuilder thinking = new();
+
+        private bool hasUpdate;
+        private bool hasFullSnapshot;
+
+        public void Append(string narrativeDelta, string thinkingDelta, bool isFullSnapshot)
+        {
+            lock (streamingLock)
+            {
+                if (isFullSnapshot)
+                {
+                    narrative.Clear();
+                    thinking.Clear();
+                    hasFullSnapshot = true;
+                }
+
+                if (!string.IsNullOrEmpty(narrativeDelta))
+                    narrative.Append(narrativeDelta);
+
+                if (!string.IsNullOrEmpty(thinkingDelta))
+                    thinking.Append(thinkingDelta);
+
+                hasUpdate = true;
+            }
+        }
+
+        public bool TryGetSnapshot(out string narrativeText, out string thinkingText, out bool isFullSnapshot)
+        {
+            lock (streamingLock)
+            {
+                if (!hasUpdate)
+                {
+                    narrativeText = string.Empty;
+                    thinkingText = string.Empty;
+                    isFullSnapshot = false;
+                    return false;
+                }
+
+                narrativeText     = narrative.ToString();
+                thinkingText      = thinking.ToString();
+                isFullSnapshot    = hasFullSnapshot;
+                hasUpdate         = false;
+                hasFullSnapshot   = false;
+                return true;
+            }
         }
     }
 }

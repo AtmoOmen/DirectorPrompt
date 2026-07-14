@@ -35,7 +35,7 @@ public sealed class Orchestrator
     (
         DirectiveBatch               batch,
         long                         sessionID,
-        Action<string, string>?      onStreamingUpdate = null,
+        Action<string, string, bool>? onStreamingUpdate = null,
         Action<PipelineStageUpdate>? onStageUpdate     = null,
         CancellationToken            cancellationToken = default
     )
