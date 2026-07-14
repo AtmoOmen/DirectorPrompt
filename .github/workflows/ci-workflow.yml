@@ -45,7 +45,7 @@ jobs:
         run: dotnet build DirectorPrompt.slnx -c Release
 
       - name: Generate Hashes File
-        run: .\scripts\CreateHashList.ps1 .\bin\Release\net10.0-windows
+        run: .\scripts\CreateHashList.ps1 .\bin\Release
 
       - name: Velopack Build and Upload
         id: build-velopack
@@ -114,10 +114,10 @@ jobs:
         run: dotnet build DirectorPrompt.slnx -c Release
 
       - name: Generate Hashes File
-        run: .\scripts\CreateHashList.ps1 .\bin\Release\net10.0-windows
+        run: .\scripts\CreateHashList.ps1 .\bin\Release
 
       - name: Upload artifact
         uses: actions/upload-artifact@master
         with:
           name: directorprompt-artifact
-          path: bin\Release\net10.0-windows\
+          path: bin\Release\

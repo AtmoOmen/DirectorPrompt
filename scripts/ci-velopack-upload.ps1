@@ -21,7 +21,7 @@ param(
     [string]$WorkerUrl  = 'https://dp-distribute.atmoomen.top',
     [string]$BucketName = 'directorprompt-distribute',
     [string]$PackId     = 'DirectorPrompt',
-    [string]$PackDir    = '.\bin\Release\net10.0-windows',
+    [string]$PackDir    = '.\bin\Release',
     [string]$OutputDir  = '.\Releases',
     [string]$MainExe    = 'DirectorPrompt.exe',
     [string]$PackAuthors     = 'OmenCorp',
