@@ -24,6 +24,7 @@ public sealed class DirectiveProcessingStage
     (
         DirectiveBatch          batch,
         long                    sessionID,
+        long                    roundID,
         Scene?                  activeScene,
         ResolvedEmbeddingConfig embeddingConfig,
         CancellationToken       cancellationToken
@@ -40,6 +41,7 @@ public sealed class DirectiveProcessingStage
                 (
                     batch.ProjectID,
                     sessionID,
+                    roundID,
                     sceneChangeDirective.Content,
                     activeScene,
                     embeddingConfig,
@@ -63,6 +65,8 @@ public sealed class DirectiveProcessingStage
                         TimeLabel        = "初始场景",
                         Status           = SceneStatus.Active
                     },
+                    sessionID,
+                    roundID,
                     cancellationToken
                 );
             }
@@ -92,6 +96,8 @@ public sealed class DirectiveProcessingStage
                             TTL       = directive.TTL,
                             CreatedAt = DateTime.UtcNow
                         },
+                        sessionID,
+                        roundID,
                         cancellationToken
                     );
                     break;
@@ -101,6 +107,7 @@ public sealed class DirectiveProcessingStage
                     (
                         batch.ProjectID,
                         sessionID,
+                        roundID,
                         directive.Content,
                         activeScene,
                         embeddingConfig,
@@ -115,6 +122,7 @@ public sealed class DirectiveProcessingStage
     (
         long                    projectID,
         long                    sessionID,
+        long                    roundID,
         string                  description,
         Scene?                  currentScene,
         ResolvedEmbeddingConfig embeddingConfig,
@@ -142,7 +150,7 @@ public sealed class DirectiveProcessingStage
             sessionID,
             currentScene?.ID,
             currentScene?.TimelinePosition ?? 0,
-            0,
+            roundID,
             embeddingConfig,
             orchestratorConfig.KnowledgeConfig,
             orchestratorConfig.MemoryConfig

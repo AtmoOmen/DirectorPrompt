@@ -4,7 +4,6 @@ using Dapper;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using DirectorPrompt.Domain.Services;
 using Microsoft.Data.Sqlite;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
@@ -186,7 +185,7 @@ public sealed class CharacterRepository : ICharacterRepository
         );
     }
 
-    public Task<Character> CreateAsync(Character character, CancellationToken cancellationToken = default) =>
+    public Task<Character> CreateAsync(Character character, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -224,8 +223,8 @@ public sealed class CharacterRepository : ICharacterRepository
                 (
                     connection,
                     transaction,
-                    RoundContext.SessionID ?? character.SessionID,
-                    RoundContext.Current   ?? 0,
+                    sessionID,
+                    roundID,
                     "characters",
                     id,
                     "create",
@@ -239,7 +238,7 @@ public sealed class CharacterRepository : ICharacterRepository
             cancellationToken: cancellationToken
         );
 
-    public Task UpdateAsync(Character character, CancellationToken cancellationToken = default) =>
+    public Task UpdateAsync(Character character, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -288,8 +287,8 @@ public sealed class CharacterRepository : ICharacterRepository
                     (
                         connection,
                         transaction,
-                        RoundContext.SessionID ?? character.SessionID,
-                        RoundContext.Current   ?? 0,
+                        sessionID,
+                        roundID,
                         "characters",
                         character.ID,
                         "update",
@@ -303,7 +302,7 @@ public sealed class CharacterRepository : ICharacterRepository
             cancellationToken: cancellationToken
         );
 
-    public Task TouchAsync(long characterID, long roundID, CancellationToken cancellationToken = default) =>
+    public Task TouchAsync(long characterID, long roundID, long sessionID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -341,7 +340,7 @@ public sealed class CharacterRepository : ICharacterRepository
                     (
                         connection,
                         transaction,
-                        RoundContext.SessionID ?? Convert.ToInt64(oldRow["session_id"]),
+                        sessionID,
                         roundID,
                         "characters",
                         characterID,
@@ -356,13 +355,13 @@ public sealed class CharacterRepository : ICharacterRepository
             cancellationToken: cancellationToken
         );
 
-    public Task ArchiveAsync(long characterID, CancellationToken cancellationToken = default) =>
+    public Task ArchiveAsync(long characterID, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
             {
                 await using var transaction = await connection.BeginTransactionAsync(token);
-                await ArchiveAsync(connection, transaction, characterID, token);
+                await ArchiveAsync(connection, transaction, characterID, sessionID, roundID, token);
                 await transaction.CommitAsync(token);
             },
             cancellationToken: cancellationToken
@@ -397,14 +396,14 @@ public sealed class CharacterRepository : ICharacterRepository
                                );
 
                 foreach (var id in staleIDs)
-                    await ArchiveAsync(connection, transaction, id, token);
+                    await ArchiveAsync(connection, transaction, id, sessionID, currentRound, token);
 
                 await transaction.CommitAsync(token);
             },
             cancellationToken: cancellationToken
         );
 
-    public Task AddAliasAsync(long characterID, string alias, CancellationToken cancellationToken = default) =>
+    public Task AddAliasAsync(long characterID, string alias, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -446,8 +445,8 @@ public sealed class CharacterRepository : ICharacterRepository
                 (
                     connection,
                     transaction,
-                    RoundContext.SessionID ?? Convert.ToInt64(oldRow["session_id"]),
-                    RoundContext.Current   ?? 0,
+                    sessionID,
+                    roundID,
                     "characters",
                     characterID,
                     "update",
@@ -696,6 +695,7 @@ public sealed class CharacterRepository : ICharacterRepository
         RelationChangeSource source,
         string               reason,
         long                 sceneID,
+        long                 roundID,
         CancellationToken    cancellationToken = default
     )
     {
@@ -820,8 +820,6 @@ public sealed class CharacterRepository : ICharacterRepository
             );
         }
 
-        var roundID = RoundContext.Current ?? 0;
-
         if (existing is not null)
         {
             var oldData = JsonSerializer.Serialize(existing);
@@ -829,7 +827,7 @@ public sealed class CharacterRepository : ICharacterRepository
             (
                 connection,
                 transaction,
-                RoundContext.SessionID ?? sessionID,
+                sessionID,
                 roundID,
                 "character_relations",
                 relationID,
@@ -844,7 +842,7 @@ public sealed class CharacterRepository : ICharacterRepository
             (
                 connection,
                 transaction,
-                RoundContext.SessionID ?? sessionID,
+                sessionID,
                 roundID,
                 "character_relations",
                 relationID,
@@ -907,7 +905,7 @@ public sealed class CharacterRepository : ICharacterRepository
         ).ToList();
     }
 
-    public Task EnterSceneAsync(long characterID, long sceneID, CancellationToken cancellationToken = default) =>
+    public Task EnterSceneAsync(long characterID, long sceneID, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -933,8 +931,8 @@ public sealed class CharacterRepository : ICharacterRepository
                     (
                         connection,
                         transaction,
-                        RoundContext.SessionID ?? 0,
-                        RoundContext.Current   ?? 0,
+                        sessionID,
+                        roundID,
                         "character_scene_presence",
                         0,
                         "create",
@@ -948,7 +946,7 @@ public sealed class CharacterRepository : ICharacterRepository
             cancellationToken: cancellationToken
         );
 
-    public Task LeaveSceneAsync(long characterID, long sceneID, CancellationToken cancellationToken = default) =>
+    public Task LeaveSceneAsync(long characterID, long sceneID, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -971,8 +969,8 @@ public sealed class CharacterRepository : ICharacterRepository
                     (
                         connection,
                         transaction,
-                        RoundContext.SessionID ?? 0,
-                        RoundContext.Current   ?? 0,
+                        sessionID,
+                        roundID,
                         "character_scene_presence",
                         0,
                         "delete",
@@ -1082,6 +1080,8 @@ public sealed class CharacterRepository : ICharacterRepository
         long              characterID,
         long              attributeID,
         string            value,
+        long              sessionID,
+        long              roundID,
         CancellationToken cancellationToken = default
     ) =>
         scheduler.ExecuteAsync
@@ -1117,8 +1117,8 @@ public sealed class CharacterRepository : ICharacterRepository
                 (
                     connection,
                     transaction,
-                    RoundContext.SessionID ?? 0,
-                    RoundContext.Current   ?? 0,
+                    sessionID,
+                    roundID,
                     "character_state_values",
                     0,
                     oldRow is null ?
@@ -1139,6 +1139,8 @@ public sealed class CharacterRepository : ICharacterRepository
         SqliteConnection  connection,
         DbTransaction     transaction,
         long              characterID,
+        long              sessionID,
+        long              roundID,
         CancellationToken cancellationToken
     )
     {
@@ -1154,8 +1156,6 @@ public sealed class CharacterRepository : ICharacterRepository
         if (oldRow is null)
             return;
 
-        var sessionID = Convert.ToInt64(oldRow["session_id"]);
-        var roundID   = RoundContext.Current ?? 0;
         await connection.ExecuteAsync
         (
             new CommandDefinition
@@ -1170,7 +1170,7 @@ public sealed class CharacterRepository : ICharacterRepository
         (
             connection,
             transaction,
-            RoundContext.SessionID ?? sessionID,
+            sessionID,
             roundID,
             "characters",
             characterID,
@@ -1209,7 +1209,7 @@ public sealed class CharacterRepository : ICharacterRepository
             (
                 connection,
                 transaction,
-                RoundContext.SessionID ?? sessionID,
+                sessionID,
                 roundID,
                 "character_scene_presence",
                 0,

@@ -31,13 +31,14 @@ public interface IMemoryRepository
 
     Task<MemoryPage> GetPageAsync(MemoryPageQuery query, CancellationToken cancellationToken = default);
 
-    Task<MemoryEntry> CreateAsync(MemoryEntry entry, CancellationToken cancellationToken = default);
+    Task<MemoryEntry> CreateAsync(MemoryEntry entry, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
-    Task UpdateAsync(MemoryEntry entry, CancellationToken cancellationToken = default);
+    Task UpdateAsync(MemoryEntry entry, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
-    Task<MemoryEntry> MergeAsync(IReadOnlyList<long> memoryIDs, long sceneID, string content, string[] tags, CancellationToken cancellationToken = default);
+    Task<MemoryEntry> MergeAsync
+        (IReadOnlyList<long> memoryIDs, long sceneID, string content, string[] tags, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
-    Task DeleteAsync(long id, CancellationToken cancellationToken = default);
+    Task DeleteAsync(long id, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
     Task SaveEmbeddingsAsync
     (

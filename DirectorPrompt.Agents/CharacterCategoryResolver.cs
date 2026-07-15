@@ -41,6 +41,8 @@ public sealed class CharacterCategoryResolver
     public async Task<CharacterCategoryResolution?> ResolveAndPersistAsync
     (
         long              characterID,
+        long              sessionID,
+        long              roundID,
         CancellationToken cancellationToken = default
     )
     {
@@ -54,7 +56,7 @@ public sealed class CharacterCategoryResolver
         var character = await characterRepository.GetByIDAsync(characterID, cancellationToken);
 
         if (character is not null)
-            await InitializeDefaultStateValuesAsync(character.ProjectID, characterID, resolution.AttributeIDs, cancellationToken);
+            await InitializeDefaultStateValuesAsync(character.ProjectID, characterID, resolution.AttributeIDs, sessionID, roundID, cancellationToken);
 
         Log.Information
         (
@@ -134,6 +136,8 @@ public sealed class CharacterCategoryResolver
         long              projectID,
         long              characterID,
         long[]            attributeIDs,
+        long              sessionID,
+        long              roundID,
         CancellationToken cancellationToken
     )
     {
@@ -153,7 +157,7 @@ public sealed class CharacterCategoryResolver
 
             var defaultValue = GetDefaultValue(attr);
 
-            await characterRepository.SetCharacterStateValueAsync(characterID, attrID, defaultValue, cancellationToken);
+            await characterRepository.SetCharacterStateValueAsync(characterID, attrID, defaultValue, sessionID, roundID, cancellationToken);
         }
     }
 

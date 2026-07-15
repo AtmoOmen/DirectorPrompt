@@ -186,7 +186,7 @@ public sealed class SystemStateTransformer
             return;
 
         if (characterID is not null)
-            await characterRepository.SetCharacterStateValueAsync(characterID.Value, attr.ID, newValue, cancellationToken);
+            await characterRepository.SetCharacterStateValueAsync(characterID.Value, attr.ID, newValue, sessionID, roundID, cancellationToken);
         else
         {
             await stateRepository.SetStateValueAsync

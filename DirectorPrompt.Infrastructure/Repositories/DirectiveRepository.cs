@@ -3,7 +3,6 @@ using Dapper;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using DirectorPrompt.Domain.Services;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
@@ -44,6 +43,8 @@ public sealed class DirectiveRepository
     public Task<ActiveDirective> AddAsync
     (
         ActiveDirective   directive,
+        long              sessionID,
+        long              roundID,
         CancellationToken cancellationToken = default
     ) =>
         scheduler.ExecuteAsync
@@ -77,8 +78,8 @@ public sealed class DirectiveRepository
                 (
                     connection,
                     transaction,
-                    RoundContext.SessionID ?? directive.SessionID,
-                    RoundContext.Current   ?? 0,
+                    sessionID,
+                    roundID,
                     "active_directives",
                     id,
                     "create",
@@ -92,7 +93,7 @@ public sealed class DirectiveRepository
             cancellationToken: cancellationToken
         );
 
-    public Task RemoveAsync(long id, CancellationToken cancellationToken = default) =>
+    public Task RemoveAsync(long id, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -124,8 +125,8 @@ public sealed class DirectiveRepository
                 (
                     connection,
                     transaction,
-                    RoundContext.SessionID ?? Convert.ToInt64(oldRow["session_id"]),
-                    RoundContext.Current   ?? 0,
+                    sessionID,
+                    roundID,
                     "active_directives",
                     id,
                     "delete",
@@ -140,6 +141,7 @@ public sealed class DirectiveRepository
     public Task<IReadOnlyList<ActiveDirective>> DecrementTTLAsync
     (
         long              sessionID,
+        long              roundID,
         CancellationToken cancellationToken = default
     ) =>
         scheduler.ExecuteAsync<IReadOnlyList<ActiveDirective>>
@@ -160,8 +162,7 @@ public sealed class DirectiveRepository
                                             cancellationToken: token
                                         )
                                     )).ToList();
-                var roundID        = RoundContext.Current   ?? 0;
-                var auditSessionID = RoundContext.SessionID ?? sessionID;
+                var auditSessionID = sessionID;
 
                 foreach (var row in affectedRows)
                 {

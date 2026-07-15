@@ -55,112 +55,110 @@ public sealed class Orchestrator
         var oldSceneID       = activeScene?.ID;
         var timelinePosition = activeScene?.TimelinePosition ?? 0;
 
-        using (RoundContext.Enter(sessionID, roundID))
+        Log.Information
+        (
+            "Orchestrator 开始处理批次: 项目={ProjectID} ({ProjectName}), 对话={SessionID}, 轮次={RoundID}, 场景={SceneID}, 指令数={DirectiveCount}",
+            batch.ProjectID,
+            project.Name,
+            sessionID,
+            roundID,
+            activeScene?.ID,
+            batch.Directives.Count
+        );
+
+        foreach (var d in batch.Directives)
+            Log.Debug("指令元数据: 顺序={Order}, 类型={Type}, 长度={Length}", d.Order, d.Type, d.Content.Length);
+
+        var embeddingConfig = ResolveEmbeddingConfig();
+
+        var transitionResults = await EvaluateTransitionsAsync(batch.ProjectID, sessionID, roundID, cancellationToken);
+
+        batch = InjectSystemDirectives(batch, transitionResults);
+
+        var phaseResult = transitionResults
+                          .Where(t => t.Source is PhaseEvaluator)
+                          .Select(t => t.Result)
+                          .FirstOrDefault();
+
+        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
+
+        try
         {
-            Log.Information
+            await directiveProcessingStage.ExecuteAsync
             (
-                "Orchestrator 开始处理批次: 项目={ProjectID} ({ProjectName}), 对话={SessionID}, 轮次={RoundID}, 场景={SceneID}, 指令数={DirectiveCount}",
-                batch.ProjectID,
-                project.Name,
+                batch,
                 sessionID,
                 roundID,
-                activeScene?.ID,
-                batch.Directives.Count
+                activeScene,
+                embeddingConfig,
+                cancellationToken
             );
-
-            foreach (var d in batch.Directives)
-                Log.Debug("指令元数据: 顺序={Order}, 类型={Type}, 长度={Length}", d.Order, d.Type, d.Content.Length);
-
-            var embeddingConfig = ResolveEmbeddingConfig();
-
-            var transitionResults = await EvaluateTransitionsAsync(batch.ProjectID, sessionID, roundID, cancellationToken);
-
-            batch = InjectSystemDirectives(batch, transitionResults);
-
-            var phaseResult = transitionResults
-                              .Where(t => t.Source is PhaseEvaluator)
-                              .Select(t => t.Result)
-                              .FirstOrDefault();
-
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
-
-            try
-            {
-                await directiveProcessingStage.ExecuteAsync
-                (
-                    batch,
-                    sessionID,
-                    activeScene,
-                    embeddingConfig,
-                    cancellationToken
-                );
-            }
-            catch
-            {
-                onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Failed));
-                throw;
-            }
-
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Complete));
-
-            activeScene = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
-
-            if (activeScene is null)
-                throw new InvalidOperationException("场景创建失败: Scene Agent 未调用 create_scene 工具");
-
-            if (oldSceneID is not null && oldSceneID != activeScene.ID)
-            {
-                Log.Information("场景切换: 旧场景={OldSceneID}, 新场景={NewSceneID}", oldSceneID, activeScene.ID);
-                await sceneSummaryStage.ExecuteAsync(sessionID, oldSceneID.Value, cancellationToken);
-            }
-
-            var previousScene        = await sceneRepository.GetLastCompletedSceneAsync(sessionID, activeScene.ID, cancellationToken);
-            var previousSceneSummary = previousScene?.Summary;
-
-            activeScene = await sceneSummaryStage.UpdateProgressSummaryAsync
-                          (
-                              sessionID,
-                              activeScene,
-                              roundID,
-                              cancellationToken
-                          );
-
-            timelinePosition = activeScene.TimelinePosition;
-
-            var history = await historyBuilder.BuildAsync(sessionID, activeScene.ID, roundID, cancellationToken);
-
-            Log.Information("历史叙事注入: {HistoryCount} 轮", history.Count);
-
-            var context = new PipelineContext
-            {
-                DirectiveBatch          = batch,
-                RoundID                 = roundID,
-                SessionID               = sessionID,
-                CurrentSceneID          = activeScene.ID,
-                CurrentTimelinePosition = timelinePosition,
-                Project                 = project,
-                EmbeddingConfig         = embeddingConfig,
-                KnowledgeConfig         = orchestratorConfig.KnowledgeConfig,
-                MemoryConfig            = orchestratorConfig.MemoryConfig,
-                History                 = history,
-                PreviousSceneSummary    = previousSceneSummary,
-                OnStreamingUpdate       = onStreamingUpdate,
-                OnStageUpdate           = onStageUpdate,
-                PhaseActivatedEntryIDs  = (phaseResult as PhaseEvaluationResult)?.ActivatedEntryIDs ?? []
-            };
-
-            var result = await RunPipelineAsync(context, transitionResults, cancellationToken);
-
-            Log.Information
-            (
-                "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 叙事长度={NarrativeLen}",
-                sessionID,
-                roundID,
-                context.NarrativeOutput?.Length ?? 0
-            );
-
-            return result;
         }
+        catch
+        {
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Failed));
+            throw;
+        }
+
+        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Complete));
+
+        activeScene = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
+
+        if (activeScene is null)
+            throw new InvalidOperationException("场景创建失败: Scene Agent 未调用 create_scene 工具");
+
+        if (oldSceneID is not null && oldSceneID != activeScene.ID)
+        {
+            Log.Information("场景切换: 旧场景={OldSceneID}, 新场景={NewSceneID}", oldSceneID, activeScene.ID);
+            await sceneSummaryStage.ExecuteAsync(sessionID, roundID, oldSceneID.Value, cancellationToken);
+        }
+
+        var previousScene        = await sceneRepository.GetLastCompletedSceneAsync(sessionID, activeScene.ID, cancellationToken);
+        var previousSceneSummary = previousScene?.Summary;
+
+        activeScene = await sceneSummaryStage.UpdateProgressSummaryAsync
+                      (
+                          sessionID,
+                          activeScene,
+                          roundID,
+                          cancellationToken
+                      );
+
+        timelinePosition = activeScene.TimelinePosition;
+
+        var history = await historyBuilder.BuildAsync(sessionID, activeScene.ID, roundID, cancellationToken);
+
+        Log.Information("历史叙事注入: {HistoryCount} 轮", history.Count);
+
+        var context = new PipelineContext
+        {
+            DirectiveBatch          = batch,
+            RoundID                 = roundID,
+            SessionID               = sessionID,
+            CurrentSceneID          = activeScene.ID,
+            CurrentTimelinePosition = timelinePosition,
+            Project                 = project,
+            EmbeddingConfig         = embeddingConfig,
+            KnowledgeConfig         = orchestratorConfig.KnowledgeConfig,
+            MemoryConfig            = orchestratorConfig.MemoryConfig,
+            History                 = history,
+            PreviousSceneSummary    = previousSceneSummary,
+            OnStreamingUpdate       = onStreamingUpdate,
+            OnStageUpdate           = onStageUpdate,
+            PhaseActivatedEntryIDs  = (phaseResult as PhaseEvaluationResult)?.ActivatedEntryIDs ?? []
+        };
+
+        var result = await RunPipelineAsync(context, transitionResults, cancellationToken);
+
+        Log.Information
+        (
+            "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 叙事长度={NarrativeLen}",
+            sessionID,
+            roundID,
+            context.NarrativeOutput?.Length ?? 0
+        );
+
+        return result;
     }
 
     public async Task DeleteRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
@@ -310,7 +308,7 @@ public sealed class Orchestrator
             )
         );
 
-        await directiveRepository.DecrementTTLAsync(context.SessionID, cancellationToken);
+        await directiveRepository.DecrementTTLAsync(context.SessionID, context.RoundID, cancellationToken);
 
         return new NarrationResult
         (

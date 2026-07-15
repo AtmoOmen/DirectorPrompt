@@ -148,11 +148,13 @@ public sealed class MemoryRecallQualityTests
         public Task<MemoryEntry> CreateAsync
         (
             MemoryEntry       entry,
+            long              sessionID,
+            long              roundID,
             CancellationToken cancellationToken = default
         ) =>
             throw new NotSupportedException();
 
-        public Task UpdateAsync(MemoryEntry entry, CancellationToken cancellationToken = default) =>
+        public Task UpdateAsync(MemoryEntry entry, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<MemoryEntry> MergeAsync
@@ -161,11 +163,13 @@ public sealed class MemoryRecallQualityTests
             long                sceneID,
             string              content,
             string[]            tags,
+            long                sessionID,
+            long                roundID,
             CancellationToken   cancellationToken = default
         ) =>
             throw new NotSupportedException();
 
-        public Task DeleteAsync(long id, CancellationToken cancellationToken = default) =>
+        public Task DeleteAsync(long id, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task SaveEmbeddingsAsync

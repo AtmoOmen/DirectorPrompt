@@ -2,7 +2,6 @@ using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using DirectorPrompt.Domain.Services;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
@@ -226,6 +225,8 @@ public sealed class MemoryRepository
     public Task<MemoryEntry> CreateAsync
     (
         MemoryEntry       entry,
+        long              sessionID,
+        long              roundID,
         CancellationToken cancellationToken = default
     ) =>
         scheduler.ExecuteAsync
@@ -263,8 +264,8 @@ public sealed class MemoryRepository
                 (
                     connection,
                     transaction,
-                    RoundContext.SessionID ?? entry.SessionID,
-                    RoundContext.Current   ?? 0,
+                    sessionID,
+                    roundID,
                     "memory_entries",
                     id,
                     "create",
@@ -278,7 +279,7 @@ public sealed class MemoryRepository
             cancellationToken: cancellationToken
         );
 
-    public Task UpdateAsync(MemoryEntry entry, CancellationToken cancellationToken = default) =>
+    public Task UpdateAsync(MemoryEntry entry, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -332,8 +333,8 @@ public sealed class MemoryRepository
                     (
                         connection,
                         transaction,
-                        RoundContext.SessionID ?? entry.SessionID,
-                        RoundContext.Current   ?? 0,
+                        sessionID,
+                        roundID,
                         "memory_entries",
                         entry.ID,
                         "update",
@@ -353,6 +354,8 @@ public sealed class MemoryRepository
         long                sceneID,
         string              content,
         string[]            tags,
+        long                sessionID,
+        long                roundID,
         CancellationToken   cancellationToken = default
     )
     {
@@ -461,8 +464,6 @@ public sealed class MemoryRepository
                     )
                 );
 
-                var roundID   = RoundContext.Current   ?? 0;
-                var sessionID = RoundContext.SessionID ?? metadata.SessionID.Value;
                 await RoundChangeRepository.RecordAsync
                 (
                     connection,
@@ -510,7 +511,7 @@ public sealed class MemoryRepository
         );
     }
 
-    public Task DeleteAsync(long id, CancellationToken cancellationToken = default) =>
+    public Task DeleteAsync(long id, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -560,8 +561,8 @@ public sealed class MemoryRepository
                 (
                     connection,
                     transaction,
-                    RoundContext.SessionID ?? sessionID,
-                    RoundContext.Current   ?? 0,
+                    sessionID,
+                    roundID,
                     "memory_entries",
                     id,
                     "delete",

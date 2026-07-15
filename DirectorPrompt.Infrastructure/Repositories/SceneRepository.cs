@@ -3,7 +3,6 @@ using Dapper;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using DirectorPrompt.Domain.Services;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
@@ -100,7 +99,7 @@ public sealed class SceneRepository
             cancellationToken: cancellationToken
         );
 
-    public Task<Scene> CreateAsync(Scene scene, CancellationToken cancellationToken = default) =>
+    public Task<Scene> CreateAsync(Scene scene, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -134,8 +133,8 @@ public sealed class SceneRepository
                 (
                     connection,
                     transaction,
-                    RoundContext.SessionID ?? scene.SessionID,
-                    RoundContext.Current   ?? 0,
+                    sessionID,
+                    roundID,
                     "scenes",
                     id,
                     "create",
@@ -149,7 +148,7 @@ public sealed class SceneRepository
             cancellationToken: cancellationToken
         );
 
-    public Task UpdateAsync(Scene scene, CancellationToken cancellationToken = default) =>
+    public Task UpdateAsync(Scene scene, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
@@ -197,8 +196,8 @@ public sealed class SceneRepository
                     (
                         connection,
                         transaction,
-                        RoundContext.SessionID ?? scene.SessionID,
-                        RoundContext.Current   ?? 0,
+                        sessionID,
+                        roundID,
                         "scenes",
                         scene.ID,
                         "update",
@@ -217,6 +216,8 @@ public sealed class SceneRepository
         long              sceneID,
         string            progressSummary,
         long              throughRoundID,
+        long              sessionID,
+        long              roundID,
         CancellationToken cancellationToken = default
     ) =>
         scheduler.ExecuteAsync
@@ -248,13 +249,13 @@ public sealed class SceneRepository
                     )
                 );
 
-                if (oldRow is not null && RoundContext.Current is { } roundID)
+                if (oldRow is not null)
                 {
                     await RoundChangeRepository.RecordAsync
                     (
                         connection,
                         transaction,
-                        RoundContext.SessionID ?? Convert.ToInt64(oldRow["session_id"]),
+                        sessionID,
                         roundID,
                         "scenes",
                         sceneID,
@@ -272,6 +273,7 @@ public sealed class SceneRepository
     public Task CloseActiveSceneAsync
     (
         long              sessionID,
+        long              roundID,
         string?           summary,
         CancellationToken cancellationToken = default
     ) =>
@@ -307,8 +309,8 @@ public sealed class SceneRepository
                 (
                     connection,
                     transaction,
-                    RoundContext.SessionID ?? sessionID,
-                    RoundContext.Current   ?? 0,
+                    sessionID,
+                    roundID,
                     "scenes",
                     sceneID,
                     "update",

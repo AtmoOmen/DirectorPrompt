@@ -22,6 +22,7 @@ public sealed class SceneSummaryStage
     public async Task ExecuteAsync
     (
         long              sessionID,
+        long              roundID,
         long              sceneID,
         CancellationToken cancellationToken = default
     )
@@ -64,7 +65,7 @@ public sealed class SceneSummaryStage
 
             if (!string.IsNullOrWhiteSpace(summary))
             {
-                await sceneRepository.UpdateAsync(scene with { Summary = summary }, cancellationToken);
+                await sceneRepository.UpdateAsync(scene with { Summary = summary }, sessionID, roundID, cancellationToken);
                 Log.Information("场景摘要生成完成: 场景={SceneID}, 摘要长度={SummaryLen}", sceneID, summary.Length);
             }
         }
@@ -115,7 +116,7 @@ public sealed class SceneSummaryStage
                 return scene;
 
             var throughRoundID = roundIDs[^1];
-            await sceneRepository.UpdateProgressSummaryAsync(scene.ID, summary, throughRoundID, cancellationToken);
+            await sceneRepository.UpdateProgressSummaryAsync(scene.ID, summary, throughRoundID, sessionID, currentRoundID, cancellationToken);
             return scene with { ProgressSummary = summary, ProgressSummaryRoundID = throughRoundID };
         }
         catch (OperationCanceledException)

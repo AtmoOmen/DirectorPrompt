@@ -24,17 +24,17 @@ public interface ICharacterRepository
 
     Task<CharacterPage> GetPageAsync(CharacterPageQuery query, CancellationToken cancellationToken = default);
 
-    Task<Character> CreateAsync(Character character, CancellationToken cancellationToken = default);
+    Task<Character> CreateAsync(Character character, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
-    Task UpdateAsync(Character character, CancellationToken cancellationToken = default);
+    Task UpdateAsync(Character character, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
-    Task TouchAsync(long characterID, long roundID, CancellationToken cancellationToken = default);
+    Task TouchAsync(long characterID, long roundID, long sessionID, CancellationToken cancellationToken = default);
 
-    Task ArchiveAsync(long characterID, CancellationToken cancellationToken = default);
+    Task ArchiveAsync(long characterID, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
     Task ArchiveStaleAsync(long sessionID, long currentRound, int threshold, CancellationToken cancellationToken = default);
 
-    Task AddAliasAsync(long characterID, string alias, CancellationToken cancellationToken = default);
+    Task AddAliasAsync(long characterID, string alias, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
     Task SaveEmbeddingAsync(long projectID, long characterID, byte[] embedding, string contentHash, CancellationToken cancellationToken = default);
 
@@ -74,6 +74,7 @@ public interface ICharacterRepository
         RelationChangeSource source,
         string               reason,
         long                 sceneID,
+        long                 roundID,
         CancellationToken    cancellationToken = default
     );
 
@@ -81,9 +82,9 @@ public interface ICharacterRepository
 
     Task<IReadOnlyList<CharacterScenePresence>> GetPresenceAsync(long sceneID, CancellationToken cancellationToken = default);
 
-    Task EnterSceneAsync(long characterID, long sceneID, CancellationToken cancellationToken = default);
+    Task EnterSceneAsync(long characterID, long sceneID, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
-    Task LeaveSceneAsync(long characterID, long sceneID, CancellationToken cancellationToken = default);
+    Task LeaveSceneAsync(long characterID, long sceneID, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
     Task<CharacterCategoryResolution?> GetResolvedCategoriesAsync(long characterID, CancellationToken cancellationToken = default);
 
@@ -93,5 +94,5 @@ public interface ICharacterRepository
 
     Task<IReadOnlyList<CharacterStateValue>> GetCharacterStateValuesBatchAsync(IReadOnlyList<long> characterIDs, CancellationToken cancellationToken = default);
 
-    Task SetCharacterStateValueAsync(long characterID, long attributeID, string value, CancellationToken cancellationToken = default);
+    Task SetCharacterStateValueAsync(long characterID, long attributeID, string value, long sessionID, long roundID, CancellationToken cancellationToken = default);
 }

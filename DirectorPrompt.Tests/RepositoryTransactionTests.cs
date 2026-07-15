@@ -1,6 +1,5 @@
 using Dapper;
 using DirectorPrompt.Domain.Models;
-using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Infrastructure;
 using DirectorPrompt.Infrastructure.Repositories;
 using Xunit;
@@ -38,7 +37,6 @@ public sealed class RepositoryTransactionTests
         );
         var repository = new MemoryRepository(context.Scheduler);
 
-        using var scope = RoundContext.Enter(1, 10);
         await Assert.ThrowsAnyAsync<Exception>
         (() => repository.CreateAsync
          (
@@ -49,7 +47,9 @@ public sealed class RepositoryTransactionTests
                  SceneID     = 1,
                  TimelinePos = 1000,
                  Content     = "must rollback"
-             }
+             },
+             1,
+             10
          )
         );
         var count = await context.Scheduler.ExecuteAsync
@@ -97,7 +97,6 @@ public sealed class RepositoryTransactionTests
             context.Scheduler
         );
 
-        using var scope = RoundContext.Enter(1, 10);
         await Assert.ThrowsAnyAsync<Exception>
         (() => repository.CreateAsync
          (
@@ -106,7 +105,9 @@ public sealed class RepositoryTransactionTests
                  ProjectID = 1,
                  SessionID = 1,
                  Name      = "must rollback"
-             }
+             },
+             1,
+             10
          )
         );
         var count = await context.Scheduler.ExecuteAsync

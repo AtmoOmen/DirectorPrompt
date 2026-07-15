@@ -435,9 +435,9 @@ public sealed class CharacterTools
             LastTouchedRound = context.RoundID
         };
 
-        var created = await characterRepository.CreateAsync(character);
+        var created = await characterRepository.CreateAsync(character, context.SessionID, context.RoundID);
 
-        await categoryResolver.ResolveAndPersistAsync(created.ID);
+        await categoryResolver.ResolveAndPersistAsync(created.ID, context.SessionID, context.RoundID);
 
         await GenerateAndSaveEmbeddingAsync(context, created);
 
@@ -471,12 +471,12 @@ public sealed class CharacterTools
 
         var updated = character with { Description = description, CategoryIDs = newCategoryIDs };
 
-        await characterRepository.UpdateAsync(updated);
+        await characterRepository.UpdateAsync(updated, context.SessionID, context.RoundID);
 
         if (!string.IsNullOrWhiteSpace(categoryIDs))
-            await categoryResolver.ResolveAndPersistAsync(character.ID);
+            await categoryResolver.ResolveAndPersistAsync(character.ID, context.SessionID, context.RoundID);
 
-        await characterRepository.TouchAsync(character.ID, context.RoundID);
+        await characterRepository.TouchAsync(character.ID, context.RoundID, context.SessionID);
 
         await GenerateAndSaveEmbeddingAsync(context, updated);
 
@@ -500,9 +500,9 @@ public sealed class CharacterTools
         if (character.Aliases.Contains(alias))
             return JsonSerializer.Serialize(new { name, alias, success = true, message = "别称已存在" });
 
-        await characterRepository.AddAliasAsync(character.ID, alias);
+        await characterRepository.AddAliasAsync(character.ID, alias, context.SessionID, context.RoundID);
 
-        await characterRepository.TouchAsync(character.ID, context.RoundID);
+        await characterRepository.TouchAsync(character.ID, context.RoundID, context.SessionID);
 
         var refreshed = await characterRepository.GetByIDAsync(character.ID);
 
@@ -546,11 +546,12 @@ public sealed class CharacterTools
             intensityFloat,
             RelationChangeSource.MemorySubAgent,
             reason,
-            context.SceneID ?? 0
+            context.SceneID ?? 0,
+            context.RoundID
         );
 
-        await characterRepository.TouchAsync(source.ID, context.RoundID);
-        await characterRepository.TouchAsync(target.ID, context.RoundID);
+        await characterRepository.TouchAsync(source.ID, context.RoundID, context.SessionID);
+        await characterRepository.TouchAsync(target.ID, context.RoundID, context.SessionID);
 
         return JsonSerializer.Serialize
         (
@@ -576,9 +577,9 @@ public sealed class CharacterTools
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
 
-        await characterRepository.EnterSceneAsync(character.ID, context.SceneID.Value);
+        await characterRepository.EnterSceneAsync(character.ID, context.SceneID.Value, context.SessionID, context.RoundID);
 
-        await characterRepository.TouchAsync(character.ID, context.RoundID);
+        await characterRepository.TouchAsync(character.ID, context.RoundID, context.SessionID);
 
         Log.Information("工具调用完成: enter_scene, name={Name}, sceneID={SceneID}", name, context.SceneID.Value);
 
@@ -597,9 +598,9 @@ public sealed class CharacterTools
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
 
-        await characterRepository.LeaveSceneAsync(character.ID, context.SceneID.Value);
+        await characterRepository.LeaveSceneAsync(character.ID, context.SceneID.Value, context.SessionID, context.RoundID);
 
-        await characterRepository.TouchAsync(character.ID, context.RoundID);
+        await characterRepository.TouchAsync(character.ID, context.RoundID, context.SessionID);
 
         return JsonSerializer.Serialize(new { name, leftScene = true });
     }
@@ -631,9 +632,10 @@ public sealed class CharacterTools
         var currentNum   = double.Parse(currentValue?.Value ?? "0", CultureInfo.InvariantCulture);
         var newValue     = currentNum + delta;
 
-        await characterRepository.SetCharacterStateValueAsync(character.ID, attr.ID, newValue.ToString(CultureInfo.InvariantCulture));
+        await characterRepository.SetCharacterStateValueAsync
+            (character.ID, attr.ID, newValue.ToString(CultureInfo.InvariantCulture), context.SessionID, context.RoundID);
 
-        await characterRepository.TouchAsync(character.ID, context.RoundID);
+        await characterRepository.TouchAsync(character.ID, context.RoundID, context.SessionID);
 
         return JsonSerializer.Serialize
         (
@@ -667,9 +669,9 @@ public sealed class CharacterTools
         if (attr.Driver == Driver.System || attr.ValueType == StateValueType.Enum)
             return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 为系统驱动或枚举类型, AI 不可直接修改" });
 
-        await characterRepository.SetCharacterStateValueAsync(character.ID, attr.ID, value);
+        await characterRepository.SetCharacterStateValueAsync(character.ID, attr.ID, value, context.SessionID, context.RoundID);
 
-        await characterRepository.TouchAsync(character.ID, context.RoundID);
+        await characterRepository.TouchAsync(character.ID, context.RoundID, context.SessionID);
 
         return JsonSerializer.Serialize
         (

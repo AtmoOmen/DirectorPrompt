@@ -3,7 +3,6 @@ using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using DirectorPrompt.Domain.Services;
 using Serilog;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
@@ -34,6 +33,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     public Task RecordCreateAsync
     (
+        long              sessionID,
         long              roundID,
         string            tableName,
         long              recordID,
@@ -46,7 +46,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
             (
                 connection,
                 null,
-                RoundContext.SessionID ?? 0,
+                sessionID,
                 roundID,
                 tableName,
                 recordID,
@@ -59,6 +59,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     public Task RecordUpdateAsync
     (
+        long              sessionID,
         long              roundID,
         string            tableName,
         long              recordID,
@@ -71,7 +72,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
             (
                 connection,
                 null,
-                RoundContext.SessionID ?? 0,
+                sessionID,
                 roundID,
                 tableName,
                 recordID,
@@ -84,6 +85,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
 
     public Task RecordDeleteAsync
     (
+        long              sessionID,
         long              roundID,
         string            tableName,
         long              recordID,
@@ -96,7 +98,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
             (
                 connection,
                 null,
-                RoundContext.SessionID ?? 0,
+                sessionID,
                 roundID,
                 tableName,
                 recordID,

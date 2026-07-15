@@ -181,12 +181,12 @@ public sealed class MemoryTools
             Tags                = ParseTags(tags),
             RelatedCharacterIDs = characterList
         };
-        var created = await memoryRepository.CreateAsync(entry);
+        var created = await memoryRepository.CreateAsync(entry, context.SessionID, context.RoundID);
 
         await embeddingIndexService.IndexMemoriesAsync([created], context.EmbeddingConfig);
 
         foreach (var characterID in characterList)
-            await characterRepository.TouchAsync(characterID, context.RoundID);
+            await characterRepository.TouchAsync(characterID, context.RoundID, context.SessionID);
 
         Log.Information("工具调用完成: create_memory, memoryID={ID}", created.ID);
 
@@ -221,11 +221,11 @@ public sealed class MemoryTools
             RelatedCharacterIDs = parsedCharacterIDs
         };
 
-        await memoryRepository.UpdateAsync(updated);
+        await memoryRepository.UpdateAsync(updated, context.SessionID, context.RoundID);
         await embeddingIndexService.IndexMemoriesAsync([updated], context.EmbeddingConfig);
 
         foreach (var characterID in parsedCharacterIDs)
-            await characterRepository.TouchAsync(characterID, context.RoundID);
+            await characterRepository.TouchAsync(characterID, context.RoundID, context.SessionID);
 
         return JsonSerializer.Serialize(new { memoryID, success = true });
     }
@@ -243,15 +243,15 @@ public sealed class MemoryTools
 
         var idList   = memoryIDs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(long.Parse).ToList();
         var charList = ParseCharacterIDs(characterIDs);
-        var merged   = await memoryRepository.MergeAsync(idList, context.SceneID ?? 0, content, ParseTags(tags));
+        var merged   = await memoryRepository.MergeAsync(idList, context.SceneID ?? 0, content, ParseTags(tags), context.SessionID, context.RoundID);
 
         if (charList.Length > 0)
         {
             merged = merged with { RelatedCharacterIDs = charList };
-            await memoryRepository.UpdateAsync(merged);
+            await memoryRepository.UpdateAsync(merged, context.SessionID, context.RoundID);
 
             foreach (var characterID in charList)
-                await characterRepository.TouchAsync(characterID, context.RoundID);
+                await characterRepository.TouchAsync(characterID, context.RoundID, context.SessionID);
         }
 
         foreach (var memoryID in idList)

@@ -79,7 +79,7 @@ public sealed class SceneTools
             return JsonSerializer.Serialize(new { error = ex.Message });
         }
 
-        await sceneRepository.CloseActiveSceneAsync(context.SessionID, null);
+        await sceneRepository.CloseActiveSceneAsync(context.SessionID, context.RoundID, null);
 
         var scene = new Scene
         {
@@ -90,7 +90,7 @@ public sealed class SceneTools
             Status           = SceneStatus.Active
         };
 
-        var created = await sceneRepository.CreateAsync(scene);
+        var created = await sceneRepository.CreateAsync(scene, context.SessionID, context.RoundID);
 
         Log.Information("工具调用完成: create_scene, sceneID={ID}, timelinePosition={Position}", created.ID, position);
 
