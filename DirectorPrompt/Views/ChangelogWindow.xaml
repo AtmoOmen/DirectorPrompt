@@ -33,7 +33,8 @@
 
         <FlowDocumentScrollViewer x:Name="ChangelogViewer"
                                   Grid.Row="1"
-                                  Margin="24,0,24,8"
+                                  Margin="24,12,24,8"
+                                  Padding="0,0,8,0"
                                   IsToolBarVisible="False"
                                   VerticalScrollBarVisibility="Auto" />
 
