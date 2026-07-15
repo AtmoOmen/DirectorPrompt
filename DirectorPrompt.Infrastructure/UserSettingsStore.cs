@@ -1,23 +1,32 @@
 using System.Text.Json;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Domain.Services;
 
-namespace DirectorPrompt.Infrastructure.Extensions;
+namespace DirectorPrompt.Infrastructure;
 
-public static class UserSettingsExtension
+public sealed class UserSettingsStore : IUserSettingsStore
 {
-    extension(UserSettings settings)
+    public UserSettings Load()
     {
-        public async Task SaveAsync()
-        {
-            var json = JsonSerializer.Serialize(settings, UserSettings.JSONOptions);
+        if (!File.Exists(AppPaths.UserSettingsPath))
+            return new UserSettings();
 
-            Directory.CreateDirectory(AppPaths.DataDirectory);
-            await File.WriteAllTextAsync(AppPaths.UserSettingsPath, json);
-        }
+        var json = File.ReadAllText(AppPaths.UserSettingsPath);
+
+        return JsonSerializer.Deserialize<UserSettings>(json, JsonOptions.Default) ?? new UserSettings();
     }
 
-    public static bool MigrateIfNeeded()
+    public async Task SaveAsync(UserSettings settings, CancellationToken cancellationToken = default)
+    {
+        var json = JsonSerializer.Serialize(settings, JsonOptions.Default);
+
+        Directory.CreateDirectory(AppPaths.DataDirectory);
+        await File.WriteAllTextAsync(AppPaths.UserSettingsPath, json, cancellationToken);
+    }
+
+    public bool MigrateIfNeeded()
     {
         if (!File.Exists(AppPaths.UserSettingsPath))
             return false;
@@ -36,7 +45,7 @@ public static class UserSettingsExtension
 
         var settings = MigrateFromLegacy(doc.RootElement);
 
-        File.WriteAllText(AppPaths.UserSettingsPath, JsonSerializer.Serialize(settings, UserSettings.JSONOptions));
+        File.WriteAllText(AppPaths.UserSettingsPath, JsonSerializer.Serialize(settings, JsonOptions.Default));
 
         return true;
     }
@@ -203,7 +212,7 @@ public static class UserSettingsExtension
 
         return new UserSettings
         {
-            Orchestrator = new UserOrchestratorConfig
+            Orchestrator = new OrchestratorConfig
             {
                 Providers  = providers,
                 Models     = models,
@@ -212,10 +221,10 @@ public static class UserSettingsExtension
             },
             EmbeddingConfig = embeddingConfig,
             Localization = root.TryGetProperty("Localization", out var locEl) ?
-                               JsonSerializer.Deserialize<LocalizationConfig>(locEl.GetRawText(), UserSettings.JSONOptions) ?? new() :
+                               JsonSerializer.Deserialize<LocalizationConfig>(locEl.GetRawText(), JsonOptions.Default) ?? new() :
                                new(),
             Session = root.TryGetProperty("Session", out var sessEl) ?
-                          JsonSerializer.Deserialize<SessionStateConfig>(sessEl.GetRawText(), UserSettings.JSONOptions) ?? new() :
+                          JsonSerializer.Deserialize<SessionStateConfig>(sessEl.GetRawText(), JsonOptions.Default) ?? new() :
                           new()
         };
     }

@@ -115,7 +115,7 @@ public sealed class RepositoryPagingTests
                                       INSERT INTO characters
                                       (project_id, session_id, name, description, aliases, category_ids, status, touch_count, last_touched_round, created_at, updated_at)
                                       VALUES
-                                      (1, 1, $name, '', '[]', '[]', 'active', 0, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
+                                      (1, 1, $name, '', '[]', '[]', 'Active', 0, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
                                       """;
                 var nameParameter = command.Parameters.Add("$name", SqliteType.Text);
 

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using DirectorPrompt.Agents.Retrieval;
 using Microsoft.Extensions.AI;
 using Serilog;
@@ -29,7 +28,7 @@ public sealed class KnowledgeTools
         Log.Information("工具调用: query_knowledge(query={Query})", query);
 
         if (string.IsNullOrWhiteSpace(query))
-            return JsonSerializer.Serialize(new { error = "检索内容不能为空" });
+            return ToolResult.Error("检索内容不能为空");
 
         var results = await retrievalService.SearchAsync(context, query);
         var response = results.Select
@@ -47,6 +46,6 @@ public sealed class KnowledgeTools
 
         Log.Information("工具调用完成: query_knowledge, 返回条目数={Count}", results.Count);
 
-        return JsonSerializer.Serialize(response);
+        return ToolResult.Data(response);
     }
 }

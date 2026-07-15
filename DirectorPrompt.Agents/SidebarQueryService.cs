@@ -16,8 +16,8 @@ public sealed class SidebarQueryService
 {
     public async Task<SidebarQueryResult.StatePanelData> QueryStatePanelAsync
     (
-        long projectID,
-        long sessionID,
+        long              projectID,
+        long              sessionID,
         CancellationToken token = default
     )
     {
@@ -31,8 +31,7 @@ public sealed class SidebarQueryService
         var items = attributes
                     .Where(a => a.Scope == StateScope.Global)
                     .Select
-                    (
-                        attr =>
+                    (attr =>
                         {
                             var value = values.FirstOrDefault(v => v.AttributeID == attr.ID);
 
@@ -51,7 +50,7 @@ public sealed class SidebarQueryService
 
     public async Task<SidebarQueryResult.DirectivesPanelData> QueryDirectivesPanelAsync
     (
-        long sessionID,
+        long              sessionID,
         CancellationToken token = default
     )
     {
@@ -59,14 +58,13 @@ public sealed class SidebarQueryService
 
         var items = directives
                     .Select
-                    (
-                        d => new SidebarQueryResult.DirectivesPanelItem
-                        (
-                            d.Type,
-                            d.Content,
-                            d.TTL.HasValue,
-                            d.TTL
-                        )
+                    (d => new SidebarQueryResult.DirectivesPanelItem
+                     (
+                         d.Type,
+                         d.Content,
+                         d.TTL.HasValue,
+                         d.TTL
+                     )
                     )
                     .ToList();
 
@@ -75,8 +73,8 @@ public sealed class SidebarQueryService
 
     public async Task<SidebarQueryResult.CharacterPanelData> QueryCharacterPanelAsync
     (
-        long projectID,
-        long sessionID,
+        long              projectID,
+        long              sessionID,
         CancellationToken token = default
     )
     {
@@ -101,8 +99,7 @@ public sealed class SidebarQueryService
 
             var stateValueItems = stateValues
                                   .Select
-                                  (
-                                      sv =>
+                                  (sv =>
                                       {
                                           var attr = categoryAttrs.FirstOrDefault(a => a.ID == sv.AttributeID);
 
@@ -119,12 +116,17 @@ public sealed class SidebarQueryService
 
             var relationItems = relations
                                 .Select
-                                (
-                                    r =>
+                                (r =>
                                     {
-                                        var otherID   = r.SourceCharacterID == c.ID ? r.TargetCharacterID : r.SourceCharacterID;
-                                        var otherName = charLookup.TryGetValue(otherID, out var other) ? other.Name : $"ID:{otherID}";
-                                        var direction = r.SourceCharacterID == c.ID ? "→" : "←";
+                                        var otherID = r.SourceCharacterID == c.ID ?
+                                                          r.TargetCharacterID :
+                                                          r.SourceCharacterID;
+                                        var otherName = charLookup.TryGetValue(otherID, out var other) ?
+                                                            other.Name :
+                                                            $"ID:{otherID}";
+                                        var direction = r.SourceCharacterID == c.ID ?
+                                                            "→" :
+                                                            "←";
 
                                         return new SidebarQueryResult.CharacterRelationItem
                                         (
@@ -152,10 +154,9 @@ public sealed class SidebarQueryService
 
         var grouped = items
                       .SelectMany
-                      (
-                          it => it.CategoryIDs.Length > 0 ?
-                                     it.CategoryIDs.Select(catID => (CatID: catID, it.Item)) :
-                                     [(-1L, it.Item)]
+                      (it => it.CategoryIDs.Length > 0 ?
+                                 it.CategoryIDs.Select(catID => (CatID: catID, it.Item)) :
+                                 [(-1L, it.Item)]
                       )
                       .GroupBy(x => x.CatID)
                       .OrderBy(g => g.Key)
@@ -177,7 +178,7 @@ public sealed class SidebarQueryService
 
     public async Task<SidebarQueryResult.MemoryPanelData> QueryMemoryPanelAsync
     (
-        long sessionID,
+        long              sessionID,
         CancellationToken token = default
     )
     {
@@ -216,11 +217,12 @@ public sealed class SidebarQueryService
         var grouped = memories
                       .GroupBy(m => m.SceneID)
                       .Select
-                      (
-                          g =>
+                      (g =>
                           {
                               var scene = sceneLookup.GetValueOrDefault(g.Key);
-                              var label = scene is not null ? scene.TimeLabel : $"ID:{g.Key}";
+                              var label = scene is not null ?
+                                              scene.TimeLabel :
+                                              $"ID:{g.Key}";
 
                               return new
                               {
@@ -239,8 +241,7 @@ public sealed class SidebarQueryService
         {
             var memoryItems = grp.Items
                                  .Select
-                                 (
-                                     m =>
+                                 (m =>
                                      {
                                          var charNames = m.RelatedCharacterIDs
                                                           .Where(charLookup.ContainsKey)

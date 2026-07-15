@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Dapper;
-using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 
@@ -8,7 +8,7 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class DirectiveRepository
 (
-    SqliteDatabaseScheduler scheduler
+    SQLiteDatabaseScheduler scheduler
 ) : IDirectiveRepository
 {
     public Task<IReadOnlyList<ActiveDirective>> GetActiveAsync
@@ -20,7 +20,7 @@ public sealed class DirectiveRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<ActiveDirectiveRow>
+                var rows = await connection.QueryAsync<ActiveDirective>
                            (
                                new CommandDefinition
                                (
@@ -35,7 +35,7 @@ public sealed class DirectiveRepository
                                )
                            );
 
-                return rows.Select(row => row.ToActiveDirective()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -65,10 +65,10 @@ public sealed class DirectiveRepository
                                  {
                                      projectID = directive.ProjectID,
                                      sessionID = directive.SessionID,
-                                     type      = JsonNamingPolicy.SnakeCaseLower.ConvertName(directive.Type.ToString()),
+                                     type      = directive.Type,
                                      content   = directive.Content,
                                      ttl       = directive.TTL,
-                                     createdAt = directive.CreatedAt.ToString("O")
+                                     createdAt = directive.CreatedAt
                                  },
                                  transaction,
                                  cancellationToken: token
@@ -130,7 +130,7 @@ public sealed class DirectiveRepository
                     "active_directives",
                     id,
                     "delete",
-                    JsonSerializer.Serialize(oldRow),
+                    JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                     token
                 );
                 await transaction.CommitAsync(token);
@@ -162,7 +162,6 @@ public sealed class DirectiveRepository
                                             cancellationToken: token
                                         )
                                     )).ToList();
-                var auditSessionID = sessionID;
 
                 foreach (var row in affectedRows)
                 {
@@ -182,12 +181,12 @@ public sealed class DirectiveRepository
                     (
                         connection,
                         transaction,
-                        auditSessionID,
+                        sessionID,
                         roundID,
                         "active_directives",
                         id,
                         "update",
-                        JsonSerializer.Serialize(new { id, ttl = oldTTL }),
+                        JsonSerializer.Serialize(new { id, ttl = oldTTL }, JsonOptions.Compact),
                         token
                     );
                 }
@@ -222,17 +221,17 @@ public sealed class DirectiveRepository
                     (
                         connection,
                         transaction,
-                        auditSessionID,
+                        sessionID,
                         roundID,
                         "active_directives",
                         (long)row.id,
                         "delete",
-                        JsonSerializer.Serialize(row),
+                        JsonSerializer.Serialize(row, JsonOptions.Compact),
                         token
                     );
                 }
 
-                var rows = await connection.QueryAsync<ActiveDirectiveRow>
+                var rows = await connection.QueryAsync<ActiveDirective>
                            (
                                new CommandDefinition
                                (
@@ -249,37 +248,8 @@ public sealed class DirectiveRepository
                            );
                 await transaction.CommitAsync(token);
 
-                return rows.Select(row => row.ToActiveDirective()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
-
-    private sealed class ActiveDirectiveRow
-    {
-        public long   ID         { get; set; }
-        public long   Project_ID { get; set; }
-        public long?  Session_ID { get; set; }
-        public string Type       { get; set; } = "plot";
-        public string Content    { get; set; } = string.Empty;
-        public int?   TTL        { get; set; }
-        public string Created_At { get; set; } = string.Empty;
-
-        public ActiveDirective ToActiveDirective() =>
-            new()
-            {
-                ID        = ID,
-                ProjectID = Project_ID,
-                SessionID = Session_ID ?? 0,
-                Type = Type switch
-                {
-                    "tone"                 => DirectiveType.Tone,
-                    "temporary_constraint" => DirectiveType.TemporaryConstraint,
-                    "scene_change"         => DirectiveType.SceneChange,
-                    _                      => DirectiveType.Plot
-                },
-                Content   = Content,
-                TTL       = TTL,
-                CreatedAt = DateTime.Parse(Created_At)
-            };
-    }
 }

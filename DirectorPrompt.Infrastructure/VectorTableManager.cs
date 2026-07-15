@@ -5,9 +5,9 @@ namespace DirectorPrompt.Infrastructure;
 
 public sealed class VectorTableManager
 {
-    private readonly SqliteDatabaseScheduler scheduler;
+    private readonly SQLiteDatabaseScheduler scheduler;
 
-    public VectorTableManager(SqliteDatabaseScheduler scheduler) =>
+    public VectorTableManager(SQLiteDatabaseScheduler scheduler) =>
         this.scheduler = scheduler;
 
     public static string GetKnowledgeTableName(long projectID) => $"knowledge_vec_{projectID}";
@@ -20,7 +20,7 @@ public sealed class VectorTableManager
         scheduler.ExecuteAsync
         (
             (connection, token) => EnsureTableAsync(connection, tableName, dimension, token),
-            SqliteWorkPriority.Maintenance,
+            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -67,7 +67,7 @@ public sealed class VectorTableManager
         scheduler.ExecuteAsync
         (
             (connection, token) => EnsureMultiVectorTableAsync(connection, tableName, dimension, token),
-            SqliteWorkPriority.Maintenance,
+            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -134,7 +134,7 @@ public sealed class VectorTableManager
         scheduler.ExecuteAsync
         (
             (connection, token) => TableExistsAsync(connection, tableName, token),
-            SqliteWorkPriority.Maintenance,
+            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 

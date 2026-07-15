@@ -4,25 +4,20 @@ using Serilog;
 
 namespace DirectorPrompt.Infrastructure;
 
-public sealed class SqliteConnectionFactory
+public sealed class SQLiteConnectionFactory
+(
+    string connectionString,
+    bool   enableVecExtension = true
+)
 {
-    private readonly string  connectionString;
-    private readonly bool    enableVecExtension;
-    private readonly string? vecPath;
-
-    public SqliteConnectionFactory(string connectionString, bool enableVecExtension = true)
-    {
-        this.connectionString   = connectionString;
-        this.enableVecExtension = enableVecExtension;
-        vecPath = enableVecExtension ?
-                      FindVecLibrary() :
-                      null;
-    }
+    private readonly string? vecPath = enableVecExtension ?
+                                           FindVecLibrary() :
+                                           null;
 
     public async Task<SqliteConnection> CreateAsync
     (
-        CancellationToken cancellationToken   = default,
-        bool              loadVectorExtension = false
+        bool              loadVectorExtension = false,
+        CancellationToken cancellationToken   = default
     )
     {
         var connection = new SqliteConnection(connectionString);

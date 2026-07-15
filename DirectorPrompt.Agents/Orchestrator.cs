@@ -1,6 +1,7 @@
 using System.Text.Json;
 using DirectorPrompt.Agents.Config;
 using DirectorPrompt.Agents.Pipeline;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -179,7 +180,7 @@ public sealed class Orchestrator
         if (latestRound <= 0)
             return null;
 
-        var events = await eventRepository.GetByRoundAsync(sessionID, latestRound, cancellationToken);
+        var events        = await eventRepository.GetByRoundAsync(sessionID, latestRound, cancellationToken);
         var directorEvent = events.FirstOrDefault(e => e.Type == EventType.DirectorInput);
 
         Log.Information("用户回退轮次: 对话={SessionID}, 轮次={RoundID}", sessionID, latestRound);
@@ -313,7 +314,7 @@ public sealed class Orchestrator
                     RoundID   = context.RoundID,
                     SceneID   = context.CurrentSceneID,
                     Type      = source.EventType,
-                    Data      = JsonSerializer.Serialize(new { activeKeys = result.ActiveKeys }),
+                    Data      = JsonSerializer.Serialize(new { activeKeys = result.ActiveKeys }, JsonOptions.Compact),
                     CreatedAt = now
                 }
             );

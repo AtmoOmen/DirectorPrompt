@@ -1,4 +1,5 @@
-using DirectorPrompt.Agents.Config;
+using System.Text.Json;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -135,7 +136,9 @@ public sealed class PhaseEvaluator
 
     internal static List<Phase> ParsePhases(string config)
     {
-        var parsed = AttributeConfigSerializer.Deserialize<PhaseConfig>(config);
+        var parsed = string.IsNullOrWhiteSpace(config) ?
+                         null :
+                         JsonSerializer.Deserialize<StateAttributeConfig>(config, JsonOptions.Default);
 
         return parsed?.Phases ?? [];
     }

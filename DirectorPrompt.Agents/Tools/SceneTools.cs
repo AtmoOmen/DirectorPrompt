@@ -1,4 +1,3 @@
-using System.Text.Json;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -51,7 +50,7 @@ public sealed class SceneTools
             }
         );
 
-        return JsonSerializer.Serialize(result);
+        return ToolResult.Data(result);
     }
 
     private async Task<string> CreateSceneAsync
@@ -64,7 +63,7 @@ public sealed class SceneTools
     {
         Log.Information("工具调用: create_scene(timeLabel={TimeLabel})", timeLabel);
         if (string.IsNullOrWhiteSpace(timeLabel))
-            return JsonSerializer.Serialize(new { error = "timeLabel 不能为空" });
+            return ToolResult.Error("timeLabel 不能为空");
 
         var existingScenes = await sceneRepository.GetOrderedByTimelineAsync(context.SessionID);
 
@@ -76,7 +75,7 @@ public sealed class SceneTools
         }
         catch (ArgumentException ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message });
+            return ToolResult.Error(ex.Message);
         }
 
         await sceneRepository.CloseActiveSceneAsync(context.SessionID, context.RoundID, null);
@@ -94,6 +93,6 @@ public sealed class SceneTools
 
         Log.Information("工具调用完成: create_scene, sceneID={ID}, timelinePosition={Position}", created.ID, position);
 
-        return JsonSerializer.Serialize(new { sceneID = created.ID, timelinePosition = position });
+        return ToolResult.Data(new { sceneID = created.ID, timelinePosition = position });
     }
 }

@@ -22,7 +22,7 @@ public sealed class RepositoryTransactionTests
                         """
                         INSERT INTO scenes
                         (id, project_id, session_id, timeline_position, time_label, status)
-                        VALUES (1, 1, 1, 1000, 'test', 'active');
+                        VALUES (1, 1, 1, 1000, 'test', 'Active');
 
                         CREATE TRIGGER fail_round_audit
                         BEFORE INSERT ON round_changes

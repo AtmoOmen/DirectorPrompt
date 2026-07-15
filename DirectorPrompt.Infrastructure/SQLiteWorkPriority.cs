@@ -1,6 +1,6 @@
 namespace DirectorPrompt.Infrastructure;
 
-public enum SqliteWorkPriority
+public enum SQLiteWorkPriority
 {
     Foreground,
     Maintenance

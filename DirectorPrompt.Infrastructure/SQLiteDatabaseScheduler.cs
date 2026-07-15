@@ -3,18 +3,18 @@ using Microsoft.Data.Sqlite;
 
 namespace DirectorPrompt.Infrastructure;
 
-public sealed class SqliteDatabaseScheduler : IAsyncDisposable
+public sealed class SQLiteDatabaseScheduler : IAsyncDisposable
 {
     private const int FOREGROUND_CAPACITY  = 256;
     private const int MAINTENANCE_CAPACITY = 64;
 
-    private readonly SqliteConnectionFactory connectionFactory;
+    private readonly SQLiteConnectionFactory connectionFactory;
     private readonly Channel<WorkItem>       foregroundQueue;
     private readonly Channel<WorkItem>       maintenanceQueue;
     private readonly CancellationTokenSource shutdownSource = new();
     private readonly Task                    worker;
 
-    public SqliteDatabaseScheduler(SqliteConnectionFactory connectionFactory)
+    public SQLiteDatabaseScheduler(SQLiteConnectionFactory connectionFactory)
     {
         this.connectionFactory = connectionFactory;
         foregroundQueue        = CreateQueue(FOREGROUND_CAPACITY);
@@ -25,7 +25,7 @@ public sealed class SqliteDatabaseScheduler : IAsyncDisposable
     public Task ExecuteAsync
     (
         Func<SqliteConnection, CancellationToken, Task> operation,
-        SqliteWorkPriority                              priority          = SqliteWorkPriority.Foreground,
+        SQLiteWorkPriority                              priority          = SQLiteWorkPriority.Foreground,
         CancellationToken                               cancellationToken = default
     ) =>
         ExecuteAsync
@@ -42,14 +42,14 @@ public sealed class SqliteDatabaseScheduler : IAsyncDisposable
     public async Task<TResult> ExecuteAsync<TResult>
     (
         Func<SqliteConnection, CancellationToken, Task<TResult>> operation,
-        SqliteWorkPriority                                       priority          = SqliteWorkPriority.Foreground,
+        SQLiteWorkPriority                                       priority          = SQLiteWorkPriority.Foreground,
         CancellationToken                                        cancellationToken = default
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var item = new WorkItem<TResult>(operation, cancellationToken);
-        var writer = priority == SqliteWorkPriority.Foreground ?
+        var writer = priority == SQLiteWorkPriority.Foreground ?
                          foregroundQueue.Writer :
                          maintenanceQueue.Writer;
 
@@ -83,7 +83,7 @@ public sealed class SqliteDatabaseScheduler : IAsyncDisposable
     {
         try
         {
-            await using var connection = await connectionFactory.CreateAsync(shutdownSource.Token, true);
+            await using var connection = await connectionFactory.CreateAsync(true, shutdownSource.Token);
             await ConfigureConnectionAsync(connection, shutdownSource.Token);
 
             while (await WaitForWorkAsync())

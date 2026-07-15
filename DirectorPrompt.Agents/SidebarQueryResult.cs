@@ -1,20 +1,19 @@
 using DirectorPrompt.Domain.Enums;
-using DirectorPrompt.Domain.Models;
 
 namespace DirectorPrompt.Agents;
 
 public sealed record SidebarQueryResult
 (
-    SidebarQueryResult.StatePanelData       StatePanel,
-    SidebarQueryResult.DirectivesPanelData  DirectivesPanel,
-    SidebarQueryResult.CharacterPanelData   CharacterPanel,
-    SidebarQueryResult.MemoryPanelData      MemoryPanel
+    SidebarQueryResult.StatePanelData      StatePanel,
+    SidebarQueryResult.DirectivesPanelData DirectivesPanel,
+    SidebarQueryResult.CharacterPanelData  CharacterPanel,
+    SidebarQueryResult.MemoryPanelData     MemoryPanel
 )
 {
     public sealed record StatePanelData
     (
-        string                                SceneLabel,
-        IReadOnlyList<StatePanelItem>         Items
+        string                        SceneLabel,
+        IReadOnlyList<StatePanelItem> Items
     );
 
     public sealed record StatePanelItem
@@ -44,18 +43,18 @@ public sealed record SidebarQueryResult
 
     public sealed record CharacterPanelGroup
     (
-        string?                                CategoryName,
-        IReadOnlyList<CharacterPanelItem>     Items
+        string?                           CategoryName,
+        IReadOnlyList<CharacterPanelItem> Items
     );
 
     public sealed record CharacterPanelItem
     (
-        long                                         ID,
-        string                                       Name,
-        string                                       Description,
-        string                                       Categories,
-        IReadOnlyList<CharacterStateValueItem>       StateValues,
-        IReadOnlyList<CharacterRelationItem>         Relations
+        long                                   ID,
+        string                                 Name,
+        string                                 Description,
+        string                                 Categories,
+        IReadOnlyList<CharacterStateValueItem> StateValues,
+        IReadOnlyList<CharacterRelationItem>   Relations
     );
 
     public sealed record CharacterStateValueItem
@@ -79,8 +78,8 @@ public sealed record SidebarQueryResult
 
     public sealed record MemoryPanelGroup
     (
-        string                                SceneLabel,
-        IReadOnlyList<MemoryPanelItem>        Items
+        string                         SceneLabel,
+        IReadOnlyList<MemoryPanelItem> Items
     );
 
     public sealed record MemoryPanelItem

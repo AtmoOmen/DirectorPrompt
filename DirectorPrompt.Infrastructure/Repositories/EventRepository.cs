@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -6,13 +5,11 @@ using DirectorPrompt.Domain.Repositories;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
-public sealed class EventRepository : IEventRepository
+public sealed class EventRepository
+(
+    SQLiteDatabaseScheduler scheduler
+) : IEventRepository
 {
-    private readonly SqliteDatabaseScheduler scheduler;
-
-    public EventRepository(SqliteDatabaseScheduler scheduler) =>
-        this.scheduler = scheduler;
-
     public Task<PlaythroughEvent> AppendAsync
     (
         PlaythroughEvent  eventItem,
@@ -89,7 +86,7 @@ public sealed class EventRepository : IEventRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<EventRow>
+                var rows = await connection.QueryAsync<PlaythroughEvent>
                            (
                                new CommandDefinition
                                (
@@ -99,7 +96,7 @@ public sealed class EventRepository : IEventRepository
                                )
                            );
 
-                return rows.Select(row => row.ToEvent()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -114,7 +111,7 @@ public sealed class EventRepository : IEventRepository
             async (connection, token) =>
             {
                 var pageSize = Math.Clamp(query.PageSize, 1, 100);
-                var rows = await connection.QueryAsync<EventRow>
+                var rows = await connection.QueryAsync<PlaythroughEvent>
                            (
                                new CommandDefinition
                                (
@@ -126,7 +123,7 @@ public sealed class EventRepository : IEventRepository
                                        WHERE session_id = @sessionID
                                          AND round_id > 0
                                          AND (@beforeRoundID IS NULL OR round_id < @beforeRoundID)
-                                         AND type IN ('director_input', 'narrative_output')
+                                         AND type IN ('DirectorInput', 'NarrativeOutput')
                                        ORDER BY round_id DESC
                                        LIMIT @pageSize
                                    ),
@@ -141,7 +138,7 @@ public sealed class EventRepository : IEventRepository
                                        FROM playthrough_events pe
                                        JOIN selected_rounds sr ON sr.round_id = pe.round_id
                                        WHERE pe.session_id = @sessionID
-                                         AND pe.type IN ('director_input', 'narrative_output')
+                                         AND pe.type IN ('DirectorInput', 'NarrativeOutput')
                                    )
                                    SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
                                    FROM ranked_events
@@ -158,7 +155,7 @@ public sealed class EventRepository : IEventRepository
                                )
                            );
 
-                var events = rows.Select(row => row.ToEvent()).ToList();
+                var events = rows.ToList();
                 long? oldestRoundID = events.Count == 0 ?
                                           null :
                                           events.Min(item => item.RoundID);
@@ -175,7 +172,7 @@ public sealed class EventRepository : IEventRepository
                                               WHERE session_id = @sessionID
                                                 AND round_id > 0
                                                 AND round_id < @oldestRoundID
-                                                AND type IN ('director_input', 'narrative_output')
+                                                AND type IN ('DirectorInput', 'NarrativeOutput')
                                           )
                                           """,
                                           new { sessionID = query.SessionID, oldestRoundID },
@@ -208,7 +205,7 @@ public sealed class EventRepository : IEventRepository
             async (connection, token) =>
             {
                 var roundLimit = Math.Clamp(maxRounds, 1, 200);
-                var rows = await connection.QueryAsync<EventRow>
+                var rows = await connection.QueryAsync<PlaythroughEvent>
                            (
                                new CommandDefinition
                                (
@@ -220,7 +217,7 @@ public sealed class EventRepository : IEventRepository
                                        WHERE session_id = @sessionID
                                          AND scene_id = @sceneID
                                          AND round_id < @beforeRoundID
-                                         AND type IN ('director_input', 'narrative_output')
+                                         AND type IN ('DirectorInput', 'NarrativeOutput')
                                        ORDER BY round_id DESC
                                        LIMIT @roundLimit
                                    ),
@@ -236,7 +233,7 @@ public sealed class EventRepository : IEventRepository
                                        JOIN selected_rounds sr ON sr.round_id = pe.round_id
                                        WHERE pe.session_id = @sessionID
                                          AND pe.scene_id = @sceneID
-                                         AND pe.type IN ('director_input', 'narrative_output')
+                                         AND pe.type IN ('DirectorInput', 'NarrativeOutput')
                                    )
                                    SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
                                    FROM ranked_events
@@ -248,7 +245,7 @@ public sealed class EventRepository : IEventRepository
                                )
                            );
 
-                return rows.Select(row => row.ToEvent()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -263,27 +260,23 @@ public sealed class EventRepository : IEventRepository
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
-            {
-                var row = await connection.QueryFirstOrDefaultAsync<EventRow>
-                          (
-                              new CommandDefinition
-                              (
-                                  """
-                                  SELECT *
-                                  FROM playthrough_events
-                                  WHERE session_id = @sessionID
-                                    AND type = @type
-                                    AND round_id < @beforeRoundID
-                                  ORDER BY round_id DESC, id DESC
-                                  LIMIT 1
-                                  """,
-                                  new { sessionID, type = JsonNamingPolicy.SnakeCaseLower.ConvertName(type.ToString()), beforeRoundID },
-                                  cancellationToken: token
-                              )
-                          );
-
-                return row?.ToEvent();
-            },
+                await connection.QueryFirstOrDefaultAsync<PlaythroughEvent>
+                (
+                    new CommandDefinition
+                    (
+                        """
+                        SELECT *
+                        FROM playthrough_events
+                        WHERE session_id = @sessionID
+                          AND type = @type
+                          AND round_id < @beforeRoundID
+                        ORDER BY round_id DESC, id DESC
+                        LIMIT 1
+                        """,
+                        new { sessionID, type = type.ToString(), beforeRoundID },
+                        cancellationToken: token
+                    )
+                ),
             cancellationToken: cancellationToken
         );
 
@@ -301,7 +294,7 @@ public sealed class EventRepository : IEventRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<EventRow>
+                var rows = await connection.QueryAsync<PlaythroughEvent>
                            (
                                new CommandDefinition
                                (
@@ -314,7 +307,7 @@ public sealed class EventRepository : IEventRepository
                                          AND scene_id = @sceneID
                                          AND round_id > @afterRoundID
                                          AND round_id < @beforeRoundID
-                                         AND type IN ('director_input', 'narrative_output')
+                                         AND type IN ('DirectorInput', 'NarrativeOutput')
                                    ),
                                    summarizable_rounds AS
                                    (
@@ -342,7 +335,7 @@ public sealed class EventRepository : IEventRepository
                                        JOIN selected_rounds sr ON sr.round_id = pe.round_id
                                        WHERE pe.session_id = @sessionID
                                          AND pe.scene_id = @sceneID
-                                         AND pe.type IN ('director_input', 'narrative_output')
+                                         AND pe.type IN ('DirectorInput', 'NarrativeOutput')
                                    )
                                    SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
                                    FROM ranked_events
@@ -362,7 +355,7 @@ public sealed class EventRepository : IEventRepository
                                )
                            );
 
-                return rows.Select(row => row.ToEvent()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -440,48 +433,8 @@ public sealed class EventRepository : IEventRepository
             sessionID = eventItem.SessionID,
             roundID   = eventItem.RoundID,
             sceneID   = eventItem.SceneID,
-            type      = JsonNamingPolicy.SnakeCaseLower.ConvertName(eventItem.Type.ToString()),
+            type      = eventItem.Type.ToString(),
             data      = eventItem.Data,
             createdAt = eventItem.CreatedAt.ToString("O")
         };
-
-    private sealed class EventRow
-    {
-        public long   ID         { get; set; }
-        public long   Project_ID { get; set; }
-        public long?  Session_ID { get; set; }
-        public long   Round_ID   { get; set; }
-        public long?  Scene_ID   { get; set; }
-        public string Type       { get; set; } = string.Empty;
-        public string Data       { get; set; } = string.Empty;
-        public string Created_At { get; set; } = string.Empty;
-
-        public PlaythroughEvent ToEvent()
-        {
-            var type = Type switch
-            {
-                "director_input"   => EventType.DirectorInput,
-                "narrative_output" => EventType.NarrativeOutput,
-                "state_change"     => EventType.StateChange,
-                "memory_update"    => EventType.MemoryUpdate,
-                "character_update" => EventType.CharacterUpdate,
-                "scene_change"     => EventType.SceneChange,
-                "directive_change" => EventType.DirectiveChange,
-                "phase_transition" => EventType.PhaseTransition,
-                _                  => EventType.DirectorInput
-            };
-
-            return new PlaythroughEvent
-            {
-                ID        = ID,
-                ProjectID = Project_ID,
-                SessionID = Session_ID ?? 0,
-                RoundID   = Round_ID,
-                SceneID   = Scene_ID,
-                Type      = type,
-                Data      = Data,
-                CreatedAt = DateTime.Parse(Created_At)
-            };
-        }
-    }
 }

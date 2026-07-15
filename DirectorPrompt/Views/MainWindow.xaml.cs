@@ -31,8 +31,8 @@ public partial class MainWindow : FluentWindow
         WindowTitleBar.Title = $"DirectorPrompt {version}";
 
         viewModel.Dialog.Entries.CollectionChanged += OnDialogEntriesChanged;
-        viewModel.PropertyChanged                         += OnViewModelPropertyChanged;
-        Loaded                                             += OnLoaded;
+        viewModel.PropertyChanged                  += OnViewModelPropertyChanged;
+        Loaded                                     += OnLoaded;
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)

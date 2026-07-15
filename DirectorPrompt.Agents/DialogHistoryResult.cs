@@ -9,10 +9,10 @@ public sealed record DialogHistoryResult
 {
     public sealed record RoundEntry
     (
-        long             RoundID,
-        long?            DirectorEventID,
+        long                                                RoundID,
+        long?                                               DirectorEventID,
         IReadOnlyList<(DirectiveType Type, string Content)> DirectorBlocks,
-        long?            NarrativeEventID,
-        string           NarrativeText
+        long?                                               NarrativeEventID,
+        string                                              NarrativeText
     );
 }

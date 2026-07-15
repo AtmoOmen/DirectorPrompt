@@ -7,7 +7,10 @@ using Serilog;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
-public sealed class RoundChangeRepository : IRoundChangeRepository
+public sealed class RoundChangeRepository
+(
+    SQLiteDatabaseScheduler scheduler
+) : IRoundChangeRepository
 {
     private static readonly HashSet<string> ValidTables =
     [
@@ -25,11 +28,6 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         ["character_state_values"]   = ["character_id", "attribute_id"],
         ["character_scene_presence"] = ["character_id", "scene_id"]
     };
-
-    private readonly SqliteDatabaseScheduler scheduler;
-
-    public RoundChangeRepository(SqliteDatabaseScheduler scheduler) =>
-        this.scheduler = scheduler;
 
     public Task RecordCreateAsync
     (
@@ -119,7 +117,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<RoundChangeRow>
+                var rows = await connection.QueryAsync<RoundChange>
                            (
                                new CommandDefinition
                                (
@@ -129,7 +127,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
                                )
                            );
 
-                return rows.Select(row => row.ToRoundChange()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -144,16 +142,15 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<RoundChangeRow>
-                           (
-                               new CommandDefinition
+                var changes = (await connection.QueryAsync<RoundChange>
                                (
-                                   "SELECT * FROM round_changes WHERE session_id = @sessionID AND round_id = @roundID ORDER BY id DESC",
-                                   new { sessionID, roundID },
-                                   cancellationToken: token
-                               )
-                           );
-                var changes = rows.Select(row => row.ToRoundChange()).ToList();
+                                   new CommandDefinition
+                                   (
+                                       "SELECT * FROM round_changes WHERE session_id = @sessionID AND round_id = @roundID ORDER BY id DESC",
+                                       new { sessionID, roundID },
+                                       cancellationToken: token
+                                   )
+                               )).ToList();
 
                 if (changes.Count == 0)
                     return;
@@ -197,7 +194,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
     )
     {
         var relationIDs = changes
-                          .Where(c => c.TableName == "character_relations" && c.Operation == "create")
+                          .Where(c => c is { TableName: "character_relations", Operation: "create" })
                           .Select(c => c.RecordID)
                           .ToList();
 
@@ -212,7 +209,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         }
 
         var characterIDs = changes
-                           .Where(c => c.TableName == "characters" && c.Operation == "create")
+                           .Where(c => c is { TableName: "characters", Operation: "create" })
                            .Select(c => c.RecordID)
                            .ToList();
 
@@ -278,7 +275,7 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
                     recordID,
                     operation,
                     oldData   = oldDataJSON,
-                    createdAt = DateTime.UtcNow.ToString("O")
+                    createdAt = DateTime.UtcNow
                 },
                 transaction,
                 cancellationToken: cancellationToken
@@ -501,30 +498,5 @@ public sealed class RoundChangeRepository : IRoundChangeRepository
         }
 
         return result;
-    }
-
-    private sealed class RoundChangeRow
-    {
-        public long    ID         { get; set; }
-        public long    Session_ID { get; set; }
-        public long    Round_ID   { get; set; }
-        public string  Table_Name { get; set; } = string.Empty;
-        public long    Record_ID  { get; set; }
-        public string  Operation  { get; set; } = string.Empty;
-        public string? Old_Data   { get; set; }
-        public string  Created_At { get; set; } = string.Empty;
-
-        public RoundChange ToRoundChange() =>
-            new()
-            {
-                ID        = ID,
-                SessionID = Session_ID,
-                RoundID   = Round_ID,
-                TableName = Table_Name,
-                RecordID  = Record_ID,
-                Operation = Operation,
-                OldData   = Old_Data,
-                CreatedAt = DateTime.Parse(Created_At)
-            };
     }
 }

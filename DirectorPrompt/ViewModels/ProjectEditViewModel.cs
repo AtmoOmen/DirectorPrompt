@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents;
 using DirectorPrompt.Agents.Config;
 using DirectorPrompt.Agents.Retrieval;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -130,7 +132,9 @@ public sealed partial class ProjectEditViewModel
         if (string.IsNullOrWhiteSpace(json) || json == "{}")
             return;
 
-        var config = AttributeConfigSerializer.Deserialize<StateAttributeConfig>(json);
+        var config = string.IsNullOrWhiteSpace(json) ?
+                         null :
+                         JsonSerializer.Deserialize<StateAttributeConfig>(json, JsonOptions.Default);
 
         if (config is null)
             return;
@@ -816,5 +820,4 @@ public sealed partial class ProjectEditViewModel
             }
         }
     }
-
 }

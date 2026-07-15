@@ -1,8 +1,8 @@
 namespace DirectorPrompt.Domain.Configurations;
 
-public record EmbeddingConfig
+public sealed class EmbeddingConfig
 {
-    public string ProviderID { get; init; } = string.Empty;
+    public string ProviderID { get; set; } = string.Empty;
 
-    public string ModelName { get; init; } = "text-embedding-v4";
+    public string ModelName { get; set; } = "text-embedding-v4";
 }

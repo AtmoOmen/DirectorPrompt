@@ -1,12 +1,12 @@
 namespace DirectorPrompt.Domain.Configurations;
 
-public record MemoryConfig
+public sealed class MemoryConfig
 {
-    public int RecallTopK { get; init; } = 10;
+    public int RecallTopK { get; set; } = 10;
 
-    public int TokenBudget { get; init; } = 1500;
+    public int TokenBudget { get; set; } = 1500;
 
-    public float MinRelevance { get; init; }
+    public float MinRelevance { get; set; }
 
-    public float TimeDecayLambda { get; init; }
+    public float TimeDecayLambda { get; set; }
 }

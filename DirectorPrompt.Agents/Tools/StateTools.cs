@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
@@ -61,11 +60,11 @@ public sealed class StateTools
         var attr       = attributes.FirstOrDefault(a => a.Name == attribute);
 
         if (attr is null)
-            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
+            return ToolResult.Error($"状态属性 {attribute} 不存在");
 
         var value = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
 
-        return JsonSerializer.Serialize
+        return ToolResult.Data
         (
             new
             {
@@ -94,7 +93,7 @@ public sealed class StateTools
             );
         }
 
-        return JsonSerializer.Serialize(result);
+        return ToolResult.Data(result);
     }
 
     private async Task<string> UpdateStateAsync
@@ -110,10 +109,10 @@ public sealed class StateTools
         var attr       = attributes.FirstOrDefault(a => a.Name == attribute);
 
         if (attr is null)
-            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
+            return ToolResult.Error($"状态属性 {attribute} 不存在");
 
         if (attr.Driver == Driver.System || attr.ValueType == StateValueType.Enum)
-            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 为系统驱动或枚举类型, AI 不可直接修改" });
+            return ToolResult.Error($"状态属性 {attribute} 为系统驱动或枚举类型, AI 不可直接修改");
 
         var currentValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
         var currentNum   = double.Parse(currentValue?.Value ?? "0");
@@ -137,7 +136,7 @@ public sealed class StateTools
             newValue.ToString(CultureInfo.InvariantCulture)
         );
 
-        return JsonSerializer.Serialize
+        return ToolResult.Data
         (
             new
             {
@@ -160,10 +159,10 @@ public sealed class StateTools
         var attr       = attributes.FirstOrDefault(a => a.Name == attribute);
 
         if (attr is null)
-            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
+            return ToolResult.Error($"状态属性 {attribute} 不存在");
 
         if (attr.Driver == Driver.System || attr.ValueType == StateValueType.Enum)
-            return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 为系统驱动或枚举类型, AI 不可直接修改" });
+            return ToolResult.Error($"状态属性 {attribute} 为系统驱动或枚举类型, AI 不可直接修改");
 
         var oldValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
 
@@ -178,7 +177,7 @@ public sealed class StateTools
             context.RoundID
         );
 
-        return JsonSerializer.Serialize
+        return ToolResult.Data
         (
             new
             {

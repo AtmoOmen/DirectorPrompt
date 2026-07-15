@@ -1,19 +1,43 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Localization;
 
 namespace DirectorPrompt.ViewModels;
 
-public sealed partial class AgentTaskSettingViewModel : ObservableObject
+public sealed class AgentTaskSettingViewModel : ObservableObject
 {
-    [ObservableProperty]
-    public partial AgentTaskType TaskType { get; set; }
+    public AgentTaskConfig Config { get; }
 
-    [ObservableProperty]
-    public partial string ModelConfigID { get; set; } = string.Empty;
+    public AgentTaskSettingViewModel(AgentTaskConfig config) => Config = config;
 
-    [ObservableProperty]
-    public partial string? PromptID { get; set; }
+    public AgentTaskType TaskType => Config.TaskType;
 
-    public string TaskTypeDisplay => Loc.Get($"Agent.Task.{TaskType}");
+    public string TaskTypeDisplay => Loc.Get($"Agent.Task.{Config.TaskType}");
+
+    public string ModelConfigID
+    {
+        get => Config.ModelConfigID;
+        set
+        {
+            if (Config.ModelConfigID != value)
+            {
+                Config.ModelConfigID = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string? PromptID
+    {
+        get => Config.PromptID;
+        set
+        {
+            if (Config.PromptID != value)
+            {
+                Config.PromptID = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 }

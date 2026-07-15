@@ -6,30 +6,24 @@ using Serilog;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
-public sealed class ProjectRepository : IProjectRepository
+public sealed class ProjectRepository
+(
+    SQLiteDatabaseScheduler scheduler
+) : IProjectRepository
 {
-    private readonly SqliteDatabaseScheduler scheduler;
-
-    public ProjectRepository(SqliteDatabaseScheduler scheduler) =>
-        this.scheduler = scheduler;
-
     public Task<Project?> GetByIDAsync(long id, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
-            {
-                var row = await connection.QueryFirstOrDefaultAsync<ProjectRow>
-                          (
-                              new CommandDefinition
-                              (
-                                  "SELECT * FROM projects WHERE id = @id",
-                                  new { id },
-                                  cancellationToken: token
-                              )
-                          );
-
-                return row?.ToProject();
-            },
+                await connection.QueryFirstOrDefaultAsync<Project>
+                (
+                    new CommandDefinition
+                    (
+                        "SELECT * FROM projects WHERE id = @id",
+                        new { id },
+                        cancellationToken: token
+                    )
+                ),
             cancellationToken: cancellationToken
         );
 
@@ -38,7 +32,7 @@ public sealed class ProjectRepository : IProjectRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<ProjectRow>
+                var rows = await connection.QueryAsync<Project>
                            (
                                new CommandDefinition
                                (
@@ -47,7 +41,7 @@ public sealed class ProjectRepository : IProjectRepository
                                )
                            );
 
-                return rows.Select(row => row.ToProject()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -72,8 +66,8 @@ public sealed class ProjectRepository : IProjectRepository
                                      name           = project.Name,
                                      description    = project.Description,
                                      openingMessage = project.OpeningMessage,
-                                     createdAt      = now.ToString("O"),
-                                     updatedAt      = now.ToString("O")
+                                     createdAt      = now,
+                                     updatedAt      = now
                                  },
                                  cancellationToken: token
                              )
@@ -107,7 +101,7 @@ public sealed class ProjectRepository : IProjectRepository
                             name           = project.Name,
                             description    = project.Description,
                             openingMessage = project.OpeningMessage,
-                            updatedAt      = DateTime.UtcNow.ToString("O")
+                            updatedAt      = DateTime.UtcNow
                         },
                         cancellationToken: token
                     )
@@ -205,31 +199,5 @@ public sealed class ProjectRepository : IProjectRepository
         {
             Log.Warning("向量表 {Table} 删除失败, 可能 vec0 扩展未加载", tableName);
         }
-    }
-
-    private sealed class ProjectRow
-    {
-        public long ID { get; set; }
-
-        public string Name { get; set; } = string.Empty;
-
-        public string Description { get; set; } = string.Empty;
-
-        public string Opening_Message { get; set; } = string.Empty;
-
-        public string Created_At { get; set; } = string.Empty;
-
-        public string Updated_At { get; set; } = string.Empty;
-
-        public Project ToProject() =>
-            new()
-            {
-                ID             = ID,
-                Name           = Name,
-                Description    = Description,
-                OpeningMessage = Opening_Message,
-                CreatedAt      = DateTime.Parse(Created_At),
-                UpdatedAt      = DateTime.Parse(Updated_At)
-            };
     }
 }

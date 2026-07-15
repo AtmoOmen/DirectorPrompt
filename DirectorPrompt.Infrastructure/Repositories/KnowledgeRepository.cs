@@ -5,38 +5,28 @@ using Serilog;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
-public sealed class KnowledgeRepository : IKnowledgeRepository
+public sealed class KnowledgeRepository
+(
+    SQLiteConnectionFactory connectionFactory,
+    SQLiteDatabaseScheduler scheduler
+)
+    : IKnowledgeRepository
 {
-    private readonly SqliteConnectionFactory connectionFactory;
-    private readonly SqliteDatabaseScheduler scheduler;
-
-    public KnowledgeRepository
-    (
-        SqliteConnectionFactory connectionFactory,
-        SqliteDatabaseScheduler scheduler
-    )
-    {
-        this.connectionFactory = connectionFactory;
-        this.scheduler         = scheduler;
-    }
-
     public async Task<KnowledgeEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<KnowledgeEntryRow>
-                  (
-                      "SELECT * FROM knowledge_entries WHERE id = @id",
-                      new { id }
-                  );
-
-        return row?.ToKnowledgeEntry();
+        return await connection.QueryFirstOrDefaultAsync<KnowledgeEntry>
+               (
+                   "SELECT * FROM knowledge_entries WHERE id = @id",
+                   new { id }
+               );
     }
 
     public async Task<IReadOnlyList<KnowledgeEntry>> GetHeadersByProjectAsync(long projectID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-        var rows = await connection.QueryAsync<KnowledgeEntryRow>
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
+        var rows = await connection.QueryAsync<KnowledgeEntry>
                    (
                        new CommandDefinition
                        (
@@ -61,7 +51,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                        )
                    );
 
-        return rows.Select(row => row.ToKnowledgeEntry()).ToList();
+        return rows.ToList();
     }
 
     public Task<IReadOnlyList<KnowledgeEntry>> GetPendingIndexEntriesAsync
@@ -75,7 +65,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<KnowledgeEntryRow>
+                var rows = await connection.QueryAsync<KnowledgeEntry>
                            (
                                new CommandDefinition
                                (
@@ -97,9 +87,9 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                                )
                            );
 
-                return rows.Select(row => row.ToKnowledgeEntry()).ToList();
+                return rows.ToList();
             },
-            SqliteWorkPriority.Maintenance,
+            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -112,7 +102,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<KnowledgeEntryRow>
+                var rows = await connection.QueryAsync<KnowledgeEntry>
                            (
                                new CommandDefinition
                                (
@@ -122,7 +112,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                                )
                            );
 
-                return rows.Select(row => row.ToKnowledgeEntry()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -141,7 +131,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<KnowledgeEntryRow>
+                var rows = await connection.QueryAsync<KnowledgeEntry>
                            (
                                new CommandDefinition
                                (
@@ -151,7 +141,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                                )
                            );
 
-                return rows.Select(row => row.ToKnowledgeEntry()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -172,7 +162,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<KnowledgeEntryRow>
+                var rows = await connection.QueryAsync<KnowledgeEntry>
                            (
                                new CommandDefinition
                                (
@@ -194,7 +184,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                                )
                            );
 
-                return rows.Select(row => row.ToKnowledgeEntry()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -202,9 +192,9 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
 
     public async Task<KnowledgeEntry> CreateAsync(KnowledgeEntry entry, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var now = DateTime.UtcNow.ToString("O");
+        var now = DateTime.UtcNow;
 
         var id = await connection.ExecuteScalarAsync<long>
                  (
@@ -218,11 +208,9 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                          projectID = entry.ProjectID,
                          remarks   = entry.Remarks,
                          content   = entry.Content,
-                         keywords  = JsonHelper.Serialize(entry.Keywords),
+                         keywords  = entry.Keywords,
                          groupID   = entry.GroupID,
-                         active = entry.Active ?
-                                      1 :
-                                      0,
+                         active    = entry.Active,
                          createdAt = now,
                          updatedAt = now
                      }
@@ -233,8 +221,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
 
     public async Task UpdateAsync(KnowledgeEntry entry, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-        var             keywords   = JsonHelper.Serialize(entry.Keywords);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync
         (
@@ -258,22 +245,20 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
             """,
             new
             {
-                id      = entry.ID,
-                remarks = entry.Remarks,
-                content = entry.Content,
-                keywords,
-                groupID = entry.GroupID,
-                active = entry.Active ?
-                             1 :
-                             0,
-                updatedAt = DateTime.UtcNow.ToString("O")
+                id        = entry.ID,
+                remarks   = entry.Remarks,
+                content   = entry.Content,
+                keywords  = entry.Keywords,
+                groupID   = entry.GroupID,
+                active    = entry.Active,
+                updatedAt = DateTime.UtcNow
             }
         );
     }
 
     public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         var projectID = await connection.QueryFirstOrDefaultAsync<long?>
                         (
@@ -313,20 +298,20 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
 
     public async Task<IReadOnlyList<KnowledgeGroup>> GetGroupsAsync(long projectID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<KnowledgeGroupRow>
+        var rows = await connection.QueryAsync<KnowledgeGroup>
                    (
                        "SELECT * FROM knowledge_groups WHERE project_id = @projectID ORDER BY id",
                        new { projectID }
                    );
 
-        return rows.Select(r => r.ToKnowledgeGroup()).ToList();
+        return rows.ToList();
     }
 
     public async Task<KnowledgeGroup> CreateGroupAsync(KnowledgeGroup group, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         var id = await connection.ExecuteScalarAsync<long>
                  (
@@ -340,9 +325,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                          projectID   = group.ProjectID,
                          name        = group.Name,
                          description = group.Description,
-                         active = group.Active ?
-                                      1 :
-                                      0
+                         active      = group.Active
                      }
                  );
 
@@ -351,7 +334,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
 
     public async Task UpdateGroupAsync(KnowledgeGroup group, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync
         (
@@ -365,16 +348,14 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                 id          = group.ID,
                 name        = group.Name,
                 description = group.Description,
-                active = group.Active ?
-                             1 :
-                             0
+                active      = group.Active
             }
         );
     }
 
     public async Task DeleteGroupAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync
         (
@@ -452,7 +433,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                 );
                 await transaction.CommitAsync(token);
             },
-            SqliteWorkPriority.Maintenance,
+            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -481,7 +462,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                     )
                 );
             },
-            SqliteWorkPriority.Maintenance,
+            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -532,54 +513,4 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
             },
             cancellationToken: cancellationToken
         );
-
-    private sealed class KnowledgeEntryRow
-    {
-        public long    ID                    { get; set; }
-        public long    Project_ID            { get; set; }
-        public string  Remarks               { get; set; } = string.Empty;
-        public string  Content               { get; set; } = string.Empty;
-        public string  Keywords              { get; set; } = "[]";
-        public long?   Group_ID              { get; set; }
-        public int     Active                { get; set; }
-        public string? Content_Hash          { get; set; }
-        public string? Embedding_Fingerprint { get; set; }
-        public string  Created_At            { get; set; } = string.Empty;
-        public string  Updated_At            { get; set; } = string.Empty;
-
-        public KnowledgeEntry ToKnowledgeEntry() =>
-            new()
-            {
-                ID                   = ID,
-                ProjectID            = Project_ID,
-                Remarks              = Remarks,
-                Content              = Content,
-                Keywords             = JsonHelper.DeserializeStringArray(Keywords),
-                GroupID              = Group_ID,
-                Active               = Active != 0,
-                ContentHash          = Content_Hash,
-                EmbeddingFingerprint = Embedding_Fingerprint,
-                CreatedAt            = DateTime.Parse(Created_At),
-                UpdatedAt            = DateTime.Parse(Updated_At)
-            };
-    }
-
-    private sealed class KnowledgeGroupRow
-    {
-        public long    ID          { get; set; }
-        public long    Project_ID  { get; set; }
-        public string  Name        { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public int     Active      { get; set; }
-
-        public KnowledgeGroup ToKnowledgeGroup() =>
-            new()
-            {
-                ID          = ID,
-                ProjectID   = Project_ID,
-                Name        = Name,
-                Description = Description,
-                Active      = Active != 0
-            };
-    }
 }

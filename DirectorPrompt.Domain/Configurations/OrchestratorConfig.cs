@@ -1,6 +1,6 @@
 namespace DirectorPrompt.Domain.Configurations;
 
-public record OrchestratorConfig
+public sealed class OrchestratorConfig
 {
     public List<ProviderConfig> Providers { get; set; } = [];
 

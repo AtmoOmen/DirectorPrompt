@@ -54,22 +54,22 @@ public sealed class DialogHistoryService
 
         foreach (var roundID in roundIDs)
         {
-            long? directorEventID = null;
-            IReadOnlyList<(DirectiveType Type, string Content)> directorBlocks = [];
+            long?                                               directorEventID = null;
+            IReadOnlyList<(DirectiveType Type, string Content)> directorBlocks  = [];
 
             if (directorEvents.TryGetValue(roundID, out var directorEvent))
             {
                 directorEventID = directorEvent.ID;
-                directorBlocks = EventDataSerializer.ParseDirectiveBlocks(directorEvent.Data);
+                directorBlocks  = EventDataSerializer.ParseDirectiveBlocks(directorEvent.Data);
             }
 
             long? narrativeEventID = null;
-            var narrativeText = string.Empty;
+            var   narrativeText    = string.Empty;
 
             if (narrativeEvents.TryGetValue(roundID, out var narrativeEvent))
             {
                 narrativeEventID = narrativeEvent.ID;
-                narrativeText = narrativeEvent.Data;
+                narrativeText    = narrativeEvent.Data;
             }
 
             rounds.Add(new DialogHistoryResult.RoundEntry(roundID, directorEventID, directorBlocks, narrativeEventID, narrativeText));

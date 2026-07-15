@@ -1,4 +1,3 @@
-using System.Text.Json;
 using DirectorPrompt.Agents.Retrieval;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -82,7 +81,7 @@ public sealed class MemoryTools
         Log.Information("工具调用: query_memory(query={Query})", query);
 
         if (string.IsNullOrWhiteSpace(query))
-            return JsonSerializer.Serialize(new { error = "检索内容不能为空" });
+            return ToolResult.Error("检索内容不能为空");
 
         var results = await retrievalService.SearchAsync(context, query);
         var response = results.Select
@@ -102,7 +101,7 @@ public sealed class MemoryTools
 
         Log.Information("工具调用完成: query_memory, 返回条目数={Count}", results.Count);
 
-        return JsonSerializer.Serialize(response);
+        return ToolResult.Data(response);
     }
 
     private async Task<string> QueryMemoryByCharacterAsync
@@ -151,7 +150,7 @@ public sealed class MemoryTools
 
         Log.Information("工具调用完成: query_memory_by_character, 返回条目数={Count}", distinct.Count);
 
-        return JsonSerializer.Serialize(distinct);
+        return ToolResult.Data(distinct);
     }
 
     private async Task<string> CreateMemoryAsync
@@ -190,7 +189,7 @@ public sealed class MemoryTools
 
         Log.Information("工具调用完成: create_memory, memoryID={ID}", created.ID);
 
-        return JsonSerializer.Serialize(new { memoryID = created.ID });
+        return ToolResult.Data(new { memoryID = created.ID });
     }
 
     private async Task<string> UpdateMemoryAsync
@@ -207,7 +206,7 @@ public sealed class MemoryTools
         var existing = await memoryRepository.GetByIDAsync(memoryID);
 
         if (existing is null)
-            return JsonSerializer.Serialize(new { error = $"记忆 {memoryID} 不存在" });
+            return ToolResult.Error($"记忆 {memoryID} 不存在");
 
         var parsedCharacterIDs = string.IsNullOrWhiteSpace(characterIDs) ?
                                      existing.RelatedCharacterIDs :
@@ -227,7 +226,7 @@ public sealed class MemoryTools
         foreach (var characterID in parsedCharacterIDs)
             await characterRepository.TouchAsync(characterID, context.RoundID, context.SessionID);
 
-        return JsonSerializer.Serialize(new { memoryID, success = true });
+        return ToolResult.Data(new { memoryID, success = true });
     }
 
     private async Task<string> MergeMemoriesAsync
@@ -259,7 +258,7 @@ public sealed class MemoryTools
 
         await embeddingIndexService.IndexMemoriesAsync([merged], context.EmbeddingConfig);
 
-        return JsonSerializer.Serialize(new { memoryID = merged.ID });
+        return ToolResult.Data(new { memoryID = merged.ID });
     }
 
     private static string[] ParseTags(string tags) =>

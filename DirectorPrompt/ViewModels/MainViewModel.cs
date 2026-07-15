@@ -11,7 +11,6 @@ using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
-using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Localization;
 using DirectorPrompt.Services;
 using DirectorPrompt.Views;
@@ -33,7 +32,8 @@ public sealed partial class MainViewModel
     IServiceProvider     serviceProvider,
     UserSettings         userSettings,
     IProjectPortService  projectPortService,
-    NotificationService  notificationService
+    NotificationService  notificationService,
+    IUserSettingsStore   userSettingsStore
 )
     : ObservableObject
 {
@@ -799,7 +799,7 @@ public sealed partial class MainViewModel
         Log.Information("切换对话: ID={SessionID}", value.ID);
 
         if (CurrentProject is not null && !string.IsNullOrWhiteSpace(CurrentProject.OpeningMessage))
-            Dialog.AddOpeningMessage(CurrentProject.OpeningMessage, renderImmediately: true);
+            Dialog.AddOpeningMessage(CurrentProject.OpeningMessage, true);
 
         _ = LoadSessionDataAsync(value.ID, token);
     }
@@ -857,7 +857,7 @@ public sealed partial class MainViewModel
             userSettings.Session.LastProjectID = CurrentProject?.ID;
             userSettings.Session.LastSessionID = CurrentSession?.ID;
 
-            await userSettings.SaveAsync();
+            await userSettingsStore.SaveAsync(userSettings);
         }
         catch (Exception ex)
         {
@@ -880,7 +880,7 @@ public sealed partial class MainViewModel
             {
                 if (round.DirectorBlocks.Count > 0)
                 {
-                    Dialog.AddDirectorEntry(round.RoundID, round.DirectorBlocks, renderImmediately: true);
+                    Dialog.AddDirectorEntry(round.RoundID, round.DirectorBlocks, true);
 
                     if (round.DirectorEventID.HasValue)
                         Dialog.Entries[^1].EventID = round.DirectorEventID;
@@ -977,8 +977,8 @@ public sealed partial class MainViewModel
                         DirectiveType.SceneChange         => "🎬",
                         _                                 => "📝"
                     },
-                    Content  = d.Content,
-                    HasTTL   = d.HasTTL,
+                    Content = d.Content,
+                    HasTTL  = d.HasTTL,
                     TTLLabel = d.HasTTL && d.TTL.HasValue ?
                                    Loc.Get("Directive.Panel.RemainingRounds", d.TTL) :
                                    Loc.Get("Directive.Panel.Permanent")

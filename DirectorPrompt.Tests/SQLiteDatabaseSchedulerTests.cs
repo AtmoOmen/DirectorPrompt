@@ -3,7 +3,7 @@ using Xunit;
 
 namespace DirectorPrompt.Tests;
 
-public sealed class SqliteDatabaseSchedulerTests
+public sealed class SQLiteDatabaseSchedulerTests
 {
     [Fact]
     public async Task ExecuteAsyncReusesConnectionAndPersistsWork()
@@ -12,14 +12,17 @@ public sealed class SqliteDatabaseSchedulerTests
 
         try
         {
-            var             factory   = new SqliteConnectionFactory($"Data Source={databasePath};Pooling=False", false);
-            await using var scheduler = new SqliteDatabaseScheduler(factory);
+            var             factory   = new SQLiteConnectionFactory($"Data Source={databasePath};Pooling=False", false);
+            await using var scheduler = new SQLiteDatabaseScheduler(factory);
 
             await scheduler.ExecuteAsync
             (async (connection, token) =>
                 {
                     await using var command = connection.CreateCommand();
-                    command.CommandText = "CREATE TABLE values_table(value INTEGER NOT NULL); INSERT INTO values_table VALUES (42);";
+                    command.CommandText =
+                        """
+                        CREATE TABLE values_table(value INTEGER NOT NULL); INSERT INTO values_table VALUES (42);
+                        """;
                     await command.ExecuteNonQueryAsync(token);
                 }
             );
@@ -48,8 +51,8 @@ public sealed class SqliteDatabaseSchedulerTests
 
         try
         {
-            var             factory   = new SqliteConnectionFactory($"Data Source={databasePath};Pooling=False", false);
-            await using var scheduler = new SqliteDatabaseScheduler(factory);
+            var             factory   = new SQLiteConnectionFactory($"Data Source={databasePath};Pooling=False", false);
+            await using var scheduler = new SQLiteDatabaseScheduler(factory);
             var             started   = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var             release   = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var             order     = new List<string>();
@@ -68,7 +71,7 @@ public sealed class SqliteDatabaseSchedulerTests
                     order.Add("maintenance");
                     return Task.CompletedTask;
                 },
-                SqliteWorkPriority.Maintenance
+                SQLiteWorkPriority.Maintenance
             );
             var foreground = scheduler.ExecuteAsync
             ((_, _) =>
@@ -95,8 +98,8 @@ public sealed class SqliteDatabaseSchedulerTests
 
         try
         {
-            var             factory   = new SqliteConnectionFactory($"Data Source={databasePath};Pooling=False", false);
-            await using var scheduler = new SqliteDatabaseScheduler(factory);
+            var             factory   = new SQLiteConnectionFactory($"Data Source={databasePath};Pooling=False", false);
+            await using var scheduler = new SQLiteDatabaseScheduler(factory);
             var             started   = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var             release   = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var blocker = scheduler.ExecuteAsync
@@ -116,7 +119,7 @@ public sealed class SqliteDatabaseSchedulerTests
                     executed = true;
                     return Task.CompletedTask;
                 },
-                SqliteWorkPriority.Maintenance,
+                SQLiteWorkPriority.Maintenance,
                 cancellationSource.Token
             );
             cancellationSource.Cancel();

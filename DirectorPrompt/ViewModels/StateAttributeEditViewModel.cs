@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
-using DirectorPrompt.Agents;
-using DirectorPrompt.Agents.Config;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -101,16 +101,14 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     public string BuildConfig()
     {
         var phases = Phases.Select
-        (
-            p => new Phase
+        (p => new Phase
             {
                 Name              = p.Name,
                 Expression        = p.Expression,
                 KnowledgeIDs      = p.GetKnowledgeIDs(),
                 KnowledgeGroupIDs = p.GetKnowledgeGroupIDs(),
                 EnterDirectives = p.EnterDirectiveInput.Directives.Select
-                (
-                    d => new DirectiveConfig
+                (d => new DirectiveConfig
                     {
                         Type    = d.Type,
                         Content = d.Content,
@@ -118,8 +116,7 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
                     }
                 ).ToList(),
                 ExitDirectives = p.ExitDirectiveInput.Directives.Select
-                (
-                    d => new DirectiveConfig
+                (d => new DirectiveConfig
                     {
                         Type    = d.Type,
                         Content = d.Content,
@@ -130,8 +127,7 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
         ).ToList();
 
         var transitions = Transitions.Select
-        (
-            t => new EnumTransitionConfig
+        (t => new EnumTransitionConfig
             {
                 Option        = t.Option,
                 Method        = t.Method,
@@ -154,6 +150,6 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
             Phases      = phases
         };
 
-        return AttributeConfigSerializer.Serialize(dto, ValueType, Driver);
+        return JsonSerializer.Serialize(dto, JsonOptions.Compact);
     }
 }

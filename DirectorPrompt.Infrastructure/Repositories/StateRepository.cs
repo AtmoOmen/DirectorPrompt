@@ -5,24 +5,20 @@ using DirectorPrompt.Domain.Repositories;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
-public sealed class StateRepository : IStateRepository
+public sealed class StateRepository
+(
+    SQLiteConnectionFactory connectionFactory
+) : IStateRepository
 {
-    private readonly SqliteConnectionFactory connectionFactory;
-
-    public StateRepository(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
-
     public async Task<StateAttribute?> GetAttributeAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<StateAttributeRow>
-                  (
-                      "SELECT * FROM state_attributes WHERE id = @id",
-                      new { id }
-                  );
-
-        return row?.ToStateAttribute();
+        return await connection.QueryFirstOrDefaultAsync<StateAttribute>
+               (
+                   "SELECT * FROM state_attributes WHERE id = @id",
+                   new { id }
+               );
     }
 
     public async Task<IReadOnlyList<StateAttribute>> GetAttributesAsync
@@ -32,28 +28,28 @@ public sealed class StateRepository : IStateRepository
         CancellationToken cancellationToken = default
     )
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        IEnumerable<StateAttributeRow> rows;
+        IEnumerable<StateAttribute> rows;
 
         if (scope.HasValue)
         {
-            rows = await connection.QueryAsync<StateAttributeRow>
+            rows = await connection.QueryAsync<StateAttribute>
                    (
                        "SELECT * FROM state_attributes WHERE project_id = @projectID AND scope = @scope",
-                       new { projectID, scope = scope.Value.ToString().ToLowerInvariant() }
+                       new { projectID, scope = scope.Value }
                    );
         }
         else
         {
-            rows = await connection.QueryAsync<StateAttributeRow>
+            rows = await connection.QueryAsync<StateAttribute>
                    (
                        "SELECT * FROM state_attributes WHERE project_id = @projectID",
                        new { projectID }
                    );
         }
 
-        return rows.Select(r => r.ToStateAttribute()).ToList();
+        return rows.ToList();
     }
 
     public async Task<IReadOnlyList<StateAttribute>> GetAttributesByCategoryAsync
@@ -62,20 +58,20 @@ public sealed class StateRepository : IStateRepository
         CancellationToken cancellationToken = default
     )
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<StateAttributeRow>
+        var rows = await connection.QueryAsync<StateAttribute>
                    (
                        "SELECT * FROM state_attributes WHERE category_id = @categoryID",
                        new { categoryID }
                    );
 
-        return rows.Select(r => r.ToStateAttribute()).ToList();
+        return rows.ToList();
     }
 
     public async Task<StateAttribute> CreateAttributeAsync(StateAttribute attribute, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         var id = await connection.ExecuteScalarAsync<long>
                  (
@@ -89,10 +85,10 @@ public sealed class StateRepository : IStateRepository
                          projectID   = attribute.ProjectID,
                          name        = attribute.Name,
                          displayName = attribute.DisplayName,
-                         scope       = attribute.Scope.ToString().ToLowerInvariant(),
+                         scope       = attribute.Scope,
                          categoryID  = attribute.CategoryID,
-                         valueType   = attribute.ValueType.ToString().ToLowerInvariant(),
-                         driver      = attribute.Driver.ToString().ToLowerInvariant(),
+                         valueType   = attribute.ValueType,
+                         driver      = attribute.Driver,
                          config      = attribute.Config
                      }
                  );
@@ -102,7 +98,7 @@ public sealed class StateRepository : IStateRepository
 
     public async Task UpdateAttributeAsync(StateAttribute attribute, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync
         (
@@ -122,10 +118,10 @@ public sealed class StateRepository : IStateRepository
                 id          = attribute.ID,
                 name        = attribute.Name,
                 displayName = attribute.DisplayName,
-                scope       = attribute.Scope.ToString().ToLowerInvariant(),
+                scope       = attribute.Scope,
                 categoryID  = attribute.CategoryID,
-                valueType   = attribute.ValueType.ToString().ToLowerInvariant(),
-                driver      = attribute.Driver.ToString().ToLowerInvariant(),
+                valueType   = attribute.ValueType,
+                driver      = attribute.Driver,
                 config      = attribute.Config
             }
         );
@@ -133,7 +129,7 @@ public sealed class StateRepository : IStateRepository
 
     public async Task DeleteAttributeAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync("DELETE FROM state_values WHERE attribute_id = @id",      new { id });
         await connection.ExecuteAsync("DELETE FROM state_change_logs WHERE attribute_id = @id", new { id });
@@ -142,23 +138,13 @@ public sealed class StateRepository : IStateRepository
 
     public async Task<StateValue?> GetStateValueAsync(long attributeID, long sessionID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<StateValueRow>
-                  (
-                      "SELECT * FROM state_values WHERE attribute_id = @attributeID AND session_id = @sessionID",
-                      new { attributeID, sessionID }
-                  );
-
-        if (row is null)
-            return null;
-
-        return new StateValue
-        {
-            AttributeID = row.Attribute_ID,
-            Value       = row.Value,
-            UpdatedAt   = DateTime.Parse(row.Updated_At)
-        };
+        return await connection.QueryFirstOrDefaultAsync<StateValue>
+               (
+                   "SELECT * FROM state_values WHERE attribute_id = @attributeID AND session_id = @sessionID",
+                   new { attributeID, sessionID }
+               );
     }
 
     public async Task<IReadOnlyList<StateValue>> GetStateValuesAsync
@@ -171,22 +157,15 @@ public sealed class StateRepository : IStateRepository
         if (attributeIDs.Count == 0)
             return [];
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<StateValueRow>
+        var rows = await connection.QueryAsync<StateValue>
                    (
                        "SELECT * FROM state_values WHERE attribute_id IN @attributeIDs AND session_id = @sessionID",
                        new { attributeIDs, sessionID }
                    );
 
-        return rows.Select
-        (r => new StateValue
-            {
-                AttributeID = r.Attribute_ID,
-                Value       = r.Value,
-                UpdatedAt   = DateTime.Parse(r.Updated_At)
-            }
-        ).ToList();
+        return rows.ToList();
     }
 
     public async Task<IReadOnlyList<StateValue>> GetAllStateValuesAsync
@@ -196,9 +175,9 @@ public sealed class StateRepository : IStateRepository
         CancellationToken cancellationToken = default
     )
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<StateValueRow>
+        var rows = await connection.QueryAsync<StateValue>
                    (
                        """
                        SELECT sv.* FROM state_values sv
@@ -208,14 +187,7 @@ public sealed class StateRepository : IStateRepository
                        new { projectID, sessionID }
                    );
 
-        return rows.Select
-        (r => new StateValue
-            {
-                AttributeID = r.Attribute_ID,
-                Value       = r.Value,
-                UpdatedAt   = DateTime.Parse(r.Updated_At)
-            }
-        ).ToList();
+        return rows.ToList();
     }
 
     public async Task SetStateValueAsync
@@ -230,7 +202,7 @@ public sealed class StateRepository : IStateRepository
         CancellationToken cancellationToken = default
     )
     {
-        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection  = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         try
@@ -256,7 +228,7 @@ public sealed class StateRepository : IStateRepository
                     attributeID,
                     sessionID,
                     value,
-                    updatedAt = DateTime.UtcNow.ToString("O")
+                    updatedAt = DateTime.UtcNow
                 },
                 transaction
             );
@@ -275,9 +247,9 @@ public sealed class StateRepository : IStateRepository
                     roundID,
                     oldValue,
                     newValue = value,
-                    source   = source.ToString().ToLowerInvariant(),
+                    source,
                     reason,
-                    createdAt = DateTime.UtcNow.ToString("O")
+                    createdAt = DateTime.UtcNow
                 },
                 transaction
             );
@@ -298,13 +270,13 @@ public sealed class StateRepository : IStateRepository
         CancellationToken cancellationToken = default
     )
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        IEnumerable<StateChangeLogRow> rows;
+        IEnumerable<StateChangeLog> rows;
 
         if (sceneID.HasValue)
         {
-            rows = await connection.QueryAsync<StateChangeLogRow>
+            rows = await connection.QueryAsync<StateChangeLog>
                    (
                        "SELECT * FROM state_change_logs WHERE attribute_id = @attributeID AND scene_id = @sceneID ORDER BY created_at DESC",
                        new { attributeID, sceneID = sceneID.Value }
@@ -312,14 +284,14 @@ public sealed class StateRepository : IStateRepository
         }
         else
         {
-            rows = await connection.QueryAsync<StateChangeLogRow>
+            rows = await connection.QueryAsync<StateChangeLog>
                    (
                        "SELECT * FROM state_change_logs WHERE attribute_id = @attributeID ORDER BY created_at DESC",
                        new { attributeID }
                    );
         }
 
-        return rows.Select(r => r.ToStateChangeLog()).ToList();
+        return rows.ToList();
     }
 
     public async Task RollbackByRoundAsync
@@ -329,7 +301,7 @@ public sealed class StateRepository : IStateRepository
         CancellationToken cancellationToken = default
     )
     {
-        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection  = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         try
@@ -370,7 +342,7 @@ public sealed class StateRepository : IStateRepository
                         attrID,
                         sessionID,
                         oldValue,
-                        updatedAt = DateTime.UtcNow.ToString("O")
+                        updatedAt = DateTime.UtcNow
                     },
                     transaction
                 );
@@ -390,83 +362,5 @@ public sealed class StateRepository : IStateRepository
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
-    }
-
-    private sealed class StateAttributeRow
-    {
-        public long   ID           { get; set; }
-        public long   Project_ID   { get; set; }
-        public string Name         { get; set; } = string.Empty;
-        public string Display_Name { get; set; } = string.Empty;
-        public string Scope        { get; set; } = "global";
-        public long?  Category_ID  { get; set; }
-        public string Value_Type   { get; set; } = "numeric";
-        public string Driver       { get; set; } = "narrative";
-        public string Config       { get; set; } = "{}";
-
-        public StateAttribute ToStateAttribute() =>
-            new()
-            {
-                ID          = ID,
-                ProjectID   = Project_ID,
-                Name        = Name,
-                DisplayName = Display_Name,
-                Scope = Scope == "category" ?
-                            StateScope.Category :
-                            StateScope.Global,
-                CategoryID = Category_ID,
-                ValueType = Value_Type switch
-                {
-                    "enum" => StateValueType.Enum,
-                    _      => StateValueType.Numeric
-                },
-                Driver = Driver switch
-                {
-                    "system" => Domain.Enums.Driver.System,
-                    _        => Domain.Enums.Driver.Narrative
-                },
-                Config = Config
-            };
-    }
-
-    private sealed class StateValueRow
-    {
-        public long   Attribute_ID { get; set; }
-        public long   Session_ID   { get; set; }
-        public string Value        { get; set; } = string.Empty;
-        public string Updated_At   { get; set; } = string.Empty;
-    }
-
-    private sealed class StateChangeLogRow
-    {
-        public long   ID           { get; set; }
-        public long   Attribute_ID { get; set; }
-        public long?  Session_ID   { get; set; }
-        public long   Scene_ID     { get; set; }
-        public long?  Round_ID     { get; set; }
-        public string Old_Value    { get; set; } = string.Empty;
-        public string New_Value    { get; set; } = string.Empty;
-        public string Source       { get; set; } = string.Empty;
-        public string Reason       { get; set; } = string.Empty;
-        public string Created_At   { get; set; } = string.Empty;
-
-        public StateChangeLog ToStateChangeLog() =>
-            new()
-            {
-                ID          = ID,
-                AttributeID = Attribute_ID,
-                SceneID     = Scene_ID,
-                RoundID     = Round_ID,
-                OldValue    = Old_Value,
-                NewValue    = New_Value,
-                Source = Source switch
-                {
-                    "system"          => StateChangeSource.System,
-                    "director_manual" => StateChangeSource.DirectorManual,
-                    _                 => StateChangeSource.StateAgent
-                },
-                Reason    = Reason,
-                CreatedAt = DateTime.Parse(Created_At)
-            };
     }
 }

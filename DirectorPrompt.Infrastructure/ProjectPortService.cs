@@ -2,7 +2,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dapper;
-using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Data.Sqlite;
@@ -11,7 +11,7 @@ namespace DirectorPrompt.Infrastructure;
 
 public sealed class ProjectPortService
 (
-    SqliteConnectionFactory connectionFactory,
+    SQLiteConnectionFactory connectionFactory,
     ILocalizationService    localizationService
 ) : IProjectPortService
 {
@@ -19,17 +19,9 @@ public sealed class ProjectPortService
 
     private const int PACKAGE_VERSION = 1;
 
-    private static readonly JsonSerializerOptions JSONOptions = new()
-    {
-        WriteIndented               = true,
-        PropertyNameCaseInsensitive = true,
-        DefaultIgnoreCondition      = JsonIgnoreCondition.WhenWritingNull,
-        Converters                  = { new JsonStringEnumConverter() }
-    };
-
     public async Task ExportAsync(long projectID, string filePath, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         var project = await QueryProjectAsync(connection, projectID, cancellationToken);
 
@@ -65,12 +57,12 @@ public sealed class ProjectPortService
         var manifestEntry = zip.CreateEntry("manifest.json");
 
         await using (var manifestStream = manifestEntry.Open())
-            await JsonSerializer.SerializeAsync(manifestStream, manifest, JSONOptions, cancellationToken);
+            await JsonSerializer.SerializeAsync(manifestStream, manifest, JsonOptions.Default, cancellationToken);
 
         var dataEntry = zip.CreateEntry("project.json");
 
         await using (var dataStream = dataEntry.Open())
-            await JsonSerializer.SerializeAsync(dataStream, packageData, JSONOptions, cancellationToken);
+            await JsonSerializer.SerializeAsync(dataStream, packageData, JsonOptions.Default, cancellationToken);
     }
 
     public async Task<ProjectImportResult> ImportAsync(string filePath, CancellationToken cancellationToken = default)
@@ -83,7 +75,7 @@ public sealed class ProjectPortService
 
         using (var manifestStream = manifestEntry.Open())
         {
-            manifest = await JsonSerializer.DeserializeAsync<PackageManifest>(manifestStream, JSONOptions, cancellationToken) ??
+            manifest = await JsonSerializer.DeserializeAsync<PackageManifest>(manifestStream, JsonOptions.Default, cancellationToken) ??
                        throw new InvalidDataException("无效的项目包: manifest.json 解析失败");
         }
 
@@ -99,19 +91,19 @@ public sealed class ProjectPortService
 
         using (var dataStream = dataEntry.Open())
         {
-            data = await JsonSerializer.DeserializeAsync<ProjectPackageData>(dataStream, JSONOptions, cancellationToken) ??
+            data = await JsonSerializer.DeserializeAsync<ProjectPackageData>(dataStream, JsonOptions.Default, cancellationToken) ??
                    throw new InvalidDataException("无效的项目包: project.json 解析失败");
         }
 
         if (data.Project is null)
             throw new InvalidDataException("无效的项目包: 缺少项目数据");
 
-        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection  = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
         try
         {
-            var now          = DateTime.UtcNow.ToString("O");
+            var now          = DateTime.UtcNow;
             var newProjectID = await InsertProjectAsync(connection, transaction, data.Project, now, cancellationToken);
 
             var categoryIDMap = await InsertCharacterCategoriesAsync
@@ -192,16 +184,12 @@ public sealed class ProjectPortService
         SqliteConnection  connection,
         long              projectID,
         CancellationToken cancellationToken
-    )
-    {
-        var row = await connection.QueryFirstOrDefaultAsync<ProjectRow>
-                  (
-                      "SELECT * FROM projects WHERE id = @id",
-                      new { id = projectID }
-                  );
-
-        return row?.ToProject();
-    }
+    ) =>
+        await connection.QueryFirstOrDefaultAsync<Project>
+        (
+            "SELECT * FROM projects WHERE id = @id",
+            new { id = projectID }
+        );
 
     private static async Task<List<CharacterCategory>> QueryCharacterCategoriesAsync
     (
@@ -210,13 +198,13 @@ public sealed class ProjectPortService
         CancellationToken cancellationToken
     )
     {
-        var rows = await connection.QueryAsync<CharacterCategoryRow>
+        var rows = await connection.QueryAsync<CharacterCategory>
                    (
                        "SELECT * FROM character_categories WHERE project_id = @projectID ORDER BY id",
                        new { projectID }
                    );
 
-        return rows.Select(r => r.ToCharacterCategory()).ToList();
+        return rows.ToList();
     }
 
     private static async Task<List<StateAttribute>> QueryStateAttributesAsync
@@ -226,13 +214,13 @@ public sealed class ProjectPortService
         CancellationToken cancellationToken
     )
     {
-        var rows = await connection.QueryAsync<StateAttributeRow>
+        var rows = await connection.QueryAsync<StateAttribute>
                    (
                        "SELECT * FROM state_attributes WHERE project_id = @projectID ORDER BY id",
                        new { projectID }
                    );
 
-        return rows.Select(r => r.ToStateAttribute()).ToList();
+        return rows.ToList();
     }
 
     private static async Task<List<KnowledgeGroup>> QueryKnowledgeGroupsAsync
@@ -242,13 +230,13 @@ public sealed class ProjectPortService
         CancellationToken cancellationToken
     )
     {
-        var rows = await connection.QueryAsync<KnowledgeGroupRow>
+        var rows = await connection.QueryAsync<KnowledgeGroup>
                    (
                        "SELECT * FROM knowledge_groups WHERE project_id = @projectID ORDER BY id",
                        new { projectID }
                    );
 
-        return rows.Select(r => r.ToKnowledgeGroup()).ToList();
+        return rows.ToList();
     }
 
     private static async Task<List<KnowledgeEntry>> QueryKnowledgeEntriesAsync
@@ -258,13 +246,13 @@ public sealed class ProjectPortService
         CancellationToken cancellationToken
     )
     {
-        var rows = await connection.QueryAsync<KnowledgeEntryRow>
+        var rows = await connection.QueryAsync<KnowledgeEntry>
                    (
                        "SELECT * FROM knowledge_entries WHERE project_id = @projectID ORDER BY id",
                        new { projectID }
                    );
 
-        return rows.Select(r => r.ToKnowledgeEntry()).ToList();
+        return rows.ToList();
     }
 
     private static async Task<List<KnowledgeEntityIndex>> QueryKnowledgeEntityIndexAsync
@@ -300,7 +288,7 @@ public sealed class ProjectPortService
         SqliteConnection  connection,
         SqliteTransaction transaction,
         Project           project,
-        string            now,
+        DateTime          now,
         CancellationToken cancellationToken
     )
     {
@@ -386,7 +374,7 @@ public sealed class ProjectPortService
                 new
                 {
                     id                = newID,
-                    parentCategoryIDs = JsonHelper.Serialize(mappedParentIDs)
+                    parentCategoryIDs = mappedParentIDs
                 },
                 transaction
             );
@@ -420,10 +408,10 @@ public sealed class ProjectPortService
                     projectID   = newProjectID,
                     name        = attr.Name,
                     displayName = attr.DisplayName,
-                    scope       = attr.Scope.ToString().ToLowerInvariant(),
+                    scope       = attr.Scope,
                     categoryID  = mappedCategoryID,
-                    valueType   = attr.ValueType.ToString().ToLowerInvariant(),
-                    driver      = attr.Driver.ToString().ToLowerInvariant(),
+                    valueType   = attr.ValueType,
+                    driver      = attr.Driver,
                     config      = attr.Config
                 },
                 transaction
@@ -456,9 +444,7 @@ public sealed class ProjectPortService
                              projectID   = newProjectID,
                              name        = group.Name,
                              description = group.Description,
-                             active = group.Active ?
-                                          1 :
-                                          0
+                             active      = group.Active
                          },
                          transaction
                      );
@@ -499,13 +485,11 @@ public sealed class ProjectPortService
                              projectID = newProjectID,
                              remarks   = entry.Remarks,
                              content   = entry.Content,
-                             keywords  = JsonHelper.Serialize(entry.Keywords),
+                             keywords  = entry.Keywords,
                              groupID   = mappedGroupID,
-                             active = entry.Active ?
-                                          1 :
-                                          0,
-                             createdAt = entry.CreatedAt.ToString("O"),
-                             updatedAt = entry.UpdatedAt.ToString("O")
+                             active    = entry.Active,
+                             createdAt = entry.CreatedAt,
+                             updatedAt = entry.UpdatedAt
                          },
                          transaction
                      );
@@ -550,7 +534,7 @@ public sealed class ProjectPortService
     {
         await using var stream = File.OpenRead(filePath);
 
-        var card = await JsonSerializer.DeserializeAsync<SillyTavernCard>(stream, JSONOptions, cancellationToken) ??
+        var card = await JsonSerializer.DeserializeAsync<SillyTavernCard>(stream, JsonOptions.Default, cancellationToken) ??
                    throw new InvalidDataException("无效的 SillyTavern 角色卡: JSON 解析失败");
 
         var data = card.Data ?? card;
@@ -604,12 +588,12 @@ public sealed class ProjectPortService
             }
         }
 
-        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection  = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
         try
         {
-            var now          = DateTime.UtcNow.ToString("O");
+            var now          = DateTime.UtcNow;
             var newProjectID = await InsertProjectAsync(connection, transaction, project, now, cancellationToken);
 
             var groupIDMap = await InsertKnowledgeGroupsAsync
@@ -697,161 +681,6 @@ public sealed class ProjectPortService
         public List<KnowledgeEntry> KnowledgeEntries { get; set; } = [];
 
         public List<KnowledgeEntityIndex> KnowledgeEntityIndex { get; set; } = [];
-    }
-
-    private sealed class ProjectRow
-    {
-        public long ID { get; set; }
-
-        public string Name { get; set; } = string.Empty;
-
-        public string Description { get; set; } = string.Empty;
-
-        public string Opening_Message { get; set; } = string.Empty;
-
-        public string Created_At { get; set; } = string.Empty;
-
-        public string Updated_At { get; set; } = string.Empty;
-
-        public Project ToProject() =>
-            new()
-            {
-                ID             = ID,
-                Name           = Name,
-                Description    = Description,
-                OpeningMessage = Opening_Message,
-                CreatedAt      = DateTime.Parse(Created_At),
-                UpdatedAt      = DateTime.Parse(Updated_At)
-            };
-    }
-
-    private sealed class CharacterCategoryRow
-    {
-        public long ID { get; set; }
-
-        public long Project_ID { get; set; }
-
-        public string Name { get; set; } = string.Empty;
-
-        public string? Description { get; set; }
-
-        public string Parent_Category_IDs { get; set; } = "[]";
-
-        public CharacterCategory ToCharacterCategory() =>
-            new()
-            {
-                ID                = ID,
-                ProjectID         = Project_ID,
-                Name              = Name,
-                Description       = Description,
-                ParentCategoryIDs = JsonHelper.DeserializeInt64Array(Parent_Category_IDs)
-            };
-    }
-
-    private sealed class StateAttributeRow
-    {
-        public long ID { get; set; }
-
-        public long Project_ID { get; set; }
-
-        public string Name { get; set; } = string.Empty;
-
-        public string Display_Name { get; set; } = string.Empty;
-
-        public string Scope { get; set; } = "global";
-
-        public long? Category_ID { get; set; }
-
-        public string Value_Type { get; set; } = "numeric";
-
-        public string Driver { get; set; } = "narrative";
-
-        public string Config { get; set; } = "{}";
-
-        public StateAttribute ToStateAttribute() =>
-            new()
-            {
-                ID          = ID,
-                ProjectID   = Project_ID,
-                Name        = Name,
-                DisplayName = Display_Name,
-                Scope = Scope == "category" ?
-                            StateScope.Category :
-                            StateScope.Global,
-                CategoryID = Category_ID,
-                ValueType = Value_Type switch
-                {
-                    "enum" => StateValueType.Enum,
-                    _      => StateValueType.Numeric
-                },
-                Driver = Driver switch
-                {
-                    "system" => Domain.Enums.Driver.System,
-                    _        => Domain.Enums.Driver.Narrative
-                },
-                Config = Config
-            };
-    }
-
-    private sealed class KnowledgeGroupRow
-    {
-        public long ID { get; set; }
-
-        public long Project_ID { get; set; }
-
-        public string Name { get; set; } = string.Empty;
-
-        public string? Description { get; set; }
-
-        public int Active { get; set; }
-
-        public KnowledgeGroup ToKnowledgeGroup() =>
-            new()
-            {
-                ID          = ID,
-                ProjectID   = Project_ID,
-                Name        = Name,
-                Description = Description,
-                Active      = Active != 0
-            };
-    }
-
-    private sealed class KnowledgeEntryRow
-    {
-        public long ID { get; set; }
-
-        public long Project_ID { get; set; }
-
-        public string Remarks { get; set; } = string.Empty;
-
-        public string Content { get; set; } = string.Empty;
-
-        public string Keywords { get; set; } = "[]";
-
-        public long? Group_ID { get; set; }
-
-        public int Active { get; set; }
-
-        public string? Content_Hash { get; set; }
-
-        public string Created_At { get; set; } = string.Empty;
-
-        public string Updated_At { get; set; } = string.Empty;
-
-        public KnowledgeEntry ToKnowledgeEntry() =>
-            new()
-            {
-                ID          = ID,
-                ProjectID   = Project_ID,
-                Remarks     = Remarks,
-                Content     = Content,
-                Keywords    = JsonHelper.DeserializeStringArray(Keywords),
-                GroupID     = Group_ID,
-                Active      = Active != 0,
-                ContentHash = Content_Hash,
-                CreatedAt   = DateTime.Parse(Created_At),
-                UpdatedAt   = DateTime.Parse(Updated_At)
-            };
     }
 
     private sealed class SillyTavernCard : SillyTavernCardData

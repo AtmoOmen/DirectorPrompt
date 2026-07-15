@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Enums;
 
 namespace DirectorPrompt.Agents.Config;
@@ -7,25 +8,20 @@ public static class EventDataSerializer
 {
     public static IReadOnlyList<DirectiveItem> ParseDirectives(string jsonData)
     {
+        var items = JsonSerializer.Deserialize<List<DirectiveEventData>>(jsonData, JsonOptions.Compact);
+
+        if (items is null || items.Count == 0)
+            return [];
+
         var result = new List<DirectiveItem>();
+        var order  = 1;
 
-        using var doc = JsonDocument.Parse(jsonData);
-
-        var order = 1;
-
-        foreach (var element in doc.RootElement.EnumerateArray())
+        foreach (var item in items)
         {
-            var isSystem = element.TryGetProperty("isSystem", out var sysEl) && sysEl.GetBoolean();
-
-            if (isSystem)
+            if (item.IsSystem)
                 continue;
 
-            var typeStr = element.GetProperty("type").GetString() ?? "Plot";
-            var content = element.GetProperty("content").GetString() ?? string.Empty;
-
-            var type = ParseDirectiveType(typeStr);
-
-            result.Add(new DirectiveItem(type, content, order++));
+            result.Add(new DirectiveItem(ParseDirectiveType(item.Type), item.Content, order++));
         }
 
         return result;
@@ -33,33 +29,29 @@ public static class EventDataSerializer
 
     public static List<(DirectiveType Type, string Content)> ParseDirectiveBlocks(string json)
     {
-        var result = new List<(DirectiveType Type, string Content)>();
-
         try
         {
-            using var doc = JsonDocument.Parse(json);
+            var items = JsonSerializer.Deserialize<List<DirectiveEventData>>(json, JsonOptions.Compact);
 
-            foreach (var element in doc.RootElement.EnumerateArray())
+            if (items is null || items.Count == 0)
+                return [(DirectiveType.Plot, json)];
+
+            var result = new List<(DirectiveType Type, string Content)>();
+
+            foreach (var item in items)
             {
-                var isSystem = element.TryGetProperty("isSystem", out var sysEl) && sysEl.GetBoolean();
-
-                if (isSystem)
+                if (item.IsSystem)
                     continue;
 
-                var typeStr = element.GetProperty("type").GetString() ?? "Plot";
-                var content = element.GetProperty("content").GetString() ?? string.Empty;
-
-                var type = ParseDirectiveType(typeStr);
-
-                result.Add((type, content));
+                result.Add((ParseDirectiveType(item.Type), item.Content));
             }
+
+            return result;
         }
         catch
         {
             return [(DirectiveType.Plot, json)];
         }
-
-        return result;
     }
 
     private static DirectiveType ParseDirectiveType(string typeStr) =>

@@ -10,7 +10,7 @@ namespace DirectorPrompt.Benchmarks;
 public class MemoryPagingBenchmarks
 {
     private string                  databasePath    = string.Empty;
-    private SqliteDatabaseScheduler scheduler       = null!;
+    private SQLiteDatabaseScheduler scheduler       = null!;
     private MemoryRepository        repository      = null!;
     private EventRepository         eventRepository = null!;
 
@@ -18,8 +18,8 @@ public class MemoryPagingBenchmarks
     public async Task SetupAsync()
     {
         databasePath = Path.Combine(Path.GetTempPath(), $"directorprompt-benchmark-{Guid.NewGuid():N}.db");
-        var factory = new SqliteConnectionFactory($"Data Source={databasePath};Pooling=False");
-        scheduler = new SqliteDatabaseScheduler(factory);
+        var factory = new SQLiteConnectionFactory($"Data Source={databasePath};Pooling=False");
+        scheduler = new SQLiteDatabaseScheduler(factory);
         await new SchemaMigrator(scheduler).MigrateAsync();
         await scheduler.ExecuteAsync
         (
@@ -34,7 +34,7 @@ public class MemoryPagingBenchmarks
                                       INSERT INTO sessions (id, project_id, title, created_at, updated_at)
                                       VALUES (1, 1, 'benchmark', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
                                       INSERT INTO scenes (id, project_id, session_id, timeline_position, time_label, status)
-                                      VALUES (1, 1, 1, 100000, 'benchmark', 'active');
+                                      VALUES (1, 1, 1, 100000, 'benchmark', 'Active');
                                       """;
                 await command.ExecuteNonQueryAsync(token);
 
@@ -51,10 +51,10 @@ public class MemoryPagingBenchmarks
                 for (var round = 1; round <= 2000; round++)
                 {
                     roundParameter.Value = round;
-                    typeParameter.Value  = "director_input";
+                    typeParameter.Value  = "DirectorInput";
                     dataParameter.Value  = $"input-{round}";
                     await command.ExecuteNonQueryAsync(token);
-                    typeParameter.Value = "narrative_output";
+                    typeParameter.Value = "NarrativeOutput";
                     dataParameter.Value = $"output-{round}";
                     await command.ExecuteNonQueryAsync(token);
                 }
@@ -81,7 +81,7 @@ public class MemoryPagingBenchmarks
                                       INSERT INTO characters
                                       (project_id, session_id, name, description, aliases, category_ids, status, touch_count, last_touched_round, created_at, updated_at)
                                       VALUES
-                                      (1, 1, $name, '', '[]', '[]', 'active', 0, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
+                                      (1, 1, $name, '', '[]', '[]', 'Active', 0, 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
                                       """;
                 var nameParameter = command.Parameters.Add("$name", SqliteType.Text);
 
@@ -116,7 +116,7 @@ public class MemoryPagingBenchmarks
 
                 await transaction.CommitAsync(token);
             },
-            SqliteWorkPriority.Maintenance
+            SQLiteWorkPriority.Maintenance
         );
         repository      = new MemoryRepository(scheduler);
         eventRepository = new EventRepository(scheduler);

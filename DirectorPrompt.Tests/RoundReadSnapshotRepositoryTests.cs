@@ -21,13 +21,13 @@ public sealed class RoundReadSnapshotRepositoryTests
                         """
                         INSERT INTO scenes
                         (id, project_id, session_id, timeline_position, time_label, status)
-                        VALUES (1, 1, 1, 1000, 'night', 'active');
+                        VALUES (1, 1, 1, 1000, 'night', 'Active');
 
                         INSERT INTO state_attributes
                         (id, project_id, name, display_name, scope, value_type, driver, config)
                         VALUES
-                        (1, 1, 'weather', 'Weather', 'global', 'enum', 'system', '{}'),
-                        (2, 1, 'mood', 'Mood', 'category', 'enum', 'narrative', '{}');
+                        (1, 1, 'weather', 'Weather', 'Global', 'Enum', 'System', '{}'),
+                        (2, 1, 'mood', 'Mood', 'Category', 'Enum', 'Narrative', '{}');
 
                         INSERT INTO state_values
                         (attribute_id, session_id, value, updated_at)
@@ -35,13 +35,13 @@ public sealed class RoundReadSnapshotRepositoryTests
 
                         INSERT INTO active_directives
                         (id, project_id, session_id, type, content, ttl, created_at)
-                        VALUES (1, 1, 1, 'tone', 'quiet', 2, '2026-01-01T00:00:00Z');
+                        VALUES (1, 1, 1, 'Tone', 'quiet', 2, '2026-01-01T00:00:00Z');
 
                         INSERT INTO characters
                         (id, project_id, session_id, name, description, aliases, category_ids, status, touch_count, last_touched_round, created_at, updated_at)
                         VALUES
-                        (1, 1, 1, 'A', '', '[]', '[]', 'active', 1, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                        (2, 1, 1, 'B', '', '[]', '[]', 'active', 1, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                        (1, 1, 1, 'A', '', '[]', '[]', 'Active', 1, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                        (2, 1, 1, 'B', '', '[]', '[]', 'Active', 1, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
 
                         INSERT INTO character_scene_presence
                         (character_id, scene_id)

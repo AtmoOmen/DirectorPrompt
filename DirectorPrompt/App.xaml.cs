@@ -11,7 +11,6 @@ using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Infrastructure;
 using DirectorPrompt.Infrastructure.AI;
-using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Infrastructure.Localization;
 using DirectorPrompt.Infrastructure.Logging;
 using DirectorPrompt.Infrastructure.Repositories;
@@ -46,7 +45,8 @@ public partial class App
 
         try
         {
-            UserSettingsExtension.MigrateIfNeeded();
+            var settingsStore = new UserSettingsStore();
+            settingsStore.MigrateIfNeeded();
 
             host = Host.CreateDefaultBuilder()
                        .UseContentRoot(AppContext.BaseDirectory)
@@ -55,11 +55,10 @@ public partial class App
                        (config =>
                            {
                                config.SetBasePath(AppContext.BaseDirectory);
-                               config.AddJsonFile("appsettings.json",        false, true);
-                               config.AddJsonFile(AppPaths.UserSettingsPath, true,  true);
+                               config.AddJsonFile("appsettings.json", false, true);
                            }
                        )
-                       .ConfigureServices(ConfigureServices)
+                       .ConfigureServices((_, services) => ConfigureServices(services, settingsStore))
                        .Build();
 
             await host.StartAsync();
@@ -172,17 +171,17 @@ public partial class App
         e.Handled = false;
     }
 
-    private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
+    private static void ConfigureServices(IServiceCollection services, UserSettingsStore settingsStore)
     {
-        var configuration = context.Configuration;
+        SQLiteTypeHandlers.Register();
 
         Directory.CreateDirectory(AppPaths.DataDirectory);
 
         var connectionString  = $"Data Source={AppPaths.DatabasePath}";
-        var connectionFactory = new SqliteConnectionFactory(connectionString);
+        var connectionFactory = new SQLiteConnectionFactory(connectionString);
 
         services.AddSingleton(connectionFactory);
-        services.AddSingleton<SqliteDatabaseScheduler>();
+        services.AddSingleton<SQLiteDatabaseScheduler>();
         services.AddSingleton<SchemaMigrator>();
         services.AddSingleton<VectorTableManager>();
 
@@ -209,19 +208,18 @@ public partial class App
         services.AddSingleton<IChatClientFactory, ChatClientFactory>();
         services.AddSingleton<IModelConnectionTester, ModelConnectionTester>();
 
-        var orchestratorConfig = configuration.GetSection("Orchestrator").Get<OrchestratorConfig>() ?? new OrchestratorConfig();
-        services.AddSingleton(orchestratorConfig);
-        services.AddSingleton<AgentConfigResolver>();
-
-        var userSettings = configuration.Get<UserSettings>() ?? new UserSettings();
+        var userSettings = settingsStore.Load();
         services.AddSingleton(userSettings);
+        services.AddSingleton(userSettings.Orchestrator);
+        services.AddSingleton<IUserSettingsStore>(settingsStore);
+        services.AddSingleton<AgentConfigResolver>();
 
         services.AddSingleton<IEmbeddingServiceFactory, EmbeddingServiceFactory>();
         services.AddSingleton<EmbeddingIndexService>();
         services.AddSingleton<KnowledgeRetrievalService>();
         services.AddSingleton<MemoryRetrievalService>();
 
-        RegisterLocalization(services, configuration);
+        RegisterLocalization(services, userSettings);
 
         services.AddSingleton<SceneTools>();
         services.AddSingleton<KnowledgeTools>();
@@ -251,11 +249,14 @@ public partial class App
         services.AddTransient<SettingsWindow>();
     }
 
-    private static void RegisterLocalization(IServiceCollection services, IConfiguration configuration)
+    private static void RegisterLocalization(IServiceCollection services, UserSettings userSettings)
     {
         var langDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "Langs");
 
-        var preferredLanguage = configuration["Localization:Language"] ?? "zh-CN";
+        var preferredLanguage = userSettings.Localization.Language;
+
+        if (string.IsNullOrEmpty(preferredLanguage))
+            preferredLanguage = "zh-CN";
 
         var options = new LocalizationOptions
         {

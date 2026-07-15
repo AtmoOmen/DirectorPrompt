@@ -1,15 +1,40 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using DirectorPrompt.Domain.Configurations;
 
 namespace DirectorPrompt.ViewModels;
 
 public sealed partial class EmbeddingSettingViewModel : ObservableObject
 {
-    [ObservableProperty]
-    public partial string ProviderID { get; set; } = string.Empty;
+    public EmbeddingConfig Config { get; }
 
-    [ObservableProperty]
-    public partial string ModelName { get; set; } = "text-embedding-v4";
+    public EmbeddingSettingViewModel(EmbeddingConfig config) => Config = config;
+
+    public string ProviderID
+    {
+        get => Config.ProviderID;
+        set
+        {
+            if (Config.ProviderID != value)
+            {
+                Config.ProviderID = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string ModelName
+    {
+        get => Config.ModelName;
+        set
+        {
+            if (Config.ModelName != value)
+            {
+                Config.ModelName = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     [ObservableProperty]
     public partial bool IsFetchingModels { get; set; }

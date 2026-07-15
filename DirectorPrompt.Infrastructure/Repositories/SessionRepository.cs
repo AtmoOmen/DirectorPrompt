@@ -6,26 +6,22 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class SessionRepository
 (
-    SqliteDatabaseScheduler scheduler
+    SQLiteDatabaseScheduler scheduler
 ) : ISessionRepository
 {
     public Task<Session?> GetByIDAsync(long id, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
-            {
-                var row = await connection.QueryFirstOrDefaultAsync<SessionRow>
-                          (
-                              new CommandDefinition
-                              (
-                                  "SELECT * FROM sessions WHERE id = @id",
-                                  new { id },
-                                  cancellationToken: token
-                              )
-                          );
-
-                return row?.ToSession();
-            },
+                await connection.QueryFirstOrDefaultAsync<Session>
+                (
+                    new CommandDefinition
+                    (
+                        "SELECT * FROM sessions WHERE id = @id",
+                        new { id },
+                        cancellationToken: token
+                    )
+                ),
             cancellationToken: cancellationToken
         );
 
@@ -38,7 +34,7 @@ public sealed class SessionRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<SessionRow>
+                var rows = await connection.QueryAsync<Session>
                            (
                                new CommandDefinition
                                (
@@ -48,7 +44,7 @@ public sealed class SessionRepository
                                )
                            );
 
-                return rows.Select(row => row.ToSession()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -72,8 +68,8 @@ public sealed class SessionRepository
                                  {
                                      projectID = session.ProjectID,
                                      title     = session.Title,
-                                     createdAt = now.ToString("O"),
-                                     updatedAt = now.ToString("O")
+                                     createdAt = now,
+                                     updatedAt = now
                                  },
                                  cancellationToken: token
                              )
@@ -154,7 +150,7 @@ public sealed class SessionRepository
                         {
                             id        = session.ID,
                             title     = session.Title,
-                            updatedAt = DateTime.UtcNow.ToString("O")
+                            updatedAt = DateTime.UtcNow
                         },
                         cancellationToken: token
                     )
@@ -162,23 +158,4 @@ public sealed class SessionRepository
             },
             cancellationToken: cancellationToken
         );
-
-    private sealed class SessionRow
-    {
-        public long   ID         { get; set; }
-        public long   Project_ID { get; set; }
-        public string Title      { get; set; } = string.Empty;
-        public string Created_At { get; set; } = string.Empty;
-        public string Updated_At { get; set; } = string.Empty;
-
-        public Session ToSession() =>
-            new()
-            {
-                ID        = ID,
-                ProjectID = Project_ID,
-                Title     = Title,
-                CreatedAt = DateTime.Parse(Created_At),
-                UpdatedAt = DateTime.Parse(Updated_At)
-            };
-    }
 }

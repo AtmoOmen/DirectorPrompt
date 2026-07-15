@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Services;
-using DirectorPrompt.Infrastructure.Extensions;
 using DirectorPrompt.Localization;
 using Serilog;
 
@@ -15,7 +14,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IModelConnectionTester connectionTester;
     private readonly ILocalizationService   localizationService;
     private readonly UserSettings           userSettings;
-    private readonly OrchestratorConfig     orchestratorConfig;
+    private readonly IUserSettingsStore     userSettingsStore;
 
     public bool SaveSuccess { get; private set; }
 
@@ -28,19 +27,19 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string SelectedLanguage { get; set; } = string.Empty;
 
-    public ObservableCollection<ProviderSettingViewModel> Providers { get; } = [];
+    public ObservableCollection<ProviderSettingViewModel> Providers { get; }
 
-    public ObservableCollection<ModelSettingViewModel> Models { get; } = [];
+    public ObservableCollection<ModelSettingViewModel> Models { get; }
 
-    public ObservableCollection<PromptSettingViewModel> Prompts { get; } = [];
+    public ObservableCollection<PromptSettingViewModel> Prompts { get; }
 
-    public ObservableCollection<AgentTaskSettingViewModel> AgentTasks { get; } = [];
+    public ObservableCollection<AgentTaskSettingViewModel> AgentTasks { get; }
 
-    public EmbeddingSettingViewModel Embedding { get; } = new();
+    public EmbeddingSettingViewModel Embedding { get; }
 
-    public MemorySettingViewModel Memory { get; } = new();
+    public MemorySettingViewModel Memory { get; }
 
-    public KnowledgeSettingViewModel Knowledge { get; } = new();
+    public KnowledgeSettingViewModel Knowledge { get; }
 
     public IReadOnlyDictionary<string, string> AvailableLanguages =>
         localizationService.AvailableLanguages;
@@ -50,147 +49,56 @@ public sealed partial class SettingsViewModel : ObservableObject
         UserSettings           userSettings,
         IModelConnectionTester connectionTester,
         ILocalizationService   localizationService,
-        OrchestratorConfig     orchestratorConfig
+        IUserSettingsStore     userSettingsStore
     )
     {
         this.connectionTester    = connectionTester;
         this.localizationService = localizationService;
         this.userSettings        = userSettings;
-        this.orchestratorConfig  = orchestratorConfig;
+        this.userSettingsStore   = userSettingsStore;
 
-        LoadSettings(userSettings);
-    }
-
-    private void LoadSettings(UserSettings settings)
-    {
-        SelectedLanguage = settings.Localization.Language;
+        SelectedLanguage = userSettings.Localization.Language;
 
         if (string.IsNullOrEmpty(SelectedLanguage))
             SelectedLanguage = localizationService.CurrentLanguage;
 
-        LoadProviders(settings.Orchestrator.Providers);
-        LoadModels(settings.Orchestrator.Models);
-        LoadPrompts(settings.Orchestrator.Prompts);
-        LoadAgentTasks(settings.Orchestrator.AgentTasks);
-        LoadEmbeddingConfig(settings.EmbeddingConfig);
-        LoadMemoryConfig(settings.Orchestrator.MemoryConfig);
-        LoadKnowledgeConfig(settings.Orchestrator.KnowledgeConfig);
+        EnsureAgentTasks();
+
+        Providers = new ObservableCollection<ProviderSettingViewModel>
+        (
+            userSettings.Orchestrator.Providers.Select(p => new ProviderSettingViewModel(p))
+        );
+        Models = new ObservableCollection<ModelSettingViewModel>
+        (
+            userSettings.Orchestrator.Models.Select(m => new ModelSettingViewModel(m))
+        );
+        Prompts = new ObservableCollection<PromptSettingViewModel>
+        (
+            userSettings.Orchestrator.Prompts.Select(p => new PromptSettingViewModel(p))
+        );
+        AgentTasks = new ObservableCollection<AgentTaskSettingViewModel>
+        (
+            userSettings.Orchestrator.AgentTasks.Select(t => new AgentTaskSettingViewModel(t))
+        );
+        Embedding = new EmbeddingSettingViewModel(userSettings.EmbeddingConfig);
+        Memory    = new MemorySettingViewModel(userSettings.Orchestrator.MemoryConfig);
+        Knowledge = new KnowledgeSettingViewModel(userSettings.Orchestrator.KnowledgeConfig);
     }
 
-    private void LoadProviders(List<ProviderConfig> configs)
+    private void EnsureAgentTasks()
     {
-        Providers.Clear();
-
-        foreach (var config in configs)
-        {
-            Providers.Add
-            (
-                new ProviderSettingViewModel
-                {
-                    ID            = config.ID,
-                    DisplayName   = config.DisplayName,
-                    Provider      = config.Provider,
-                    Endpoint      = config.Endpoint,
-                    APIKey        = config.APIKey        ?? string.Empty,
-                    CustomHeaders = config.CustomHeaders ?? string.Empty
-                }
-            );
-        }
-    }
-
-    private void LoadModels(List<ModelConfig> configs)
-    {
-        Models.Clear();
-
-        foreach (var config in configs)
-        {
-            Models.Add
-            (
-                new ModelSettingViewModel
-                {
-                    ID              = config.ID,
-                    DisplayName     = config.DisplayName,
-                    ProviderID      = config.ProviderID,
-                    ModelName       = config.ModelName,
-                    Temperature     = config.Temperature,
-                    ReasoningEffort = config.ReasoningEffort ?? string.Empty,
-                    ExtraParameters = config.ExtraParameters ?? string.Empty,
-                    PromptID        = config.PromptID
-                }
-            );
-        }
-    }
-
-    private void LoadPrompts(List<PromptConfig> configs)
-    {
-        Prompts.Clear();
-
-        foreach (var config in configs)
-        {
-            Prompts.Add
-            (
-                new PromptSettingViewModel
-                {
-                    ID          = config.ID,
-                    DisplayName = config.DisplayName,
-                    Content     = config.Content
-                }
-            );
-        }
-    }
-
-    private void LoadAgentTasks(List<AgentTaskConfig> configs)
-    {
-        AgentTasks.Clear();
-
-        var existing = configs.ToDictionary(c => c.TaskType);
+        var existing = userSettings.Orchestrator.AgentTasks.ToDictionary(t => t.TaskType);
 
         foreach (var taskType in Enum.GetValues<AgentTaskType>())
         {
-            if (existing.TryGetValue(taskType, out var config))
+            if (!existing.ContainsKey(taskType))
             {
-                AgentTasks.Add
+                userSettings.Orchestrator.AgentTasks.Add
                 (
-                    new AgentTaskSettingViewModel
-                    {
-                        TaskType      = taskType,
-                        ModelConfigID = config.ModelConfigID,
-                        PromptID      = config.PromptID
-                    }
-                );
-            }
-            else
-            {
-                AgentTasks.Add
-                (
-                    new AgentTaskSettingViewModel
-                    {
-                        TaskType = taskType
-                    }
+                    new AgentTaskConfig { TaskType = taskType }
                 );
             }
         }
-    }
-
-    private void LoadEmbeddingConfig(EmbeddingConfig config)
-    {
-        Embedding.ProviderID = config.ProviderID;
-        Embedding.ModelName  = config.ModelName;
-    }
-
-    private void LoadMemoryConfig(MemoryConfig config)
-    {
-        Memory.RecallTopK      = config.RecallTopK;
-        Memory.TokenBudget     = config.TokenBudget;
-        Memory.MinRelevance    = config.MinRelevance;
-        Memory.TimeDecayLambda = config.TimeDecayLambda;
-    }
-
-    private void LoadKnowledgeConfig(KnowledgeRetrievalConfig config)
-    {
-        Knowledge.SemanticTopK = config.SemanticTopK;
-        Knowledge.TokenBudget  = config.TokenBudget;
-        Knowledge.MinRelevance = config.MinRelevance;
     }
 
     partial void OnSelectedLanguageChanged(string value)
@@ -203,36 +111,57 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void AddProvider() =>
-        Providers.Add(new ProviderSettingViewModel { DisplayName = "新提供商" });
+    private void AddProvider()
+    {
+        var config = new ProviderConfig { DisplayName = "新提供商" };
+        userSettings.Orchestrator.Providers.Add(config);
+        Providers.Add(new ProviderSettingViewModel(config));
+    }
 
     [RelayCommand]
     private void RemoveProvider(ProviderSettingViewModel? provider)
     {
-        if (provider is not null)
-            Providers.Remove(provider);
+        if (provider is null)
+            return;
+
+        userSettings.Orchestrator.Providers.Remove(provider.Config);
+        Providers.Remove(provider);
     }
 
     [RelayCommand]
-    private void AddModel() =>
-        Models.Add(new ModelSettingViewModel { DisplayName = "新模型" });
+    private void AddModel()
+    {
+        var config = new ModelConfig { DisplayName = "新模型" };
+        userSettings.Orchestrator.Models.Add(config);
+        Models.Add(new ModelSettingViewModel(config));
+    }
 
     [RelayCommand]
     private void RemoveModel(ModelSettingViewModel? model)
     {
-        if (model is not null)
-            Models.Remove(model);
+        if (model is null)
+            return;
+
+        userSettings.Orchestrator.Models.Remove(model.Config);
+        Models.Remove(model);
     }
 
     [RelayCommand]
-    private void AddPrompt() =>
-        Prompts.Add(new PromptSettingViewModel { DisplayName = "新提示词" });
+    private void AddPrompt()
+    {
+        var config = new PromptConfig { DisplayName = "新提示词" };
+        userSettings.Orchestrator.Prompts.Add(config);
+        Prompts.Add(new PromptSettingViewModel(config));
+    }
 
     [RelayCommand]
     private void RemovePrompt(PromptSettingViewModel? prompt)
     {
-        if (prompt is not null)
-            Prompts.Remove(prompt);
+        if (prompt is null)
+            return;
+
+        userSettings.Orchestrator.Prompts.Remove(prompt.Config);
+        Prompts.Remove(prompt);
     }
 
     [RelayCommand]
@@ -242,96 +171,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var providers = Providers.Select
-            (p => new ProviderConfig
-                {
-                    ID          = p.ID,
-                    DisplayName = p.DisplayName,
-                    Provider    = p.Provider,
-                    Endpoint    = p.Endpoint,
-                    APIKey      = p.APIKey,
-                    CustomHeaders = string.IsNullOrWhiteSpace(p.CustomHeaders) ?
-                                        null :
-                                        p.CustomHeaders
-                }
-            ).ToList();
-
-            var models = Models.Select
-            (m => new ModelConfig
-                {
-                    ID          = m.ID,
-                    DisplayName = m.DisplayName,
-                    ProviderID  = m.ProviderID,
-                    ModelName   = m.ModelName,
-                    Temperature = m.Temperature,
-                    ReasoningEffort = string.IsNullOrWhiteSpace(m.ReasoningEffort) ?
-                                          null :
-                                          m.ReasoningEffort,
-                    ExtraParameters = string.IsNullOrWhiteSpace(m.ExtraParameters) ?
-                                          null :
-                                          m.ExtraParameters,
-                    PromptID = m.PromptID
-                }
-            ).ToList();
-
-            var prompts = Prompts.Select
-            (p => new PromptConfig
-                {
-                    ID          = p.ID,
-                    DisplayName = p.DisplayName,
-                    Content     = p.Content
-                }
-            ).ToList();
-
-            var tasks = AgentTasks.Select
-            (t => new AgentTaskConfig
-                {
-                    TaskType      = t.TaskType,
-                    ModelConfigID = t.ModelConfigID,
-                    PromptID      = t.PromptID,
-                    Enabled       = true
-                }
-            ).ToList();
-
-            userSettings.Orchestrator.Providers  = providers;
-            userSettings.Orchestrator.Models     = models;
-            userSettings.Orchestrator.Prompts    = prompts;
-            userSettings.Orchestrator.AgentTasks = tasks;
-
-            var memoryConfig = new MemoryConfig
-            {
-                RecallTopK      = Memory.RecallTopK,
-                TokenBudget     = Memory.TokenBudget,
-                MinRelevance    = Memory.MinRelevance,
-                TimeDecayLambda = Memory.TimeDecayLambda
-            };
-
-            var knowledgeConfig = new KnowledgeRetrievalConfig
-            {
-                SemanticTopK = Knowledge.SemanticTopK,
-                TokenBudget  = Knowledge.TokenBudget,
-                MinRelevance = Knowledge.MinRelevance
-            };
-
-            userSettings.Orchestrator.MemoryConfig    = memoryConfig;
-            userSettings.Orchestrator.KnowledgeConfig = knowledgeConfig;
-
-            orchestratorConfig.Providers       = providers;
-            orchestratorConfig.Models          = models;
-            orchestratorConfig.Prompts         = prompts;
-            orchestratorConfig.AgentTasks      = tasks;
-            orchestratorConfig.MemoryConfig    = memoryConfig;
-            orchestratorConfig.KnowledgeConfig = knowledgeConfig;
-
-            userSettings.EmbeddingConfig = new EmbeddingConfig
-            {
-                ProviderID = Embedding.ProviderID,
-                ModelName  = Embedding.ModelName
-            };
-
             userSettings.Localization.Language = SelectedLanguage;
 
-            await userSettings.SaveAsync();
+            await userSettingsStore.SaveAsync(userSettings);
 
             SaveSuccess = true;
         }
@@ -362,9 +204,16 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var models = await connectionTester.FetchModelsAsync(provider.Provider, provider.Endpoint, provider.APIKey, provider.CustomHeaders);
+            var models = await connectionTester.FetchModelsAsync
+                         (
+                             provider.Provider,
+                             provider.Endpoint,
+                             provider.APIKey,
+                             provider.CustomHeaders
+                         );
 
             model.AvailableModels.Clear();
+
             foreach (var m in models)
                 model.AvailableModels.Add(m);
 
@@ -400,7 +249,14 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            await connectionTester.TestChatAsync(provider.Provider, provider.Endpoint, provider.APIKey, model.ModelName, provider.CustomHeaders);
+            await connectionTester.TestChatAsync
+            (
+                provider.Provider,
+                provider.Endpoint,
+                provider.APIKey,
+                model.ModelName,
+                provider.CustomHeaders
+            );
 
             model.ConnectionSuccess = true;
             model.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", model.ModelName);
@@ -443,9 +299,16 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var models = await connectionTester.FetchModelsAsync(provider.Provider, provider.Endpoint, provider.APIKey, provider.CustomHeaders);
+            var models = await connectionTester.FetchModelsAsync
+                         (
+                             provider.Provider,
+                             provider.Endpoint,
+                             provider.APIKey,
+                             provider.CustomHeaders
+                         );
 
             Embedding.AvailableModels.Clear();
+
             foreach (var m in models)
                 Embedding.AvailableModels.Add(m);
 
@@ -478,7 +341,14 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            await connectionTester.TestEmbeddingAsync(provider.Provider, provider.Endpoint, provider.APIKey, Embedding.ModelName, provider.CustomHeaders);
+            await connectionTester.TestEmbeddingAsync
+            (
+                provider.Provider,
+                provider.Endpoint,
+                provider.APIKey,
+                Embedding.ModelName,
+                provider.CustomHeaders
+            );
 
             Embedding.ConnectionSuccess = true;
             Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", Embedding.ModelName);

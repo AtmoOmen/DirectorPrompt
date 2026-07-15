@@ -56,7 +56,7 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
             var text = Content.Replace("\n", " ").Replace("\r", "").Trim();
 
             const int TEXT_LENGTH = 64;
-            
+
             return text.Length <= TEXT_LENGTH ?
                        text :
                        string.Concat(text.AsSpan(0, TEXT_LENGTH), "…");

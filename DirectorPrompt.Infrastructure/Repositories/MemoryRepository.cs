@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Dapper;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 
@@ -7,26 +8,22 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class MemoryRepository
 (
-    SqliteDatabaseScheduler scheduler
+    SQLiteDatabaseScheduler scheduler
 ) : IMemoryRepository
 {
     public Task<MemoryEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
-            async (connection, token) =>
-            {
-                var row = await connection.QueryFirstOrDefaultAsync<MemoryEntryRow>
-                          (
-                              new CommandDefinition
-                              (
-                                  "SELECT * FROM memory_entries WHERE id = @id",
-                                  new { id },
-                                  cancellationToken: token
-                              )
-                          );
-
-                return row?.ToMemoryEntry();
-            },
+            async (connection, token) => 
+                await connection.QueryFirstOrDefaultAsync<MemoryEntry>
+                                         (
+                                             new CommandDefinition
+                                             (
+                                                 "SELECT * FROM memory_entries WHERE id = @id",
+                                                 new { id },
+                                                 cancellationToken: token
+                                             )
+                                         ),
             cancellationToken: cancellationToken
         );
 
@@ -41,7 +38,7 @@ public sealed class MemoryRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<MemoryEntryRow>
+                var rows = await connection.QueryAsync<MemoryEntry>
                            (
                                new CommandDefinition
                                (
@@ -68,9 +65,9 @@ public sealed class MemoryRepository
                                )
                            );
 
-                return rows.Select(row => row.ToMemoryEntry()).ToList();
+                return rows.ToList();
             },
-            SqliteWorkPriority.Maintenance,
+            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -88,7 +85,7 @@ public sealed class MemoryRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<MemoryEntryRow>
+                var rows = await connection.QueryAsync<MemoryEntry>
                            (
                                new CommandDefinition
                                (
@@ -98,7 +95,7 @@ public sealed class MemoryRepository
                                )
                            );
 
-                return rows.Select(row => row.ToMemoryEntry()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -115,7 +112,7 @@ public sealed class MemoryRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<MemoryEntryRow>
+                var rows = await connection.QueryAsync<MemoryEntry>
                            (
                                new CommandDefinition
                                (
@@ -142,7 +139,7 @@ public sealed class MemoryRepository
                                )
                            );
 
-                return rows.Select(row => row.ToMemoryEntry()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -162,7 +159,7 @@ public sealed class MemoryRepository
                               null :
                               query.Tag.Trim();
 
-                var rows = await connection.QueryAsync<MemoryEntryRow>
+                var rows = await connection.QueryAsync<MemoryEntry>
                            (
                                new CommandDefinition
                                (
@@ -192,7 +189,7 @@ public sealed class MemoryRepository
                                        query.SceneID,
                                        TagJSON = tag is null ?
                                                      null :
-                                                     JsonSerializer.Serialize(tag),
+                                                     JsonSerializer.Serialize(tag, JsonOptions.Compact),
                                        SearchText = string.IsNullOrWhiteSpace(searchText) ?
                                                         null :
                                                         searchText,
@@ -201,7 +198,7 @@ public sealed class MemoryRepository
                                    cancellationToken: token
                                )
                            );
-                var items   = rows.Select(row => row.ToMemoryEntry()).ToList();
+                var items   = rows.ToList();
                 var hasMore = items.Count > pageSize;
 
                 if (hasMore)
@@ -251,10 +248,10 @@ public sealed class MemoryRepository
                                      sceneID             = entry.SceneID,
                                      timelinePos         = entry.TimelinePos,
                                      content             = entry.Content,
-                                     tags                = JsonHelper.Serialize(entry.Tags),
-                                     relatedCharacterIDs = JsonHelper.Serialize(entry.RelatedCharacterIDs),
-                                     createdAt           = now.ToString("O"),
-                                     updatedAt           = now.ToString("O")
+                                     tags                = entry.Tags,
+                                     relatedCharacterIDs = entry.RelatedCharacterIDs,
+                                     createdAt           = now,
+                                     updatedAt           = now
                                  },
                                  transaction,
                                  cancellationToken: token
@@ -293,7 +290,6 @@ public sealed class MemoryRepository
                                  transaction,
                                  token
                              );
-                var tags = JsonHelper.Serialize(entry.Tags);
                 await connection.ExecuteAsync
                 (
                     new CommandDefinition
@@ -316,11 +312,11 @@ public sealed class MemoryRepository
                         """,
                         new
                         {
-                            id      = entry.ID,
-                            content = entry.Content,
-                            tags,
-                            relatedCharacterIDs = JsonHelper.Serialize(entry.RelatedCharacterIDs),
-                            updatedAt           = DateTime.UtcNow.ToString("O")
+                            id                  = entry.ID,
+                            content             = entry.Content,
+                            tags                = entry.Tags,
+                            relatedCharacterIDs = entry.RelatedCharacterIDs,
+                            updatedAt           = DateTime.UtcNow
                         },
                         transaction,
                         cancellationToken: token
@@ -338,7 +334,7 @@ public sealed class MemoryRepository
                         "memory_entries",
                         entry.ID,
                         "update",
-                        JsonSerializer.Serialize(oldRow),
+                        JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                         token
                     );
                 }
@@ -359,9 +355,9 @@ public sealed class MemoryRepository
         CancellationToken   cancellationToken = default
     )
     {
-        var distinctIDs = memoryIDs.Distinct().ToArray();
+        var distinctIDs = memoryIDs.Distinct().ToList();
 
-        if (distinctIDs.Length == 0)
+        if (distinctIDs.Count == 0)
             throw new ArgumentException("合并记忆不能为空", nameof(memoryIDs));
 
         return scheduler.ExecuteAsync
@@ -389,7 +385,7 @@ public sealed class MemoryRepository
                                    )
                                );
 
-                if (metadata.FoundCount != distinctIDs.Length   ||
+                if (metadata.FoundCount != distinctIDs.Count    ||
                     metadata.ProjectID is null                  ||
                     metadata.ProjectID != metadata.MaxProjectID ||
                     metadata.SessionID is null                  ||
@@ -411,7 +407,7 @@ public sealed class MemoryRepository
                                          cancellationToken: token
                                      )
                                  );
-                var sourceRows = new List<string>(distinctIDs.Length);
+                var sourceRows = new List<string>(distinctIDs.Count);
 
                 foreach (var id in distinctIDs)
                 {
@@ -423,7 +419,7 @@ public sealed class MemoryRepository
                                   transaction,
                                   token
                               );
-                    sourceRows.Add(JsonSerializer.Serialize(row));
+                    sourceRows.Add(JsonSerializer.Serialize(row, JsonOptions.Compact));
                 }
 
                 var now                 = DateTime.UtcNow;
@@ -444,10 +440,10 @@ public sealed class MemoryRepository
                                         sceneID,
                                         timelinePosition = metadata.TimelinePosition,
                                         content,
-                                        tags                = JsonHelper.Serialize(tags),
-                                        relatedCharacterIDs = JsonHelper.Serialize(relatedCharacterIDs),
-                                        createdAt           = now.ToString("O"),
-                                        updatedAt           = now.ToString("O")
+                                        tags,
+                                        relatedCharacterIDs,
+                                        createdAt = now,
+                                        updatedAt = now
                                     },
                                     transaction,
                                     cancellationToken: token
@@ -477,7 +473,7 @@ public sealed class MemoryRepository
                     token
                 );
 
-                for (var index = 0; index < distinctIDs.Length; index++)
+                for (var index = 0; index < distinctIDs.Count; index++)
                     await RoundChangeRepository.RecordAsync
                     (
                         connection,
@@ -530,7 +526,6 @@ public sealed class MemoryRepository
                     return;
 
                 var projectID = Convert.ToInt64(oldRow["project_id"]);
-                var sessionID = Convert.ToInt64(oldRow["session_id"]);
                 await connection.ExecuteAsync
                 (
                     new CommandDefinition
@@ -566,7 +561,7 @@ public sealed class MemoryRepository
                     "memory_entries",
                     id,
                     "delete",
-                    JsonSerializer.Serialize(oldRow),
+                    JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                     token
                 );
                 await transaction.CommitAsync(token);
@@ -648,7 +643,7 @@ public sealed class MemoryRepository
                 );
                 await transaction.CommitAsync(token);
             },
-            SqliteWorkPriority.Maintenance,
+            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -677,7 +672,7 @@ public sealed class MemoryRepository
                     )
                 );
             },
-            SqliteWorkPriority.Maintenance,
+            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -737,38 +732,5 @@ public sealed class MemoryRepository
         public long? SessionID        { get; set; }
         public long? MaxSessionID     { get; set; }
         public long  TimelinePosition { get; set; }
-    }
-
-    private sealed class MemoryEntryRow
-    {
-        public long    ID                    { get; set; }
-        public long    Project_ID            { get; set; }
-        public long?   Session_ID            { get; set; }
-        public long    Scene_ID              { get; set; }
-        public long    Timeline_Pos          { get; set; }
-        public string  Content               { get; set; } = string.Empty;
-        public string  Tags                  { get; set; } = "[]";
-        public string  Related_Character_IDs { get; set; } = "[]";
-        public string? Content_Hash          { get; set; }
-        public string? Embedding_Fingerprint { get; set; }
-        public string  Created_At            { get; set; } = string.Empty;
-        public string  Updated_At            { get; set; } = string.Empty;
-
-        public MemoryEntry ToMemoryEntry() =>
-            new()
-            {
-                ID                   = ID,
-                ProjectID            = Project_ID,
-                SessionID            = Session_ID ?? 0,
-                SceneID              = Scene_ID,
-                TimelinePos          = Timeline_Pos,
-                Content              = Content,
-                Tags                 = JsonHelper.DeserializeStringArray(Tags),
-                RelatedCharacterIDs  = JsonHelper.DeserializeInt64Array(Related_Character_IDs),
-                ContentHash          = Content_Hash,
-                EmbeddingFingerprint = Embedding_Fingerprint,
-                CreatedAt            = DateTime.Parse(Created_At),
-                UpdatedAt            = DateTime.Parse(Updated_At)
-            };
     }
 }

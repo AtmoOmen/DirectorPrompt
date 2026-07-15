@@ -1,15 +1,50 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using DirectorPrompt.Domain.Configurations;
 
 namespace DirectorPrompt.ViewModels;
 
-public sealed partial class KnowledgeSettingViewModel : ObservableObject
+public sealed class KnowledgeSettingViewModel : ObservableObject
 {
-    [ObservableProperty]
-    public partial int SemanticTopK { get; set; } = 8;
+    public KnowledgeRetrievalConfig Config { get; }
 
-    [ObservableProperty]
-    public partial int TokenBudget { get; set; } = 2000;
+    public KnowledgeSettingViewModel(KnowledgeRetrievalConfig config) => Config = config;
 
-    [ObservableProperty]
-    public partial float MinRelevance { get; set; }
+    public int SemanticTopK
+    {
+        get => Config.SemanticTopK;
+        set
+        {
+            if (Config.SemanticTopK != value)
+            {
+                Config.SemanticTopK = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int TokenBudget
+    {
+        get => Config.TokenBudget;
+        set
+        {
+            if (Config.TokenBudget != value)
+            {
+                Config.TokenBudget = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public float MinRelevance
+    {
+        get => Config.MinRelevance;
+        set
+        {
+            if (Config.MinRelevance != value)
+            {
+                Config.MinRelevance = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
-using DirectorPrompt.Agents.Config;
+using System.Text.Json;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -170,7 +171,9 @@ public sealed class SystemStateTransformer
         CancellationToken          cancellationToken
     )
     {
-        var config = AttributeConfigSerializer.Deserialize<EnumAttributeConfig>(attr.Config);
+        var config = string.IsNullOrWhiteSpace(attr.Config) ?
+                         null :
+                         JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
 
         if (config is null)
             return;
@@ -219,7 +222,7 @@ public sealed class SystemStateTransformer
         long                       sessionID,
         long?                      characterID,
         string                     currentValue,
-        EnumAttributeConfig        config,
+        StateAttributeConfig       config,
         Dictionary<string, string> stateValues
     )
     {

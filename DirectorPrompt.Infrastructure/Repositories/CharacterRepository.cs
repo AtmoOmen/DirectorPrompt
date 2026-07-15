@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text.Json;
 using Dapper;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -8,93 +9,79 @@ using Microsoft.Data.Sqlite;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
-public sealed class CharacterRepository : ICharacterRepository
+public sealed class CharacterRepository
+(
+    SQLiteConnectionFactory connectionFactory,
+    VectorTableManager      vectorTableManager,
+    SQLiteDatabaseScheduler scheduler
+)
+    : ICharacterRepository
 {
-    private readonly SqliteConnectionFactory connectionFactory;
-    private readonly VectorTableManager      vectorTableManager;
-    private readonly SqliteDatabaseScheduler scheduler;
-
-    public CharacterRepository
-    (
-        SqliteConnectionFactory connectionFactory,
-        VectorTableManager      vectorTableManager,
-        SqliteDatabaseScheduler scheduler
-    )
-    {
-        this.connectionFactory  = connectionFactory;
-        this.vectorTableManager = vectorTableManager;
-        this.scheduler          = scheduler;
-    }
-
     public async Task<Character?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<CharacterRow>
-                  (
-                      "SELECT * FROM characters WHERE id = @id",
-                      new { id }
-                  );
-
-        return row?.ToCharacter();
+        return await connection.QueryFirstOrDefaultAsync<Character>
+               (
+                   "SELECT * FROM characters WHERE id = @id",
+                   new { id }
+               );
     }
 
     public async Task<Character?> GetByNameAsync(long sessionID, string name, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync<CharacterRow>
-                  (
-                      "SELECT * FROM characters WHERE session_id = @sessionID AND name = @name",
-                      new { sessionID, name }
-                  );
-
-        return row?.ToCharacter();
+        return await connection.QueryFirstOrDefaultAsync<Character>
+               (
+                   "SELECT * FROM characters WHERE session_id = @sessionID AND name = @name",
+                   new { sessionID, name }
+               );
     }
 
     public async Task<IReadOnlyList<Character>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterRow>
+        var rows = await connection.QueryAsync<Character>
                    (
                        "SELECT * FROM characters WHERE session_id = @sessionID ORDER BY id",
                        new { sessionID }
                    );
 
-        return rows.Select(r => r.ToCharacter()).ToList();
+        return rows.ToList();
     }
 
     public async Task<IReadOnlyList<Character>> GetActiveBySessionAsync(long sessionID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterRow>
+        var rows = await connection.QueryAsync<Character>
                    (
-                       "SELECT * FROM characters WHERE session_id = @sessionID AND status = 'active' ORDER BY last_touched_round DESC, id",
+                       "SELECT * FROM characters WHERE session_id = @sessionID AND status = 'Active' ORDER BY last_touched_round DESC, id",
                        new { sessionID }
                    );
 
-        return rows.Select(r => r.ToCharacter()).ToList();
+        return rows.ToList();
     }
 
     public async Task<IReadOnlyList<Character>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterRow>
+        var rows = await connection.QueryAsync<Character>
                    (
                        """
                        SELECT c.* FROM characters c
                        JOIN character_scene_presence p ON p.character_id = c.id
                        WHERE p.scene_id = @sceneID
-                         AND c.status = 'active'
+                         AND c.status = 'Active'
                        ORDER BY c.id
                        """,
                        new { sceneID }
                    );
 
-        return rows.Select(r => r.ToCharacter()).ToList();
+        return rows.ToList();
     }
 
     public async Task<IReadOnlyList<Character>> GetByIDsAsync
@@ -107,8 +94,8 @@ public sealed class CharacterRepository : ICharacterRepository
         if (characterIDs.Count == 0)
             return [];
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-        var rows = await connection.QueryAsync<CharacterRow>
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
+        var rows = await connection.QueryAsync<Character>
                    (
                        new CommandDefinition
                        (
@@ -118,18 +105,18 @@ public sealed class CharacterRepository : ICharacterRepository
                        )
                    );
 
-        return rows.Select(row => row.ToCharacter()).ToList();
+        return rows.ToList();
     }
 
     public async Task<CharacterPage> GetPageAsync(CharacterPageQuery query, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         var pageSize = Math.Clamp(query.PageSize, 1, 200);
         var searchPattern = string.IsNullOrWhiteSpace(query.SearchText) ?
                                 null :
                                 $"%{query.SearchText.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_")}%";
-        var rows = await connection.QueryAsync<CharacterRow>
+        var rows = await connection.QueryAsync<Character>
                    (
                        new CommandDefinition
                        (
@@ -137,7 +124,7 @@ public sealed class CharacterRepository : ICharacterRepository
                            SELECT c.*
                            FROM characters c
                            WHERE c.session_id = @SessionID
-                             AND c.status = 'active'
+                             AND c.status = 'Active'
                              AND (@AfterID IS NULL OR c.id > @AfterID)
                              AND
                              (
@@ -170,7 +157,7 @@ public sealed class CharacterRepository : ICharacterRepository
                        )
                    );
 
-        var items   = rows.Select(row => row.ToCharacter()).ToList();
+        var items   = rows.ToList();
         var hasMore = items.Count > pageSize;
 
         if (hasMore)
@@ -207,13 +194,13 @@ public sealed class CharacterRepository : ICharacterRepository
                                      sessionID        = character.SessionID,
                                      name             = character.Name,
                                      description      = character.Description,
-                                     aliases          = JsonHelper.Serialize(character.Aliases),
-                                     categoryIDs      = JsonHelper.Serialize(character.CategoryIDs),
-                                     status           = character.Status.ToString().ToLowerInvariant(),
+                                     aliases          = character.Aliases,
+                                     categoryIDs      = character.CategoryIDs,
+                                     status           = character.Status,
                                      touchCount       = character.TouchCount,
                                      lastTouchedRound = character.LastTouchedRound,
-                                     createdAt        = now.ToString("O"),
-                                     updatedAt        = now.ToString("O")
+                                     createdAt        = now,
+                                     updatedAt        = now
                                  },
                                  transaction,
                                  cancellationToken: token
@@ -271,10 +258,10 @@ public sealed class CharacterRepository : ICharacterRepository
                             id          = character.ID,
                             name        = character.Name,
                             description = character.Description,
-                            aliases     = JsonHelper.Serialize(character.Aliases),
-                            categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
-                            status      = character.Status.ToString().ToLowerInvariant(),
-                            updatedAt   = DateTime.UtcNow.ToString("O")
+                            aliases     = character.Aliases,
+                            categoryIDs = character.CategoryIDs,
+                            status      = character.Status,
+                            updatedAt   = DateTime.UtcNow
                         },
                         transaction,
                         cancellationToken: token
@@ -292,7 +279,7 @@ public sealed class CharacterRepository : ICharacterRepository
                         "characters",
                         character.ID,
                         "update",
-                        JsonSerializer.Serialize(oldRow),
+                        JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                         token
                     );
                 }
@@ -324,11 +311,11 @@ public sealed class CharacterRepository : ICharacterRepository
                         UPDATE characters
                         SET touch_count = touch_count + 1,
                             last_touched_round = @roundID,
-                            status = 'active',
+                            status = 'Active',
                             updated_at = @updatedAt
                         WHERE id = @characterID
                         """,
-                        new { characterID, roundID, updatedAt = DateTime.UtcNow.ToString("O") },
+                        new { characterID, roundID, updatedAt = DateTime.UtcNow },
                         transaction,
                         cancellationToken: token
                     )
@@ -345,7 +332,7 @@ public sealed class CharacterRepository : ICharacterRepository
                         "characters",
                         characterID,
                         "update",
-                        JsonSerializer.Serialize(oldRow),
+                        JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                         token
                     );
                 }
@@ -386,7 +373,7 @@ public sealed class CharacterRepository : ICharacterRepository
                                        """
                                        SELECT id FROM characters
                                        WHERE session_id = @sessionID
-                                         AND status = 'active'
+                                         AND status = 'Active'
                                          AND (@currentRound - last_touched_round) > @threshold
                                        """,
                                        new { sessionID, currentRound, threshold },
@@ -421,7 +408,8 @@ public sealed class CharacterRepository : ICharacterRepository
                 if (oldRow is null)
                     return;
 
-                var aliases = JsonHelper.DeserializeStringArray((string)oldRow["aliases"]!);
+                var aliasesJSON = (string)oldRow["aliases"]!;
+                var aliases     = JsonSerializer.Deserialize<string[]>(aliasesJSON, JsonOptions.Compact) ?? [];
 
                 if (aliases.Contains(alias))
                     return;
@@ -434,8 +422,8 @@ public sealed class CharacterRepository : ICharacterRepository
                         new
                         {
                             characterID,
-                            aliases   = JsonHelper.Serialize(aliases.Append(alias).ToArray()),
-                            updatedAt = DateTime.UtcNow.ToString("O")
+                            aliases   = aliases.Append(alias).ToArray(),
+                            updatedAt = DateTime.UtcNow
                         },
                         transaction,
                         cancellationToken: token
@@ -450,7 +438,7 @@ public sealed class CharacterRepository : ICharacterRepository
                     "characters",
                     characterID,
                     "update",
-                    JsonSerializer.Serialize(oldRow),
+                    JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                     token
                 );
                 await transaction.CommitAsync(token);
@@ -472,7 +460,7 @@ public sealed class CharacterRepository : ICharacterRepository
 
         await vectorTableManager.EnsureTableAsync(tableName, dimension, cancellationToken);
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken, true);
+        await using var connection = await connectionFactory.CreateAsync(true, cancellationToken);
 
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
@@ -515,7 +503,7 @@ public sealed class CharacterRepository : ICharacterRepository
         if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
             return;
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken, true);
+        await using var connection = await connectionFactory.CreateAsync(true, cancellationToken);
 
         await connection.ExecuteAsync
         (
@@ -538,7 +526,7 @@ public sealed class CharacterRepository : ICharacterRepository
         if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
             return [];
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken, true);
+        await using var connection = await connectionFactory.CreateAsync(true, cancellationToken);
 
         var sql = candidateIDs is { Count: > 0 } ?
                       $"""
@@ -568,20 +556,20 @@ public sealed class CharacterRepository : ICharacterRepository
 
     public async Task<IReadOnlyList<CharacterCategory>> GetCategoriesAsync(long projectID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterCategoryRow>
+        var rows = await connection.QueryAsync<CharacterCategory>
                    (
                        "SELECT * FROM character_categories WHERE project_id = @projectID ORDER BY id",
                        new { projectID }
                    );
 
-        return rows.Select(r => r.ToCharacterCategory()).ToList();
+        return rows.ToList();
     }
 
     public async Task<CharacterCategory> CreateCategoryAsync(CharacterCategory category, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         var id = await connection.ExecuteScalarAsync<long>
                  (
@@ -595,7 +583,7 @@ public sealed class CharacterRepository : ICharacterRepository
                          projectID         = category.ProjectID,
                          name              = category.Name,
                          description       = category.Description,
-                         parentCategoryIDs = JsonHelper.Serialize(category.ParentCategoryIDs)
+                         parentCategoryIDs = category.ParentCategoryIDs
                      }
                  );
 
@@ -604,7 +592,7 @@ public sealed class CharacterRepository : ICharacterRepository
 
     public async Task UpdateCategoryAsync(CharacterCategory category, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync
         (
@@ -618,14 +606,14 @@ public sealed class CharacterRepository : ICharacterRepository
                 id                = category.ID,
                 name              = category.Name,
                 description       = category.Description,
-                parentCategoryIDs = JsonHelper.Serialize(category.ParentCategoryIDs)
+                parentCategoryIDs = category.ParentCategoryIDs
             }
         );
     }
 
     public async Task DeleteCategoryAsync(long categoryID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync
         (
@@ -636,28 +624,28 @@ public sealed class CharacterRepository : ICharacterRepository
 
     public async Task<IReadOnlyList<CharacterRelation>> GetRelationsAsync(long sessionID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterRelationRow>
+        var rows = await connection.QueryAsync<CharacterRelation>
                    (
                        "SELECT * FROM character_relations WHERE session_id = @sessionID ORDER BY id",
                        new { sessionID }
                    );
 
-        return rows.Select(r => r.ToCharacterRelation()).ToList();
+        return rows.ToList();
     }
 
     public async Task<IReadOnlyList<CharacterRelation>> GetRelationsByCharacterAsync(long characterID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterRelationRow>
+        var rows = await connection.QueryAsync<CharacterRelation>
                    (
                        "SELECT * FROM character_relations WHERE source_character_id = @characterID OR target_character_id = @characterID ORDER BY id",
                        new { characterID }
                    );
 
-        return rows.Select(r => r.ToCharacterRelation()).ToList();
+        return rows.ToList();
     }
 
     public async Task<IReadOnlyList<CharacterRelation>> GetRelationsByCharactersAsync
@@ -669,9 +657,9 @@ public sealed class CharacterRepository : ICharacterRepository
         if (characterIDs.Count == 0)
             return [];
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterRelationRow>
+        var rows = await connection.QueryAsync<CharacterRelation>
                    (
                        """
                        SELECT * FROM character_relations
@@ -681,7 +669,7 @@ public sealed class CharacterRepository : ICharacterRepository
                        new { characterIDs }
                    );
 
-        return rows.Select(r => r.ToCharacterRelation()).ToList();
+        return rows.ToList();
     }
 
     public async Task<CharacterRelation> SetRelationAsync
@@ -699,12 +687,12 @@ public sealed class CharacterRepository : ICharacterRepository
         CancellationToken    cancellationToken = default
     )
     {
-        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection  = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
-        var now = DateTime.UtcNow.ToString("O");
+        var now = DateTime.UtcNow;
 
-        var existing = await connection.QueryFirstOrDefaultAsync<CharacterRelationRow>
+        var existing = await connection.QueryFirstOrDefaultAsync<CharacterRelation>
                        (
                            """
                            SELECT * FROM character_relations
@@ -721,7 +709,7 @@ public sealed class CharacterRepository : ICharacterRepository
 
         if (existing is not null)
         {
-            projectID = existing.Project_ID;
+            projectID = existing.ProjectID;
             await connection.ExecuteAsync
             (
                 """
@@ -755,17 +743,42 @@ public sealed class CharacterRepository : ICharacterRepository
                 new
                 {
                     relationID,
-                    oldType        = existing.Relation_Type,
+                    oldType        = existing.RelationType,
                     newType        = relationType,
                     oldDescription = existing.Description,
                     newDescription = description,
-                    source         = source.ToString().ToLowerInvariant(),
+                    source,
                     reason,
                     sceneID,
                     createdAt = now
                 },
                 transaction
             );
+
+            var oldRow = await RowReader.ReadRowAsync
+                         (
+                             connection,
+                             "SELECT * FROM character_relations WHERE id = @relationID",
+                             new { relationID },
+                             transaction,
+                             cancellationToken
+                         );
+
+            if (oldRow is not null)
+            {
+                await RoundChangeRepository.RecordAsync
+                (
+                    connection,
+                    transaction,
+                    sessionID,
+                    roundID,
+                    "character_relations",
+                    relationID,
+                    "update",
+                    JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
+                    cancellationToken
+                );
+            }
         }
         else
         {
@@ -811,33 +824,14 @@ public sealed class CharacterRepository : ICharacterRepository
                     relationID,
                     newType        = relationType,
                     newDescription = description,
-                    source         = source.ToString().ToLowerInvariant(),
+                    source,
                     reason,
                     sceneID,
                     createdAt = now
                 },
                 transaction
             );
-        }
 
-        if (existing is not null)
-        {
-            var oldData = JsonSerializer.Serialize(existing);
-            await RoundChangeRepository.RecordAsync
-            (
-                connection,
-                transaction,
-                sessionID,
-                roundID,
-                "character_relations",
-                relationID,
-                "update",
-                oldData,
-                cancellationToken
-            );
-        }
-        else
-        {
             await RoundChangeRepository.RecordAsync
             (
                 connection,
@@ -864,8 +858,8 @@ public sealed class CharacterRepository : ICharacterRepository
             RelationType      = relationType,
             Description       = description,
             Intensity         = intensity,
-            CreatedAt         = DateTime.UtcNow,
-            UpdatedAt         = DateTime.UtcNow
+            CreatedAt         = now,
+            UpdatedAt         = now
         };
     }
 
@@ -875,34 +869,28 @@ public sealed class CharacterRepository : ICharacterRepository
         CancellationToken cancellationToken = default
     )
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterRelationLogRow>
+        var rows = await connection.QueryAsync<CharacterRelationLog>
                    (
                        "SELECT * FROM character_relation_logs WHERE relation_id = @relationID ORDER BY id",
                        new { relationID }
                    );
 
-        return rows.Select(r => r.ToCharacterRelationLog()).ToList();
+        return rows.ToList();
     }
 
     public async Task<IReadOnlyList<CharacterScenePresence>> GetPresenceAsync(long sceneID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync
+        var rows = await connection.QueryAsync<CharacterScenePresence>
                    (
                        "SELECT character_id AS CharacterID, scene_id AS SceneID FROM character_scene_presence WHERE scene_id = @sceneID",
                        new { sceneID }
                    );
 
-        return rows.Select
-        (r => new CharacterScenePresence
-            {
-                CharacterID = (long)r.CharacterID,
-                SceneID     = (long)r.SceneID
-            }
-        ).ToList();
+        return rows.ToList();
     }
 
     public Task EnterSceneAsync(long characterID, long sceneID, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
@@ -936,7 +924,7 @@ public sealed class CharacterRepository : ICharacterRepository
                         "character_scene_presence",
                         0,
                         "create",
-                        JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID }),
+                        JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID }, JsonOptions.Compact),
                         token
                     );
                 }
@@ -974,7 +962,7 @@ public sealed class CharacterRepository : ICharacterRepository
                         "character_scene_presence",
                         0,
                         "delete",
-                        JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID }),
+                        JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID }, JsonOptions.Compact),
                         token
                     );
                 }
@@ -986,28 +974,18 @@ public sealed class CharacterRepository : ICharacterRepository
 
     public async Task<CharacterCategoryResolution?> GetResolvedCategoriesAsync(long characterID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var row = await connection.QueryFirstOrDefaultAsync
-                  (
-                      "SELECT category_ids, attribute_ids FROM character_category_resolutions WHERE character_id = @characterID",
-                      new { characterID }
-                  );
-
-        if (row is null)
-            return null;
-
-        return new CharacterCategoryResolution
-        {
-            CharacterID  = characterID,
-            CategoryIDs  = JsonHelper.DeserializeInt64Array((string)row.category_ids),
-            AttributeIDs = JsonHelper.DeserializeInt64Array((string)row.attribute_ids)
-        };
+        return await connection.QueryFirstOrDefaultAsync<CharacterCategoryResolution>
+               (
+                   "SELECT character_id, category_ids, attribute_ids FROM character_category_resolutions WHERE character_id = @characterID",
+                   new { characterID }
+               );
     }
 
     public async Task UpdateResolvedCategoriesAsync(CharacterCategoryResolution resolved, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync
         (
@@ -1020,8 +998,8 @@ public sealed class CharacterRepository : ICharacterRepository
             new
             {
                 characterID  = resolved.CharacterID,
-                categoryIDs  = JsonHelper.Serialize(resolved.CategoryIDs),
-                attributeIDs = JsonHelper.Serialize(resolved.AttributeIDs)
+                categoryIDs  = resolved.CategoryIDs,
+                attributeIDs = resolved.AttributeIDs
             }
         );
     }
@@ -1035,44 +1013,28 @@ public sealed class CharacterRepository : ICharacterRepository
         if (characterIDs.Count == 0)
             return [];
 
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterStateValueRow>
+        var rows = await connection.QueryAsync<CharacterStateValue>
                    (
                        "SELECT * FROM character_state_values WHERE character_id IN @characterIDs",
                        new { characterIDs }
                    );
 
-        return rows.Select
-        (r => new CharacterStateValue
-            {
-                CharacterID = r.Character_ID,
-                AttributeID = r.Attribute_ID,
-                Value       = r.Value,
-                UpdatedAt   = DateTime.Parse(r.Updated_At)
-            }
-        ).ToList();
+        return rows.ToList();
     }
 
     public async Task<IReadOnlyList<CharacterStateValue>> GetCharacterStateValuesAsync(long characterID, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var rows = await connection.QueryAsync<CharacterStateValueRow>
+        var rows = await connection.QueryAsync<CharacterStateValue>
                    (
                        "SELECT * FROM character_state_values WHERE character_id = @characterID",
                        new { characterID }
                    );
 
-        return rows.Select
-        (r => new CharacterStateValue
-            {
-                CharacterID = r.Character_ID,
-                AttributeID = r.Attribute_ID,
-                Value       = r.Value,
-                UpdatedAt   = DateTime.Parse(r.Updated_At)
-            }
-        ).ToList();
+        return rows.ToList();
     }
 
     public Task SetCharacterStateValueAsync
@@ -1097,7 +1059,7 @@ public sealed class CharacterRepository : ICharacterRepository
                                  transaction,
                                  token
                              );
-                var updatedAt = DateTime.UtcNow.ToString("O");
+                var now = DateTime.UtcNow;
                 await connection.ExecuteAsync
                 (
                     new CommandDefinition
@@ -1108,7 +1070,7 @@ public sealed class CharacterRepository : ICharacterRepository
                         ON CONFLICT(character_id, attribute_id)
                         DO UPDATE SET value = @value, updated_at = @updatedAt
                         """,
-                        new { characterID, attributeID, value, updatedAt },
+                        new { characterID, attributeID, value, updatedAt = now },
                         transaction,
                         cancellationToken: token
                     )
@@ -1125,8 +1087,8 @@ public sealed class CharacterRepository : ICharacterRepository
                         "create" :
                         "update",
                     oldRow is null ?
-                        JsonSerializer.Serialize(new { character_id = characterID, attribute_id = attributeID, value, updated_at = updatedAt }) :
-                        JsonSerializer.Serialize(oldRow),
+                        JsonSerializer.Serialize(new { character_id = characterID, attribute_id = attributeID, value, updated_at = now }, JsonOptions.Compact) :
+                        JsonSerializer.Serialize(oldRow,                                                                                  JsonOptions.Compact),
                     token
                 );
                 await transaction.CommitAsync(token);
@@ -1160,8 +1122,8 @@ public sealed class CharacterRepository : ICharacterRepository
         (
             new CommandDefinition
             (
-                "UPDATE characters SET status = 'archived', updated_at = @updatedAt WHERE id = @characterID",
-                new { characterID, updatedAt = DateTime.UtcNow.ToString("O") },
+                "UPDATE characters SET status = 'Archived', updated_at = @updatedAt WHERE id = @characterID",
+                new { characterID, updatedAt = DateTime.UtcNow },
                 transaction,
                 cancellationToken: cancellationToken
             )
@@ -1175,7 +1137,7 @@ public sealed class CharacterRepository : ICharacterRepository
             "characters",
             characterID,
             "update",
-            JsonSerializer.Serialize(oldRow),
+            JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
             cancellationToken
         );
         var presenceRows = (await connection.QueryAsync
@@ -1216,138 +1178,11 @@ public sealed class CharacterRepository : ICharacterRepository
                 "delete",
                 JsonSerializer.Serialize
                 (
-                    new { character_id = (long)row.character_id, scene_id = (long)row.scene_id }
+                    new { character_id = (long)row.character_id, scene_id = (long)row.scene_id },
+                    JsonOptions.Compact
                 ),
                 cancellationToken
             );
         }
-    }
-
-    private sealed class CharacterRow
-    {
-        public long    ID                 { get; set; }
-        public long    Project_ID         { get; set; }
-        public long    Session_ID         { get; set; }
-        public string  Name               { get; set; } = string.Empty;
-        public string  Description        { get; set; } = string.Empty;
-        public string  Aliases            { get; set; } = "[]";
-        public string  Category_IDs       { get; set; } = "[]";
-        public string  Status             { get; set; } = "active";
-        public int     Touch_Count        { get; set; }
-        public long    Last_Touched_Round { get; set; }
-        public string? Content_Hash       { get; set; }
-        public string  Created_At         { get; set; } = string.Empty;
-        public string  Updated_At         { get; set; } = string.Empty;
-
-        public Character ToCharacter() =>
-            new()
-            {
-                ID          = ID,
-                ProjectID   = Project_ID,
-                SessionID   = Session_ID,
-                Name        = Name,
-                Description = Description,
-                Aliases     = JsonHelper.DeserializeStringArray(Aliases),
-                CategoryIDs = JsonHelper.DeserializeInt64Array(Category_IDs),
-                Status = Status switch
-                {
-                    "archived" => CharacterStatus.Archived,
-                    _          => CharacterStatus.Active
-                },
-                TouchCount       = Touch_Count,
-                LastTouchedRound = Last_Touched_Round,
-                ContentHash      = Content_Hash,
-                CreatedAt        = DateTime.Parse(Created_At),
-                UpdatedAt        = DateTime.Parse(Updated_At)
-            };
-    }
-
-    private sealed class CharacterCategoryRow
-    {
-        public long    ID                  { get; set; }
-        public long    Project_ID          { get; set; }
-        public string  Name                { get; set; } = string.Empty;
-        public string? Description         { get; set; }
-        public string  Parent_Category_IDs { get; set; } = "[]";
-
-        public CharacterCategory ToCharacterCategory() =>
-            new()
-            {
-                ID                = ID,
-                ProjectID         = Project_ID,
-                Name              = Name,
-                Description       = Description,
-                ParentCategoryIDs = JsonHelper.DeserializeInt64Array(Parent_Category_IDs)
-            };
-    }
-
-    private sealed class CharacterRelationRow
-    {
-        public long    ID                  { get; set; }
-        public long    Project_ID          { get; set; }
-        public long    Session_ID          { get; set; }
-        public long    Source_Character_ID { get; set; }
-        public long    Target_Character_ID { get; set; }
-        public string  Relation_Type       { get; set; } = string.Empty;
-        public string? Description         { get; set; }
-        public float?  Intensity           { get; set; }
-        public string  Created_At          { get; set; } = string.Empty;
-        public string  Updated_At          { get; set; } = string.Empty;
-
-        public CharacterRelation ToCharacterRelation() =>
-            new()
-            {
-                ID                = ID,
-                ProjectID         = Project_ID,
-                SessionID         = Session_ID,
-                SourceCharacterID = Source_Character_ID,
-                TargetCharacterID = Target_Character_ID,
-                RelationType      = Relation_Type,
-                Description       = Description,
-                Intensity         = Intensity,
-                CreatedAt         = DateTime.Parse(Created_At),
-                UpdatedAt         = DateTime.Parse(Updated_At)
-            };
-    }
-
-    private sealed class CharacterStateValueRow
-    {
-        public long   Character_ID { get; set; }
-        public long   Attribute_ID { get; set; }
-        public string Value        { get; set; } = string.Empty;
-        public string Updated_At   { get; set; } = string.Empty;
-    }
-
-    private sealed class CharacterRelationLogRow
-    {
-        public long    ID              { get; set; }
-        public long    Relation_ID     { get; set; }
-        public string? Old_Type        { get; set; }
-        public string  New_Type        { get; set; } = string.Empty;
-        public string? Old_Description { get; set; }
-        public string? New_Description { get; set; }
-        public string  Source          { get; set; } = string.Empty;
-        public string  Reason          { get; set; } = string.Empty;
-        public long    Scene_ID        { get; set; }
-        public string  Created_At      { get; set; } = string.Empty;
-
-        public CharacterRelationLog ToCharacterRelationLog() =>
-            new()
-            {
-                ID             = ID,
-                RelationID     = Relation_ID,
-                OldType        = Old_Type,
-                NewType        = New_Type,
-                OldDescription = Old_Description,
-                NewDescription = New_Description,
-                Source = Source switch
-                {
-                    "director_manual" => RelationChangeSource.DirectorManual,
-                    _                 => RelationChangeSource.MemorySubAgent
-                },
-                Reason    = Reason,
-                SceneID   = Scene_ID,
-                CreatedAt = DateTime.Parse(Created_At)
-            };
     }
 }

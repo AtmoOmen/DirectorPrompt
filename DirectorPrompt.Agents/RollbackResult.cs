@@ -2,6 +2,6 @@ namespace DirectorPrompt.Agents;
 
 public sealed record RollbackResult
 (
-    long                          RoundID,
+    long                         RoundID,
     IReadOnlyList<DirectiveItem> Directives
 );

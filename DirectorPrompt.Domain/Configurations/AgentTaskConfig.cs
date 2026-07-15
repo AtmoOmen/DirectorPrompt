@@ -2,13 +2,13 @@ using DirectorPrompt.Domain.Enums;
 
 namespace DirectorPrompt.Domain.Configurations;
 
-public record AgentTaskConfig
+public sealed class AgentTaskConfig
 {
-    public AgentTaskType TaskType { get; init; }
+    public AgentTaskType TaskType { get; set; }
 
-    public string ModelConfigID { get; init; } = string.Empty;
+    public string ModelConfigID { get; set; } = string.Empty;
 
-    public string? PromptID { get; init; }
+    public string? PromptID { get; set; }
 
-    public bool Enabled { get; init; } = true;
+    public bool Enabled { get; set; } = true;
 }

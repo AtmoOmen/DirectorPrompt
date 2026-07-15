@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Dapper;
-using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 
@@ -8,26 +8,22 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 
 public sealed class SceneRepository
 (
-    SqliteDatabaseScheduler scheduler
+    SQLiteDatabaseScheduler scheduler
 ) : ISceneRepository
 {
     public Task<Scene?> GetByIDAsync(long id, CancellationToken cancellationToken = default) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
-            {
-                var row = await connection.QueryFirstOrDefaultAsync<SceneRow>
-                          (
-                              new CommandDefinition
-                              (
-                                  "SELECT * FROM scenes WHERE id = @id",
-                                  new { id },
-                                  cancellationToken: token
-                              )
-                          );
-
-                return row?.ToScene();
-            },
+                await connection.QueryFirstOrDefaultAsync<Scene>
+                (
+                    new CommandDefinition
+                    (
+                        "SELECT * FROM scenes WHERE id = @id",
+                        new { id },
+                        cancellationToken: token
+                    )
+                ),
             cancellationToken: cancellationToken
         );
 
@@ -40,7 +36,7 @@ public sealed class SceneRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<SceneRow>
+                var rows = await connection.QueryAsync<Scene>
                            (
                                new CommandDefinition
                                (
@@ -50,7 +46,7 @@ public sealed class SceneRepository
                                )
                            );
 
-                return rows.Select(row => row.ToScene()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -59,19 +55,15 @@ public sealed class SceneRepository
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
-            {
-                var row = await connection.QueryFirstOrDefaultAsync<SceneRow>
-                          (
-                              new CommandDefinition
-                              (
-                                  "SELECT * FROM scenes WHERE session_id = @sessionID AND status = 'active' ORDER BY id DESC LIMIT 1",
-                                  new { sessionID },
-                                  cancellationToken: token
-                              )
-                          );
-
-                return row?.ToScene();
-            },
+                await connection.QueryFirstOrDefaultAsync<Scene>
+                (
+                    new CommandDefinition
+                    (
+                        "SELECT * FROM scenes WHERE session_id = @sessionID AND status = 'Active' ORDER BY id DESC LIMIT 1",
+                        new { sessionID },
+                        cancellationToken: token
+                    )
+                ),
             cancellationToken: cancellationToken
         );
 
@@ -84,7 +76,7 @@ public sealed class SceneRepository
         (
             async (connection, token) =>
             {
-                var rows = await connection.QueryAsync<SceneRow>
+                var rows = await connection.QueryAsync<Scene>
                            (
                                new CommandDefinition
                                (
@@ -94,7 +86,7 @@ public sealed class SceneRepository
                                )
                            );
 
-                return rows.Select(row => row.ToScene()).ToList();
+                return rows.ToList();
             },
             cancellationToken: cancellationToken
         );
@@ -123,7 +115,7 @@ public sealed class SceneRepository
                                      summary                = scene.Summary,
                                      progressSummary        = scene.ProgressSummary,
                                      progressSummaryRoundID = scene.ProgressSummaryRoundID,
-                                     status                 = scene.Status.ToString().ToLowerInvariant()
+                                     status                 = scene.Status
                                  },
                                  transaction,
                                  cancellationToken: token
@@ -183,7 +175,7 @@ public sealed class SceneRepository
                             summary                = scene.Summary,
                             progressSummary        = scene.ProgressSummary,
                             progressSummaryRoundID = scene.ProgressSummaryRoundID,
-                            status                 = scene.Status.ToString().ToLowerInvariant()
+                            status                 = scene.Status
                         },
                         transaction,
                         cancellationToken: token
@@ -201,7 +193,7 @@ public sealed class SceneRepository
                         "scenes",
                         scene.ID,
                         "update",
-                        JsonSerializer.Serialize(oldRow),
+                        JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                         token
                     );
                 }
@@ -260,7 +252,7 @@ public sealed class SceneRepository
                         "scenes",
                         sceneID,
                         "update",
-                        JsonSerializer.Serialize(oldRow),
+                        JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                         token
                     );
                 }
@@ -285,7 +277,7 @@ public sealed class SceneRepository
                 var oldRow = await RowReader.ReadRowAsync
                              (
                                  connection,
-                                 "SELECT * FROM scenes WHERE session_id = @sessionID AND status = 'active' ORDER BY id DESC LIMIT 1",
+                                 "SELECT * FROM scenes WHERE session_id = @sessionID AND status = 'Active' ORDER BY id DESC LIMIT 1",
                                  new { sessionID },
                                  transaction,
                                  token
@@ -299,7 +291,7 @@ public sealed class SceneRepository
                 (
                     new CommandDefinition
                     (
-                        "UPDATE scenes SET status = 'completed', summary = @summary WHERE id = @sceneID",
+                        "UPDATE scenes SET status = 'Completed', summary = @summary WHERE id = @sceneID",
                         new { sceneID, summary },
                         transaction,
                         cancellationToken: token
@@ -314,7 +306,7 @@ public sealed class SceneRepository
                     "scenes",
                     sceneID,
                     "update",
-                    JsonSerializer.Serialize(oldRow),
+                    JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                     token
                 );
                 await transaction.CommitAsync(token);
@@ -330,57 +322,15 @@ public sealed class SceneRepository
     ) =>
         scheduler.ExecuteAsync
         (
-            async (connection, token) =>
-            {
-                var row = await connection.QueryFirstOrDefaultAsync<SceneRow>
-                          (
-                              new CommandDefinition
-                              (
-                                  "SELECT * FROM scenes WHERE session_id = @sessionID AND status = 'completed' AND id < @beforeSceneID AND summary IS NOT NULL ORDER BY id DESC LIMIT 1",
-                                  new { sessionID, beforeSceneID },
-                                  cancellationToken: token
-                              )
-                          );
-
-                return row?.ToScene();
-            },
+            async (connection, token) => await connection.QueryFirstOrDefaultAsync<Scene>
+                                         (
+                                             new CommandDefinition
+                                             (
+                                                 "SELECT * FROM scenes WHERE session_id = @sessionID AND status = 'Completed' AND id < @beforeSceneID AND summary IS NOT NULL ORDER BY id DESC LIMIT 1",
+                                                 new { sessionID, beforeSceneID },
+                                                 cancellationToken: token
+                                             )
+                                         ),
             cancellationToken: cancellationToken
         );
-
-    private sealed class SceneRow
-    {
-        public long    ID                        { get; set; }
-        public long    Project_ID                { get; set; }
-        public long?   Session_ID                { get; set; }
-        public long    Timeline_Position         { get; set; }
-        public string  Time_Label                { get; set; } = string.Empty;
-        public string? Summary                   { get; set; }
-        public string? Progress_Summary          { get; set; }
-        public long    Progress_Summary_Round_ID { get; set; }
-        public string  Status                    { get; set; } = "active";
-
-        public Scene ToScene()
-        {
-            var status = Status switch
-            {
-                "active"    => SceneStatus.Active,
-                "completed" => SceneStatus.Completed,
-                "archived"  => SceneStatus.Archived,
-                _           => SceneStatus.Active
-            };
-
-            return new Scene
-            {
-                ID                     = ID,
-                ProjectID              = Project_ID,
-                SessionID              = Session_ID ?? 0,
-                TimelinePosition       = Timeline_Position,
-                TimeLabel              = Time_Label,
-                Summary                = Summary,
-                ProgressSummary        = Progress_Summary,
-                ProgressSummaryRoundID = Progress_Summary_Round_ID,
-                Status                 = status
-            };
-        }
-    }
 }

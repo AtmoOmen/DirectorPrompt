@@ -1,10 +1,10 @@
 namespace DirectorPrompt.Domain.Configurations;
 
-public record KnowledgeRetrievalConfig
+public sealed class KnowledgeRetrievalConfig
 {
-    public int SemanticTopK { get; init; } = 8;
+    public int SemanticTopK { get; set; } = 8;
 
-    public int TokenBudget { get; init; } = 2000;
+    public int TokenBudget { get; set; } = 2000;
 
-    public float MinRelevance { get; init; }
+    public float MinRelevance { get; set; }
 }

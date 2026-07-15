@@ -5,10 +5,10 @@ namespace DirectorPrompt.Infrastructure;
 
 public sealed class SchemaMigrator
 {
-    private readonly SqliteDatabaseScheduler databaseScheduler;
+    private readonly SQLiteDatabaseScheduler databaseScheduler;
     private readonly Assembly                assembly = Assembly.GetExecutingAssembly();
 
-    public SchemaMigrator(SqliteDatabaseScheduler databaseScheduler) =>
+    public SchemaMigrator(SQLiteDatabaseScheduler databaseScheduler) =>
         this.databaseScheduler = databaseScheduler;
 
     public Task MigrateAsync(CancellationToken cancellationToken = default) =>

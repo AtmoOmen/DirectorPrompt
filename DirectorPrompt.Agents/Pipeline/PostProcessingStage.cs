@@ -1,6 +1,8 @@
 using System.Text;
+using System.Text.Json;
 using DirectorPrompt.Agents.Config;
 using DirectorPrompt.Agents.Tools;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -234,7 +236,9 @@ public sealed class PostProcessingStage
         if (attr.ValueType != StateValueType.Numeric)
             return string.Empty;
 
-        var config = AttributeConfigSerializer.Deserialize<NumericAttributeConfig>(attr.Config);
+        var config = string.IsNullOrWhiteSpace(attr.Config) ?
+                         null :
+                         JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
 
         if (config is null)
             return string.Empty;
@@ -262,7 +266,9 @@ public sealed class PostProcessingStage
         if (attr.ValueType != StateValueType.Numeric)
             return string.Empty;
 
-        var config = AttributeConfigSerializer.Deserialize<NumericAttributeConfig>(attr.Config);
+        var config = string.IsNullOrWhiteSpace(attr.Config) ?
+                         null :
+                         JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
 
         return string.IsNullOrWhiteSpace(config?.ChangeRules) ?
                    string.Empty :
@@ -271,7 +277,9 @@ public sealed class PostProcessingStage
 
     private static string FormatEnumOptions(string config)
     {
-        var parsed = AttributeConfigSerializer.Deserialize<EnumAttributeConfig>(config);
+        var parsed = string.IsNullOrWhiteSpace(config) ?
+                         null :
+                         JsonSerializer.Deserialize<StateAttributeConfig>(config, JsonOptions.Default);
 
         return parsed is null || parsed.Options.Count == 0 ?
                    string.Empty :

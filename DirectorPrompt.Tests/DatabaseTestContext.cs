@@ -7,8 +7,8 @@ public sealed class DatabaseTestContext : IAsyncDisposable
     private DatabaseTestContext
     (
         string                  databasePath,
-        SqliteConnectionFactory connectionFactory,
-        SqliteDatabaseScheduler scheduler
+        SQLiteConnectionFactory connectionFactory,
+        SQLiteDatabaseScheduler scheduler
     )
     {
         DatabasePath      = databasePath;
@@ -18,15 +18,17 @@ public sealed class DatabaseTestContext : IAsyncDisposable
 
     public string DatabasePath { get; }
 
-    public SqliteConnectionFactory ConnectionFactory { get; }
+    public SQLiteConnectionFactory ConnectionFactory { get; }
 
-    public SqliteDatabaseScheduler Scheduler { get; }
+    public SQLiteDatabaseScheduler Scheduler { get; }
 
     public static async Task<DatabaseTestContext> CreateAsync(bool enableVecExtension = true)
     {
+        SQLiteTypeHandlers.Register();
+
         var databasePath = Path.Combine(Path.GetTempPath(), $"directorprompt-{Guid.NewGuid():N}.db");
-        var factory      = new SqliteConnectionFactory($"Data Source={databasePath};Pooling=False", enableVecExtension);
-        var scheduler    = new SqliteDatabaseScheduler(factory);
+        var factory      = new SQLiteConnectionFactory($"Data Source={databasePath};Pooling=False", enableVecExtension);
+        var scheduler    = new SQLiteDatabaseScheduler(factory);
         var context      = new DatabaseTestContext(databasePath, factory, scheduler);
         var migrator     = new SchemaMigrator(scheduler);
         await migrator.MigrateAsync();

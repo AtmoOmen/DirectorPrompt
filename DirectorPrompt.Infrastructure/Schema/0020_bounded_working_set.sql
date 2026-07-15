@@ -53,8 +53,8 @@ CREATE TRIGGER IF NOT EXISTS memory_search_delete AFTER
 DELETE
 ON memory_entries
 BEGIN
-    INSERT INTO memory_search(memory_search, rowid, content, tags)
-    VALUES ('delete', old.id, old.content, old.tags);
+INSERT INTO memory_search(memory_search, rowid, content, tags)
+VALUES ('delete', old.id, old.content, old.tags);
 END;
 
 CREATE TRIGGER IF NOT EXISTS memory_search_update AFTER

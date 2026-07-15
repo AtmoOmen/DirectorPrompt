@@ -1,15 +1,39 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using DirectorPrompt.Domain.Configurations;
 
 namespace DirectorPrompt.ViewModels;
 
-public sealed partial class PromptSettingViewModel : ObservableObject
+public sealed class PromptSettingViewModel : ObservableObject
 {
-    [ObservableProperty]
-    public partial string ID { get; set; } = Guid.NewGuid().ToString("N");
+    public PromptConfig Config { get; }
 
-    [ObservableProperty]
-    public partial string DisplayName { get; set; } = string.Empty;
+    public PromptSettingViewModel(PromptConfig config) => Config = config;
 
-    [ObservableProperty]
-    public partial string Content { get; set; } = string.Empty;
+    public string ID => Config.ID;
+
+    public string DisplayName
+    {
+        get => Config.DisplayName;
+        set
+        {
+            if (Config.DisplayName != value)
+            {
+                Config.DisplayName = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string Content
+    {
+        get => Config.Content;
+        set
+        {
+            if (Config.Content != value)
+            {
+                Config.Content = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 }
