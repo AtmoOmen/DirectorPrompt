@@ -172,6 +172,40 @@ public sealed class Orchestrator
         await eventRepository.RemoveByRoundAsync(sessionID, roundID, cancellationToken);
     }
 
+    public async Task<RollbackResult?> RollbackLastRoundAsync(long sessionID, CancellationToken cancellationToken = default)
+    {
+        var latestRound = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken);
+
+        if (latestRound <= 0)
+            return null;
+
+        var events = await eventRepository.GetByRoundAsync(sessionID, latestRound, cancellationToken);
+        var directorEvent = events.FirstOrDefault(e => e.Type == EventType.DirectorInput);
+
+        Log.Information("用户回退轮次: 对话={SessionID}, 轮次={RoundID}", sessionID, latestRound);
+
+        await DeleteRoundAsync(sessionID, latestRound, cancellationToken);
+
+        var directives = directorEvent is not null ?
+                             EventDataSerializer.ParseDirectives(directorEvent.Data) :
+                             [];
+
+        return new RollbackResult(latestRound, directives);
+    }
+
+    public async Task TryDeleteRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
+    {
+        if (roundID <= 0)
+            return;
+
+        var events = await eventRepository.GetByRoundAsync(sessionID, roundID, cancellationToken);
+
+        if (events.Count == 0)
+            return;
+
+        await DeleteRoundAsync(sessionID, roundID, cancellationToken);
+    }
+
     private ResolvedEmbeddingConfig ResolveEmbeddingConfig()
     {
         var resolved = agentConfigResolver.ResolveEmbedding(userSettings.EmbeddingConfig);

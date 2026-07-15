@@ -238,6 +238,8 @@ public partial class App
         services.AddSingleton<HistoryBuilder>();
 
         services.AddSingleton<Orchestrator>();
+        services.AddSingleton<DialogHistoryService>();
+        services.AddSingleton<SidebarQueryService>();
         services.AddSingleton<NotificationService>();
 
         services.AddSingleton<MainViewModel>();

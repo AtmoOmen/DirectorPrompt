@@ -6,7 +6,6 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents;
-using DirectorPrompt.Agents.Config;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -28,11 +27,9 @@ public sealed partial class MainViewModel
     IProjectRepository   projectRepository,
     ISessionRepository   sessionRepository,
     IEventRepository     eventRepository,
-    ISceneRepository     sceneRepository,
-    IStateRepository     stateRepository,
-    ICharacterRepository characterRepository,
-    IDirectiveRepository directiveRepository,
     IMemoryRepository    memoryRepository,
+    DialogHistoryService dialogHistoryService,
+    SidebarQueryService  sidebarQueryService,
     IServiceProvider     serviceProvider,
     UserSettings         userSettings,
     IProjectPortService  projectPortService,
@@ -685,32 +682,23 @@ public sealed partial class MainViewModel
 
         try
         {
-            var latestRound = await eventRepository.GetLatestRoundIDAsync(CurrentSession.ID);
+            var result = await orchestrator.RollbackLastRoundAsync(CurrentSession.ID);
 
-            if (latestRound <= 0)
+            if (result is null)
             {
                 StatusMessage = Loc.Get("Status.NoRoundToRollback");
                 return;
             }
 
-            var events        = await eventRepository.GetByRoundAsync(CurrentSession.ID, latestRound);
-            var directorEvent = events.FirstOrDefault(e => e.Type == EventType.DirectorInput);
-
-            Log.Information("用户回退轮次: 对话={SessionID}, 轮次={RoundID}", CurrentSession.ID, latestRound);
-
-            await orchestrator.DeleteRoundAsync(CurrentSession.ID, latestRound);
-
-            Dialog.RemoveEntriesByRound(latestRound);
+            Dialog.RemoveEntriesByRound(result.RoundID);
 
             await RefreshSidebarAsync();
 
-            if (directorEvent is not null)
+            if (result.Directives.Count > 0)
             {
                 DirectiveInput.Clear();
 
-                var directives = EventDataSerializer.ParseDirectives(directorEvent.Data);
-
-                foreach (var d in directives)
+                foreach (var d in result.Directives)
                     DirectiveInput.Directives.Add(new DirectiveItemViewModel { Type = d.Type, Content = d.Content, Order = d.Order });
             }
 
@@ -845,13 +833,7 @@ public sealed partial class MainViewModel
     {
         try
         {
-            if (expectedRoundID > 0)
-            {
-                var events = await eventRepository.GetByRoundAsync(sessionID, expectedRoundID);
-
-                if (events.Count > 0)
-                    await orchestrator.DeleteRoundAsync(sessionID, expectedRoundID);
-            }
+            await orchestrator.TryDeleteRoundAsync(sessionID, expectedRoundID);
 
             if (CurrentSession?.ID == sessionID)
             {
@@ -889,68 +871,29 @@ public sealed partial class MainViewModel
 
         try
         {
-            var events = new List<PlaythroughEvent>();
-            events.AddRange(await eventRepository.GetByRoundAsync(sessionID, 0, token));
-            long? beforeRoundID = null;
-
-            do
-            {
-                var page = await eventRepository.GetDialogPageAsync
-                           (
-                               new DialogPageQuery(sessionID, beforeRoundID, 100),
-                               token
-                           );
-                events.AddRange(page.Events);
-                beforeRoundID = page.PreviousRoundID;
-            }
-            while (beforeRoundID is not null && !token.IsCancellationRequested);
+            var result = await dialogHistoryService.LoadAsync(sessionID, token);
 
             if (token.IsCancellationRequested)
                 return;
 
-            var directorEvents = events
-                                 .Where(e => e.Type == EventType.DirectorInput)
-                                 .GroupBy(e => e.RoundID)
-                                 .ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.ID).First());
-
-            var narrativeEvents = events
-                                  .Where(e => e.Type == EventType.NarrativeOutput)
-                                  .GroupBy(e => e.RoundID)
-                                  .ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.ID).First());
-
-            var roundIDs = directorEvents.Keys
-                                         .Concat(narrativeEvents.Keys)
-                                         .Distinct()
-                                         .OrderBy(r => r)
-                                         .ToList();
-
-            foreach (var roundID in roundIDs)
+            foreach (var round in result.Rounds)
             {
-                if (directorEvents.TryGetValue(roundID, out var directorEvent))
+                if (round.DirectorBlocks.Count > 0)
                 {
-                    var directorBlocks = EventDataSerializer.ParseDirectiveBlocks(directorEvent.Data);
-                    Dialog.AddDirectorEntry(roundID, directorBlocks, renderImmediately: true);
-                    Dialog.Entries[^1].EventID = directorEvent.ID;
+                    Dialog.AddDirectorEntry(round.RoundID, round.DirectorBlocks, renderImmediately: true);
+
+                    if (round.DirectorEventID.HasValue)
+                        Dialog.Entries[^1].EventID = round.DirectorEventID;
                 }
 
-                if (narrativeEvents.TryGetValue(roundID, out var narrativeEvent))
+                if (!string.IsNullOrWhiteSpace(round.NarrativeText))
                 {
-                    var narrativeText = narrativeEvent.Data;
+                    Dialog.AddNarrativeEntry(round.RoundID, round.NarrativeText, renderImmediately: true);
 
-                    if (!string.IsNullOrWhiteSpace(narrativeText))
-                    {
-                        Dialog.AddNarrativeEntry(roundID, narrativeText, renderImmediately: true);
-                        Dialog.Entries[^1].EventID = narrativeEvent.ID;
-                    }
+                    if (round.NarrativeEventID.HasValue)
+                        Dialog.Entries[^1].EventID = round.NarrativeEventID;
                 }
             }
-
-            Log.Information
-            (
-                "对话历史加载完成: 对话={SessionID}, 轮次数={RoundCount}",
-                sessionID,
-                roundIDs.Count
-            );
         }
         catch (Exception ex)
         {
@@ -994,25 +937,19 @@ public sealed partial class MainViewModel
 
         StatePanel.Clear();
 
-        var scene = await sceneRepository.GetActiveSceneAsync(CurrentSession.ID);
+        var data = await sidebarQueryService.QueryStatePanelAsync(CurrentProject.ID, CurrentSession.ID);
 
-        if (scene is not null)
-            StatePanel.CurrentSceneLabel = scene.TimeLabel;
+        StatePanel.CurrentSceneLabel = data.SceneLabel;
 
-        var values     = await stateRepository.GetAllStateValuesAsync(CurrentProject.ID, CurrentSession.ID);
-        var attributes = await stateRepository.GetAttributesAsync(CurrentProject.ID);
-
-        foreach (var attr in attributes.Where(a => a.Scope == StateScope.Global))
+        foreach (var item in data.Items)
         {
-            var value = values.FirstOrDefault(v => v.AttributeID == attr.ID);
-
             StatePanel.StateItems.Add
             (
                 new StateItemViewModel
                 {
-                    Name  = attr.DisplayName,
-                    Value = value?.Value ?? "—",
-                    Scope = attr.Scope.ToString()
+                    Name  = item.Name,
+                    Value = item.Value,
+                    Scope = item.Scope
                 }
             );
         }
@@ -1025,9 +962,9 @@ public sealed partial class MainViewModel
 
         DirectivesPanel.Clear();
 
-        var directives = await directiveRepository.GetActiveAsync(CurrentSession.ID);
+        var data = await sidebarQueryService.QueryDirectivesPanelAsync(CurrentSession.ID);
 
-        foreach (var d in directives)
+        foreach (var d in data.Items)
         {
             DirectivesPanel.Directives.Add
             (
@@ -1040,9 +977,9 @@ public sealed partial class MainViewModel
                         DirectiveType.SceneChange         => "🎬",
                         _                                 => "📝"
                     },
-                    Content = d.Content,
-                    HasTTL  = d.TTL.HasValue,
-                    TTLLabel = d.TTL.HasValue ?
+                    Content  = d.Content,
+                    HasTTL   = d.HasTTL,
+                    TTLLabel = d.HasTTL && d.TTL.HasValue ?
                                    Loc.Get("Directive.Panel.RemainingRounds", d.TTL) :
                                    Loc.Get("Directive.Panel.Permanent")
                 }
@@ -1055,95 +992,37 @@ public sealed partial class MainViewModel
         if (CurrentSession is null || CurrentProject is null)
             return;
 
-        var characters    = await characterRepository.GetBySessionAsync(CurrentSession.ID);
-        var categories    = await characterRepository.GetCategoriesAsync(CurrentProject.ID);
-        var categoryAttrs = await stateRepository.GetAttributesAsync(CurrentProject.ID, StateScope.Category);
-        var charLookup    = characters.ToDictionary(c => c.ID);
-
-        var categoryLookup = categories.ToDictionary(c => c.ID);
-
-        var items = new List<(CharacterPanelItemViewModel Item, long[] CategoryIDs)>();
-
-        foreach (var c in characters)
-        {
-            var item = new CharacterPanelItemViewModel
-            {
-                ID          = c.ID,
-                Name        = c.Name,
-                Description = c.Description,
-                Categories  = string.Join(", ", categories.Where(cat => c.CategoryIDs.Contains(cat.ID)).Select(cat => cat.Name))
-            };
-
-            var stateValues = await characterRepository.GetCharacterStateValuesAsync(c.ID);
-
-            foreach (var sv in stateValues)
-            {
-                var attr = categoryAttrs.FirstOrDefault(a => a.ID == sv.AttributeID);
-
-                item.StateValues.Add
-                (
-                    new CharacterStateValueViewModel
-                    {
-                        Name  = attr?.DisplayName ?? attr?.Name ?? sv.AttributeID.ToString(),
-                        Value = sv.Value
-                    }
-                );
-            }
-
-            var relations = await characterRepository.GetRelationsByCharacterAsync(c.ID);
-
-            foreach (var r in relations)
-            {
-                var otherID = r.SourceCharacterID == c.ID ?
-                                  r.TargetCharacterID :
-                                  r.SourceCharacterID;
-                var otherName = charLookup.TryGetValue(otherID, out var other) ?
-                                    other.Name :
-                                    $"ID:{otherID}";
-                var direction = r.SourceCharacterID == c.ID ?
-                                    "→" :
-                                    "←";
-
-                item.Relations.Add
-                (
-                    new CharacterRelationViewModel
-                    {
-                        Target      = otherName,
-                        Type        = r.RelationType,
-                        Description = r.Description ?? string.Empty,
-                        Direction   = direction
-                    }
-                );
-            }
-
-            items.Add((item, c.CategoryIDs));
-        }
-
-        var grouped = items
-                      .SelectMany
-                      (it => it.CategoryIDs.Length > 0 ?
-                                 it.CategoryIDs.Select(catID => (CatID: catID, it.Item)) :
-                                 [(-1L, it.Item)]
-                      )
-                      .GroupBy(x => x.CatID)
-                      .OrderBy(g => g.Key)
-                      .ToList();
+        var data = await sidebarQueryService.QueryCharacterPanelAsync(CurrentProject.ID, CurrentSession.ID);
 
         var localGroups = new List<CharacterCategoryGroupViewModel>();
 
-        foreach (var grp in grouped)
+        foreach (var grp in data.Groups)
         {
-            var groupName = grp.Key >= 0 && categoryLookup.TryGetValue(grp.Key, out var cat) ?
-                                cat.Name :
-                                Loc.Get("Character.Panel.Uncategorized");
+            var groupName = grp.CategoryName ?? Loc.Get("Character.Panel.Uncategorized");
 
             var group = new CharacterCategoryGroupViewModel
             {
                 CategoryName = groupName
             };
 
-            foreach (var (_, item) in grp)
-                group.Items.Add(item);
+            foreach (var item in grp.Items)
+            {
+                var vm = new CharacterPanelItemViewModel
+                {
+                    ID          = item.ID,
+                    Name        = item.Name,
+                    Description = item.Description,
+                    Categories  = item.Categories
+                };
+
+                foreach (var sv in item.StateValues)
+                    vm.StateValues.Add(new CharacterStateValueViewModel { Name = sv.Name, Value = sv.Value });
+
+                foreach (var r in item.Relations)
+                    vm.Relations.Add(new CharacterRelationViewModel { Target = r.Target, Type = r.Type, Description = r.Description, Direction = r.Direction });
+
+                group.Items.Add(vm);
+            }
 
             localGroups.Add(group);
         }
@@ -1156,85 +1035,31 @@ public sealed partial class MainViewModel
         if (CurrentSession is null || CurrentProject is null)
             return;
 
-        var   sessionID              = CurrentSession.ID;
-        var   memories               = new List<MemoryEntry>();
-        long? beforeTimelinePosition = null;
-        long? beforeID               = null;
-
-        do
-        {
-            var page = await memoryRepository.GetPageAsync
-                       (
-                           new MemoryPageQuery
-                           (
-                               sessionID,
-                               long.MaxValue,
-                               beforeTimelinePosition,
-                               beforeID,
-                               PageSize: 200
-                           )
-                       );
-            memories.AddRange(page.Items);
-            beforeTimelinePosition = page.NextTimelinePosition;
-            beforeID               = page.NextID;
-        }
-        while (beforeTimelinePosition is not null && beforeID is not null);
-
-        var scenes     = await sceneRepository.GetBySessionAsync(sessionID);
-        var characters = await characterRepository.GetBySessionAsync(sessionID);
-
-        var sceneLookup = scenes.ToDictionary(s => s.ID);
-        var charLookup  = characters.ToDictionary(c => c.ID);
-
-        var grouped = memories
-                      .GroupBy(m => m.SceneID)
-                      .Select
-                      (g =>
-                          {
-                              var scene = sceneLookup.GetValueOrDefault(g.Key);
-                              var label = scene is not null ?
-                                              scene.TimeLabel :
-                                              $"ID:{g.Key}";
-
-                              return new
-                              {
-                                  Label       = label,
-                                  TimelinePos = scene?.TimelinePosition ?? 0,
-                                  Items       = g
-                              };
-                          }
-                      )
-                      .OrderBy(x => x.TimelinePos)
-                      .ToList();
+        var data = await sidebarQueryService.QueryMemoryPanelAsync(CurrentSession.ID);
 
         var localGroups = new List<MemorySceneGroupViewModel>();
 
-        foreach (var grp in grouped)
+        foreach (var grp in data.Groups)
         {
             var group = new MemorySceneGroupViewModel
             {
-                SceneLabel = grp.Label
+                SceneLabel = grp.SceneLabel
             };
 
             foreach (var m in grp.Items)
             {
-                var charNames = m.RelatedCharacterIDs
-                                 .Where(charLookup.ContainsKey)
-                                 .Select(id => charLookup[id].Name)
-                                 .ToList();
-
                 group.Items.Add
                 (
                     new MemoryPanelItemViewModel
                     {
                         ID                   = m.ID,
                         Content              = m.Content,
-                        TagsDisplay          = string.Join(", ", m.Tags),
-                        SceneLabel           = grp.Label,
+                        TagsDisplay          = m.TagsDisplay,
+                        SceneLabel           = m.SceneLabel,
                         TimelinePos          = m.TimelinePos,
-                        RelatedCharacters    = string.Join(", ", charNames),
-                        HasRelatedCharacters = charNames.Count > 0,
-                        UpdatedAtDisplay     = m.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm")
+                        RelatedCharacters    = m.RelatedCharacters,
+                        HasRelatedCharacters = m.HasRelatedCharacters,
+                        UpdatedAtDisplay     = m.UpdatedAtDisplay
                     }
                 );
             }
@@ -1243,13 +1068,6 @@ public sealed partial class MainViewModel
         }
 
         MemoryPanel.SetGroups(localGroups);
-
-        Log.Information
-        (
-            "记忆面板刷新完成: 对话={SessionID}, 记忆数={Count}",
-            CurrentSession.ID,
-            MemoryPanel.Groups.Sum(g => g.Items.Count)
-        );
     }
 
     [RelayCommand]
