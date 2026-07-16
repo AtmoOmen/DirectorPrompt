@@ -87,10 +87,10 @@
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="language" Padding="12,10">
+                <ListBoxItem Tag="others" Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <fa:FASymbolIcon Symbol="World" />
-                        <TextBlock Text="{Binding [Settings.Language.Title], Source={x:Static loc:Loc.Instance}}"
+                        <fa:FASymbolIcon Symbol="Setting" />
+                        <TextBlock Text="{Binding [Settings.Others.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
@@ -179,7 +179,8 @@
                                                                VerticalAlignment="Center" />
                                                     <components:PathComboBox Grid.Column="1"
                                                               ItemsSource="{x:Static vm:ProviderSettingViewModel.AvailableProviders}"
-                                                              SelectedItem="{Binding Provider}" />
+                                                              SelectedItem="{Binding Provider}"
+                                                              HorizontalAlignment="Stretch" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -355,7 +356,8 @@
                                                                   Maximum="2"
                                                                   SmallChange="0.1"
                                                                   LargeChange="0.5"
-                                                                  SpinButtonPlacementMode="Compact" />
+                                                                  SpinButtonPlacementMode="Compact"
+                                                                  HorizontalAlignment="Stretch" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -670,7 +672,8 @@
                             <fa:FANumberBox Value="{Binding Memory.RecallTopK}"
                                           Minimum="1"
                                           Maximum="100"
-                                          Margin="0,0,0,12" />
+                                          Margin="0,0,0,12"
+                                          HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock Text="{Binding [Memory.TokenBudget], Source={x:Static loc:Loc.Instance}}"
                                            FontWeight="SemiBold" />
@@ -678,7 +681,8 @@
                             <fa:FANumberBox Value="{Binding Memory.TokenBudget}"
                                           Minimum="100"
                                           Maximum="10000"
-                                          Margin="0,0,0,12" />
+                                          Margin="0,0,0,12"
+                                          HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock Text="{Binding [Memory.MinRelevance], Source={x:Static loc:Loc.Instance}}"
                                            FontWeight="SemiBold" />
@@ -686,7 +690,8 @@
                             <fa:FANumberBox Value="{Binding Memory.MinRelevance}"
                                           Minimum="0"
                                           Maximum="1"
-                                          Margin="0,0,0,12" />
+                                          Margin="0,0,0,12"
+                                          HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock
                                     Text="{Binding [Memory.TimeDecayLambda], Source={x:Static loc:Loc.Instance}}"
@@ -694,7 +699,8 @@
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Memory.TimeDecayLambda}"
                                           Minimum="0"
-                                          Maximum="1" />
+                                          Maximum="1"
+                                          HorizontalAlignment="Stretch" />
                         </StackPanel>
 
                         <!-- 知识检索配置面板 -->
@@ -712,7 +718,8 @@
                             <fa:FANumberBox Value="{Binding Knowledge.SemanticTopK}"
                                           Minimum="1"
                                           Maximum="100"
-                                          Margin="0,0,0,12" />
+                                          Margin="0,0,0,12"
+                                          HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock
                                     Text="{Binding [Knowledge.Retrieval.TokenBudget], Source={x:Static loc:Loc.Instance}}"
@@ -721,7 +728,8 @@
                             <fa:FANumberBox Value="{Binding Knowledge.TokenBudget}"
                                           Minimum="100"
                                           Maximum="10000"
-                                          Margin="0,0,0,12" />
+                                          Margin="0,0,0,12"
+                                          HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock
                                     Text="{Binding [Knowledge.Retrieval.MinRelevance], Source={x:Static loc:Loc.Instance}}"
@@ -729,30 +737,24 @@
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Knowledge.MinRelevance}"
                                           Minimum="0"
-                                          Maximum="1" />
+                                          Maximum="1"
+                                          HorizontalAlignment="Stretch" />
                         </StackPanel>
 
-                        <!-- 语言面板 -->
-                        <StackPanel x:Name="LanguagePanel" IsVisible="False">
-                            <TextBlock Text="{Binding [Settings.Language.Title], Source={x:Static loc:Loc.Instance}}"
+                        <!-- 其他面板 -->
+                        <StackPanel x:Name="OthersPanel" IsVisible="False">
+                            <TextBlock Text="{Binding [Settings.Others.Title], Source={x:Static loc:Loc.Instance}}"
                                        FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
-                            <TextBlock
-                                Text="{Binding [Settings.Language.Description], Source={x:Static loc:Loc.Instance}}"
-                                FontSize="12" Foreground="Gray" Margin="0,0,0,16" />
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0"
-                                           Text="{Binding [Settings.Language.Language], Source={x:Static loc:Loc.Instance}}"
-                                           VerticalAlignment="Center" />
-                                <components:SearchableComboBox Grid.Column="1"
-                                                               ItemsSource="{Binding AvailableLanguages}"
-                                                               DisplayMemberPath="Value"
-                                                               SelectedValuePath="Key"
-                                                               SelectedValue="{Binding SelectedLanguage}" />
-                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding [Settings.Language.Title], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                            <components:SearchableComboBox ItemsSource="{Binding AvailableLanguages}"
+                                                            DisplayMemberPath="Value"
+                                                            SelectedValuePath="Key"
+                                                            SelectedValue="{Binding SelectedLanguage}"
+                                                            HorizontalAlignment="Stretch"
+                                                            Margin="0,0,0,12" />
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>

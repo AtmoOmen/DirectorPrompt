@@ -43,7 +43,7 @@ public partial class SettingsWindow : Window
                 "EmbeddingPanel" => tag == "embedding",
                 "MemoryPanel" => tag == "memory",
                 "RetrievalPanel" => tag == "retrieval",
-                "LanguagePanel" => tag == "language",
+                "OthersPanel" => tag == "others",
                 _ => panel.IsVisible
             };
         }

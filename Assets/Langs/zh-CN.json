@@ -183,6 +183,7 @@
     "Settings.Language.Description": "选择界面语言, 切换后立即生效",
     "Settings.Language.Language": "界面语言",
     "Settings.Language.Title": "语言",
+    "Settings.Others.Title": "其他",
     "Settings.Model.DisplayName": "名称",
     "Settings.Model.ExtraParameters": "自定义参数 (JSON 格式)",
     "Settings.Model.Prompt": "提示词",
