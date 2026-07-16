@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.LogicalTree;
 using DirectorPrompt.Localization;
 using DirectorPrompt.ViewModels;
 
@@ -25,29 +26,27 @@ public partial class SettingsWindow : Window
 
     private void OnNavSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ProvidersPanel is null ||
-            ModelsPanel is null    ||
-            PromptsPanel is null   ||
-            TasksPanel is null     ||
-            EmbeddingPanel is null ||
-            MemoryPanel is null    ||
-            RetrievalPanel is null ||
-            LanguagePanel is null)
-            return;
-
-        if (NavList.SelectedItem is not ListBoxItem item)
+        if (sender is not ListBox { SelectedItem: ListBoxItem item })
             return;
 
         var tag = item.Tag as string;
+        var panels = this.GetLogicalDescendants().OfType<StackPanel>().Where(panel => panel.Name is not null);
 
-        ProvidersPanel.IsVisible = tag == "providers";
-        ModelsPanel.IsVisible = tag == "models";
-        PromptsPanel.IsVisible = tag == "prompts";
-        TasksPanel.IsVisible = tag == "tasks";
-        EmbeddingPanel.IsVisible = tag == "embedding";
-        MemoryPanel.IsVisible = tag == "memory";
-        RetrievalPanel.IsVisible = tag == "retrieval";
-        LanguagePanel.IsVisible = tag == "language";
+        foreach (var panel in panels)
+        {
+            panel.IsVisible = panel.Name switch
+            {
+                "ProvidersPanel" => tag == "providers",
+                "ModelsPanel" => tag == "models",
+                "PromptsPanel" => tag == "prompts",
+                "TasksPanel" => tag == "tasks",
+                "EmbeddingPanel" => tag == "embedding",
+                "MemoryPanel" => tag == "memory",
+                "RetrievalPanel" => tag == "retrieval",
+                "LanguagePanel" => tag == "language",
+                _ => panel.IsVisible
+            };
+        }
     }
 
     private async void OnRemoveProvider(object sender, RoutedEventArgs e)

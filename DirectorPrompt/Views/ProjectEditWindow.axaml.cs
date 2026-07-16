@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using DirectorPrompt.Localization;
 using DirectorPrompt.ViewModels;
@@ -26,18 +27,23 @@ public partial class ProjectEditWindow : Window
 
     private void OnNavSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (BasicPanel is null)
-            return;
-
-        if (NavList.SelectedItem is not ListBoxItem item)
+        if (sender is not ListBox { SelectedItem: ListBoxItem item })
             return;
 
         var tag = item.Tag as string;
+        var panels = this.GetLogicalDescendants().OfType<StackPanel>().Where(panel => panel.Name is not null);
 
-        BasicPanel.IsVisible = tag == "basic";
-        KnowledgePanel.IsVisible = tag == "knowledge";
-        StatePanel.IsVisible = tag == "state";
-        CharacterPanel.IsVisible = tag == "character";
+        foreach (var panel in panels)
+        {
+            panel.IsVisible = panel.Name switch
+            {
+                "BasicPanel" => tag == "basic",
+                "KnowledgePanel" => tag == "knowledge",
+                "StatePanel" => tag == "state",
+                "CharacterPanel" => tag == "character",
+                _ => panel.IsVisible
+            };
+        }
     }
 
     private async void OnDeleteKnowledgeGroup(object sender, RoutedEventArgs e)

@@ -18,7 +18,6 @@
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                     BorderThickness="1">
                 <ListBox x:Name="ResultsList"
-                         ItemsSource="{Binding FilteredItems}"
                          SelectionChanged="OnResultSelectionChanged"
                          KeyDown="OnResultKeyDown" />
             </Border>

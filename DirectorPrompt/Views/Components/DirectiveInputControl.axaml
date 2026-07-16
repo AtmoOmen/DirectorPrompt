@@ -175,22 +175,30 @@
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Margin="0,4,0,0">
-                <Button Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
-                           Width="150"
+                <Button Width="150"
                            Margin="0,0,4,0"
                            Padding="12,6"
-                           Command="{Binding AddDirectiveCommand}" />
+                           Command="{Binding AddDirectiveCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <fa:FASymbolIcon Symbol="Add" />
+                        <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                    </StackPanel>
+                </Button>
                 <Border Width="1"
                         Margin="4,4"
                         Background="{DynamicResource ControlElevationBorderBrush}"
                         IsVisible="{Binding ShowSendButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
-                <Button Content="{Binding [Dialog.SendDirective], Source={x:Static loc:Loc.Instance}}"
-                           Width="150"
+                <Button Width="150"
                            Margin="4,0,0,0"
                            Padding="16,6"
                            IsVisible="{Binding ShowSendButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"
                            Command="{Binding SendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                           IsEnabled="{Binding IsProcessing, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" />
+                           IsEnabled="{Binding IsProcessing, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <fa:FASymbolIcon Symbol="Send" />
+                        <TextBlock Text="{Binding [Dialog.SendDirective], Source={x:Static loc:Loc.Instance}}" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </StackPanel>
     </StackPanel>

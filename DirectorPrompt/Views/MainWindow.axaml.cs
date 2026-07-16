@@ -108,14 +108,25 @@ public partial class MainWindow : Window
 
     private void OnMoreButtonClick(object sender, RoutedEventArgs e)
     {
-        if (sender is Control element)
-            element.ContextMenu?.Open(element);
+        if (sender is not Control { ContextMenu: { } menu } element)
+            return;
+
+        menu.DataContext = element.DataContext;
+
+        foreach (var item in menu.Items.OfType<MenuItem>())
+            item.Tag = element.DataContext;
+
+        menu.Open(element);
+        e.Handled = true;
     }
 
     private void OnImportButtonClick(object sender, RoutedEventArgs e)
     {
-        if (sender is Control element)
-            element.ContextMenu?.Open(element);
+        if (sender is not Control { ContextMenu: { } menu } element)
+            return;
+
+        menu.Open(element);
+        e.Handled = true;
     }
 
     private void OnImportDirectorPrompt(object sender, RoutedEventArgs e) =>

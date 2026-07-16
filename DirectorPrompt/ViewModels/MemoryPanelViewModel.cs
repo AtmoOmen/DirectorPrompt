@@ -118,6 +118,7 @@ public sealed partial class MemoryPanelViewModel : ObservableObject
 
 
         var previousScene = SelectedScene;
+        SelectedScene = string.Empty;
         AvailableScenes.Clear();
         AvailableScenes.Add(AllScenesLabel);
 
@@ -133,6 +134,7 @@ public sealed partial class MemoryPanelViewModel : ObservableObject
 
 
         var previousTag = SelectedTag;
+        SelectedTag = string.Empty;
         AvailableTags.Clear();
         AvailableTags.Add(AllTagsLabel);
 

@@ -39,57 +39,57 @@
                       SelectionChanged="OnNavSelectionChanged"
                       SelectedIndex="0">
                 <ListBoxItem Tag="providers" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="Cloud" />
                         <TextBlock Text="{Binding [Settings.Provider.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="models" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="People" />
                         <TextBlock Text="{Binding [Settings.Model.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="prompts" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="Document" />
                         <TextBlock Text="{Binding [Settings.Prompt.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="tasks" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="Bullets" />
                         <TextBlock Text="{Binding [Settings.Task.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="embedding" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="Library" />
                         <TextBlock Text="{Binding [Settings.Embedding.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="memory" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="SaveLocal" />
                         <TextBlock Text="{Binding [Memory.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="retrieval" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="Find" />
                         <TextBlock Text="{Binding [Knowledge.Retrieval.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="language" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="World" />
                         <TextBlock Text="{Binding [Settings.Language.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
@@ -115,9 +115,13 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center"
-                                           Command="{Binding AddProviderCommand}" />
+                                           Command="{Binding AddProviderCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Add" />
+                                        <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding Providers}" Margin="0,8,0,0">
@@ -140,11 +144,15 @@
                                                                    VerticalAlignment="Center" />
                                                     </StackPanel>
                                                     <Button Grid.Column="1"
-                                                               Content="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                                                Padding="6,4"
                                                                Margin="0,0,8,0"
                                                                Click="OnRemoveProvider"
-                                                               Tag="{Binding}" />
+                                                               Tag="{Binding}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Delete" />
+                                                            <TextBlock Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
                                                 </Grid>
                                             </Expander.Header>
 
@@ -233,9 +241,13 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center"
-                                           Command="{Binding AddModelCommand}" />
+                                           Command="{Binding AddModelCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Add" />
+                                        <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding Models}" Margin="0,8,0,0">
@@ -258,11 +270,15 @@
                                                                    VerticalAlignment="Center" />
                                                     </StackPanel>
                                                     <Button Grid.Column="1"
-                                                               Content="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                                                Padding="6,4"
                                                                Margin="0,0,8,0"
                                                                Click="OnRemoveModel"
-                                                               Tag="{Binding}" />
+                                                               Tag="{Binding}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Delete" />
+                                                            <TextBlock Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
                                                 </Grid>
                                             </Expander.Header>
 
@@ -307,12 +323,16 @@
                                                             ItemsSource="{Binding AvailableModels}"
                                                             Text="{Binding ModelName}" />
                                                     <Button Grid.Column="2"
-                                                               Content="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}"
                                                                Padding="6,4"
                                                                Margin="8,0,0,0"
                                                                Command="{Binding DataContext.FetchModelsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                CommandParameter="{Binding}"
-                                                               IsEnabled="{Binding IsFetchingModels, Converter={StaticResource InverseBool}}" />
+                                                               IsEnabled="{Binding IsFetchingModels, Converter={StaticResource InverseBool}}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Download" />
+                                                            <TextBlock Text="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
                                                 </Grid>
 
                                                 <TextBlock Text="{Binding ModelFetchMessage}"
@@ -393,11 +413,15 @@
                                                             Orientation="Horizontal">
 
                                                     <Button
-                                                        Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
                                                         Padding="8,4"
                                                         Command="{Binding DataContext.TestModelConnectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"
-                                                        IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBool}}" />
+                                                        IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBool}}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Link" />
+                                                            <TextBlock Text="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
 
                                                     <TextBlock Text="{Binding ConnectionMessage}"
                                                                Margin="8,0,0,0"
@@ -427,9 +451,13 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center"
-                                           Command="{Binding AddPromptCommand}" />
+                                           Command="{Binding AddPromptCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Add" />
+                                        <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding Prompts}" Margin="0,8,0,0">
@@ -447,11 +475,15 @@
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
                                                     <Button Grid.Column="1"
-                                                               Content="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                                                Padding="6,4"
                                                                Margin="0,0,8,0"
                                                                Click="OnRemovePrompt"
-                                                               Tag="{Binding}" />
+                                                               Tag="{Binding}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Delete" />
+                                                            <TextBlock Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
                                                 </Grid>
                                             </Expander.Header>
 
@@ -588,10 +620,14 @@
                                                                ItemsSource="{Binding Embedding.AvailableModels}"
                                                                Text="{Binding Embedding.ModelName}" />
                                 <Button Grid.Column="2"
-                                           Content="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}"
                                            Margin="8,0,0,0"
                                            Command="{Binding FetchEmbeddingModelsCommand}"
-                                           IsEnabled="{Binding Embedding.IsFetchingModels, Converter={StaticResource InverseBool}}" />
+                                           IsEnabled="{Binding Embedding.IsFetchingModels, Converter={StaticResource InverseBool}}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Download" />
+                                        <TextBlock Text="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
                             <TextBlock Text="{Binding Embedding.ModelFetchMessage}"
@@ -603,9 +639,13 @@
                             <StackPanel Orientation="Horizontal">
 
                                 <Button
-                                    Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
                                     Command="{Binding TestEmbeddingConnectionCommand}"
-                                    IsEnabled="{Binding Embedding.IsTestingConnection, Converter={StaticResource InverseBool}}" />
+                                    IsEnabled="{Binding Embedding.IsTestingConnection, Converter={StaticResource InverseBool}}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Link" />
+                                        <TextBlock Text="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
                                 <TextBlock
                                     Text="{Binding Embedding.ConnectionMessage}"
                                     TextWrapping="Wrap"
@@ -737,12 +777,18 @@
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal">
-                    <Button Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
-                               Margin="0,0,8,0"
-                               Click="OnCancelClick" />
-                    <Button Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
-                               Click="OnSaveClick"
-                               IsEnabled="{Binding IsSaving, Converter={StaticResource InverseBool}}" />
+                    <Button Margin="0,0,8,0" Click="OnCancelClick">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fa:FASymbolIcon Symbol="Dismiss" />
+                            <TextBlock Text="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Click="OnSaveClick" IsEnabled="{Binding IsSaving, Converter={StaticResource InverseBool}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fa:FASymbolIcon Symbol="Save" />
+                            <TextBlock Text="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>

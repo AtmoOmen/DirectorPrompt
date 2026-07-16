@@ -7,6 +7,8 @@ namespace DirectorPrompt.Views.Components;
 
 public sealed class PathComboBox : ComboBox
 {
+    protected override Type StyleKeyOverride => typeof(ComboBox);
+
     public static readonly StyledProperty<string> DisplayMemberPathProperty =
         AvaloniaProperty.Register<PathComboBox, string>(nameof(DisplayMemberPath), string.Empty);
 

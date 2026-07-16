@@ -95,7 +95,7 @@ public sealed partial class SearchableComboBox : UserControl
     public SearchableComboBox()
     {
         AvaloniaXamlLoader.Load(this);
-        DataContext = this;
+        Results.ItemsSource = FilteredItems;
     }
 
     private void ObserveItems()

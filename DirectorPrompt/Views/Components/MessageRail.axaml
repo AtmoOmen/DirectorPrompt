@@ -5,35 +5,78 @@
              PointerExited="OnRailPointerExited"
              PointerWheelChanged="OnRailPointerWheelChanged">
     <ListBox x:Name="RailListBox"
+             Width="24"
+             HorizontalAlignment="Right"
              ItemsSource="{Binding Entries, RelativeSource={RelativeSource AncestorType=UserControl}}"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+             ScrollViewer.VerticalScrollBarVisibility="Hidden"
              Background="Transparent"
              BorderThickness="0"
-             Padding="2"
+             Padding="0"
+             Focusable="False"
+             RenderTransformOrigin="100%,50%"
              SelectionMode="Single">
+        <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Height" Value="14" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            </Style>
+            <Style Selector="ListBoxItem:pointerover Ellipse.dot">
+                <Setter Property="Width" Value="9" />
+                <Setter Property="Height" Value="9" />
+            </Style>
+            <Style Selector="ListBoxItem:selected Ellipse.dot">
+                <Setter Property="Width" Value="10" />
+                <Setter Property="Height" Value="10" />
+                <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            </Style>
+            <Style Selector="Ellipse.dot.director">
+                <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            </Style>
+            <Style Selector="Ellipse.dot.error">
+                <Setter Property="Fill" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+            </Style>
+            <Style Selector="Ellipse.dot.streaming">
+                <Setter Property="Width" Value="7" />
+                <Setter Property="Height" Value="7" />
+            </Style>
+        </ListBox.Styles>
         <ListBox.RenderTransform>
             <ScaleTransform ScaleX="1" ScaleY="1" />
         </ListBox.RenderTransform>
         <ListBox.ItemTemplate>
             <DataTemplate>
-                <Border Width="48"
-                        MinHeight="32"
-                        Margin="2"
-                        Padding="4"
-                        CornerRadius="4"
-                        Background="{DynamicResource ControlFillColorDefaultBrush}"
-                        PointerPressed="OnRailItemPointerPressed">
-                    <StackPanel>
-                        <TextBlock Text="{Binding Role}"
-                                   FontSize="9"
-                                   FontWeight="SemiBold"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Preview}"
-                                   FontSize="8"
-                                   MaxHeight="20"
-                                   TextWrapping="Wrap"
-                                   Opacity="0.7" />
-                    </StackPanel>
-                </Border>
+                <Grid Background="Transparent"
+                      PointerPressed="OnRailItemPointerPressed"
+                      ToolTip.Placement="Left">
+                    <ToolTip.Tip>
+                        <StackPanel MaxWidth="300">
+                            <TextBlock Text="{Binding Role}"
+                                       FontWeight="SemiBold"
+                                       FontSize="11"
+                                       Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding Preview}"
+                                       TextWrapping="Wrap"
+                                       FontSize="12" />
+                        </StackPanel>
+                    </ToolTip.Tip>
+                    <Ellipse Classes="dot"
+                             Classes.director="{Binding IsDirector}"
+                             Classes.error="{Binding HasError}"
+                             Classes.streaming="{Binding IsStreaming}"
+                             Width="5"
+                             Height="5"
+                             Fill="{DynamicResource TextFillColorTertiaryBrush}"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center" />
+                </Grid>
             </DataTemplate>
         </ListBox.ItemTemplate>
     </ListBox>

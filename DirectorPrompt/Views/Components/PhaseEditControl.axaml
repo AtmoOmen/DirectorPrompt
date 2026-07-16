@@ -15,9 +15,13 @@
                        FontWeight="SemiBold"
                        VerticalAlignment="Center" />
             <Button Grid.Column="1"
-                       Content="{Binding [State.Attribute.AddPhase], Source={x:Static loc:Loc.Instance}}"
                        Padding="8,4"
-                       Click="OnAddPhase" />
+                       Click="OnAddPhase">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Add" />
+                    <TextBlock Text="{Binding [State.Attribute.AddPhase], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+            </Button>
         </Grid>
         <TextBlock Text="{Binding [State.Attribute.PhasesHint], Source={x:Static loc:Loc.Instance}}"
                    FontSize="11"

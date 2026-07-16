@@ -185,6 +185,7 @@ public sealed partial class CharacterPanelViewModel : ObservableObject
 
 
         var previousCategory = SelectedCategory;
+        SelectedCategory = string.Empty;
         AvailableCategories.Clear();
         AvailableCategories.Add(AllCategoriesLabel);
 

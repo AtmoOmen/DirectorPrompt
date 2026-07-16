@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.LogicalTree;
 using DirectorPrompt.Localization;
 
 namespace DirectorPrompt.Views;
@@ -12,6 +13,18 @@ public partial class PromptDialog : Window
     private bool boolResult;
     private string? stringResult;
 
+    private TextBlock Message =>
+        this.GetLogicalDescendants().OfType<TextBlock>().First(control => control.Name == "MessageText");
+
+    private TextBox Input =>
+        this.GetLogicalDescendants().OfType<TextBox>().First(control => control.Name == "InputBox");
+
+    private Button Primary =>
+        this.GetLogicalDescendants().OfType<Button>().First(control => control.Name == "PrimaryButton");
+
+    private Button Secondary =>
+        this.GetLogicalDescendants().OfType<Button>().First(control => control.Name == "SecondaryButton");
+
     public PromptDialog() =>
         AvaloniaXamlLoader.Load(this);
 
@@ -20,7 +33,7 @@ public partial class PromptDialog : Window
         boolResult = true;
 
         if (isInputMode)
-            stringResult = InputBox.Text;
+            stringResult = Input.Text;
 
         CloseResult();
     }
@@ -34,11 +47,11 @@ public partial class PromptDialog : Window
 
     private void OnInputBoxKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Enter || InputBox.AcceptsReturn)
+        if (e.Key != Key.Enter || Input.AcceptsReturn)
             return;
 
         boolResult = true;
-        stringResult = InputBox.Text;
+        stringResult = Input.Text;
         CloseResult();
     }
 
@@ -53,12 +66,12 @@ public partial class PromptDialog : Window
     private void Configure(string title, string message, string primaryText, string secondaryText, bool danger)
     {
         Title = title;
-        MessageText.Text = message;
-        PrimaryButton.Content = primaryText;
-        SecondaryButton.Content = secondaryText;
+        Message.Text = message;
+        Primary.Content = primaryText;
+        Secondary.Content = secondaryText;
 
         if (!danger)
-            PrimaryButton.Classes.Add("accent");
+            Primary.Classes.Add("accent");
     }
 
     public static Task<bool> ConfirmAsync(Window? owner, string title, string message, bool danger = false) =>
@@ -114,18 +127,18 @@ public partial class PromptDialog : Window
         var dialog = new PromptDialog();
         dialog.Configure(title, prompt, Loc.Get("Common.Save"), Loc.Get("Common.Cancel"), false);
         dialog.isInputMode = true;
-        dialog.InputBox.Text = defaultValue;
-        dialog.InputBox.PlaceholderText = prompt;
-        dialog.InputBox.IsVisible = true;
-        dialog.MessageText.IsVisible = false;
-        dialog.InputBox.AcceptsReturn = multiline;
-        dialog.InputBox.TextWrapping = multiline ? Avalonia.Media.TextWrapping.Wrap : Avalonia.Media.TextWrapping.NoWrap;
-        dialog.InputBox.MinHeight = multiline ? 120 : 0;
-        dialog.InputBox.MaxHeight = multiline ? 300 : double.PositiveInfinity;
+        dialog.Input.Text = defaultValue;
+        dialog.Input.PlaceholderText = prompt;
+        dialog.Input.IsVisible = true;
+        dialog.Message.IsVisible = false;
+        dialog.Input.AcceptsReturn = multiline;
+        dialog.Input.TextWrapping = multiline ? Avalonia.Media.TextWrapping.Wrap : Avalonia.Media.TextWrapping.NoWrap;
+        dialog.Input.MinHeight = multiline ? 120 : 0;
+        dialog.Input.MaxHeight = multiline ? 300 : double.PositiveInfinity;
         dialog.Opened += (_, _) =>
         {
-            dialog.InputBox.Focus();
-            dialog.InputBox.SelectAll();
+            dialog.Input.Focus();
+            dialog.Input.SelectAll();
         };
 
         if (owner is not null)

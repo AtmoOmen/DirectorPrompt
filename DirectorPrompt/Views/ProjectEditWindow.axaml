@@ -39,29 +39,29 @@
                       SelectionChanged="OnNavSelectionChanged"
                       SelectedIndex="0">
                 <ListBoxItem Tag="basic" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="Edit" />
                         <TextBlock Text="{Binding [Project.Basic.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="knowledge" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="Library" />
                         <TextBlock Text="{Binding [Knowledge.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="state" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="View" />
                         <TextBlock Text="{Binding [State.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
                 <ListBoxItem Tag="character" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fa:FASymbolIcon Symbol="People" />
                         <TextBlock Text="{Binding [Character.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
@@ -87,10 +87,14 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           Content="{Binding [Navigation.ExportProject], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center"
                                            Command="{Binding ExportProjectCommand}"
-                                           IsEnabled="{Binding IsEditing}" />
+                                           IsEnabled="{Binding IsEditing}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Upload" />
+                                        <TextBlock Text="{Binding [Navigation.ExportProject], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock Text="{Binding [Project.Basic.Name], Source={x:Static loc:Loc.Instance}}"
@@ -155,9 +159,13 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center"
-                                           Command="{Binding AddKnowledgeGroupCommand}" />
+                                           Command="{Binding AddKnowledgeGroupCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Add" />
+                                        <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding KnowledgeGroups}">
@@ -178,15 +186,21 @@
                                                                 Margin="0, 0, 8, 0"
                                                                 Orientation="Horizontal">
                                                         <Button
-                                                            Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
                                                             Padding="6,4"
                                                             Margin="0,0,4,0"
                                                             Command="{Binding DataContext.AddKnowledgeEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}" />
-                                                        <Button Content="删除"
-                                                                   Padding="6,4"
-                                                                   Click="OnDeleteKnowledgeGroup"
-                                                                   Tag="{Binding}" />
+                                                            CommandParameter="{Binding}">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <fa:FASymbolIcon Symbol="Add" />
+                                                                <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Padding="6,4" Click="OnDeleteKnowledgeGroup" Tag="{Binding}">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <fa:FASymbolIcon Symbol="Delete" />
+                                                                <TextBlock Text="删除" />
+                                                            </StackPanel>
+                                                        </Button>
                                                     </StackPanel>
                                                 </Grid>
                                             </Expander.Header>
@@ -344,9 +358,13 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center"
-                                           Command="{Binding AddStateAttributeCommand}" />
+                                           Command="{Binding AddStateAttributeCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Add" />
+                                        <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding StateAttributes}">
@@ -698,9 +716,13 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           Content="{Binding [Character.Category.Add], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center"
-                                           Command="{Binding AddCharacterCategoryCommand}" />
+                                           Command="{Binding AddCharacterCategoryCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Add" />
+                                        <TextBlock Text="{Binding [Character.Category.Add], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding CharacterCategories}" Margin="0,8,0,0">
@@ -810,10 +832,14 @@
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
                                                     <Button Grid.Column="1"
-                                                               Content="{Binding [Character.Category.AddAttribute], Source={x:Static loc:Loc.Instance}}"
                                                                Padding="8,4"
                                                                Click="OnAddCategoryStateAttribute"
-                                                               Tag="{Binding}" />
+                                                               Tag="{Binding}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Add" />
+                                                            <TextBlock Text="{Binding [Character.Category.AddAttribute], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
                                                 </Grid>
 
                                                 <ItemsControl ItemsSource="{Binding StateAttributes}">
@@ -1213,12 +1239,18 @@
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal">
-                    <Button Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
-                               Margin="0,0,8,0"
-                               Click="OnCancelClick" />
-                    <Button Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
-                               Click="OnSaveClick"
-                               IsEnabled="{Binding IsSaving, Converter={StaticResource InverseBool}}" />
+                    <Button Margin="0,0,8,0" Click="OnCancelClick">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fa:FASymbolIcon Symbol="Dismiss" />
+                            <TextBlock Text="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Click="OnSaveClick" IsEnabled="{Binding IsSaving, Converter={StaticResource InverseBool}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fa:FASymbolIcon Symbol="Save" />
+                            <TextBlock Text="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>

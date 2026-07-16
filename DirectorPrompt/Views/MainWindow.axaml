@@ -16,6 +16,42 @@
                  MinWidth="960"
                  MinHeight="600"
                  TransparencyLevelHint="Mica">
+    <Window.Styles>
+        <Style Selector="Button.sidebar-toggle">
+            <Setter Property="Background" Value="{DynamicResource SolidBackgroundFillColorBaseBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlElevationBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.sidebar-toggle:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        </Style>
+        <Style Selector="Button.sidebar-toggle fa|FASymbolIcon">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style Selector="Button.sidebar-toggle:pointerover fa|FASymbolIcon">
+            <Setter Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        </Style>
+        <Style Selector="Button.sidebar-toggle:pressed">
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+    </Window.Styles>
 <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -51,19 +87,30 @@
                                Padding="12,6"
                                Margin="0,0,4,0"
                                Command="{Binding EditProjectCommand}"
-                               IsEnabled="{Binding CanInteractProject}"
-                               Content="{Binding [Navigation.EditProject], Source={x:Static loc:Loc.Instance}}" />
+                               IsEnabled="{Binding CanInteractProject}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fa:FASymbolIcon Symbol="Edit" />
+                            <TextBlock Text="{Binding [Navigation.EditProject], Source={x:Static loc:Loc.Instance}}" />
+                        </StackPanel>
+                    </Button>
                     <Button
                                Padding="12,6"
                                Command="{Binding NewProjectCommand}"
-                               IsEnabled="{Binding IsNotProcessing}"
-                               Content="{Binding [Navigation.NewProject], Source={x:Static loc:Loc.Instance}}" />
-                    <Button
+                               IsEnabled="{Binding IsNotProcessing}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fa:FASymbolIcon Symbol="Add" />
+                            <TextBlock Text="{Binding [Navigation.NewProject], Source={x:Static loc:Loc.Instance}}" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ImportButton"
                                Padding="12,6"
                                Margin="4,0,0,0"
                                Click="OnImportButtonClick"
-                               IsEnabled="{Binding IsNotProcessing}"
-                               Content="{Binding [Navigation.ImportProject], Source={x:Static loc:Loc.Instance}}">
+                               IsEnabled="{Binding IsNotProcessing}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fa:FASymbolIcon Symbol="Import" />
+                            <TextBlock Text="{Binding [Navigation.ImportProject], Source={x:Static loc:Loc.Instance}}" />
+                        </StackPanel>
                         <Button.ContextMenu>
                             <ContextMenu>
                                 <MenuItem
@@ -78,9 +125,13 @@
                 </StackPanel>
 
                 <Button Grid.Column="2"
-                           Content="{Binding [Navigation.Settings], Source={x:Static loc:Loc.Instance}}"
                            Padding="12,6"
-                           Command="{Binding OpenSettingsCommand}" />
+                           Command="{Binding OpenSettingsCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <fa:FASymbolIcon Symbol="Settings" />
+                        <TextBlock Text="{Binding [Navigation.Settings], Source={x:Static loc:Loc.Instance}}" />
+                    </StackPanel>
+                </Button>
             </Grid>
         </Border>
 
@@ -104,11 +155,15 @@
                     </Grid.RowDefinitions>
 
                     <Button Grid.Row="0"
-                               Content="{Binding [Navigation.NewSession], Source={x:Static loc:Loc.Instance}}"
                                Command="{Binding NewSessionCommand}"
                                IsEnabled="{Binding CanInteractProject}"
                                Margin="0,8,8,12"
-                               HorizontalAlignment="Stretch" />
+                               HorizontalAlignment="Stretch">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fa:FASymbolIcon Symbol="Add" />
+                            <TextBlock Text="{Binding [Navigation.NewSession], Source={x:Static loc:Loc.Instance}}" />
+                        </StackPanel>
+                    </Button>
 
                     <ListBox Grid.Row="1"
                              ItemsSource="{Binding Sessions}"
@@ -185,14 +240,49 @@
                              BorderThickness="0"
                              Padding="16,8,8,8"
                              Focusable="False">
-<ListBox.ItemTemplate>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Focusable" Value="False" />
+                                <Setter Property="Template">
+                                    <ControlTemplate>
+                                        <ContentPresenter Content="{TemplateBinding Content}"
+                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                          HorizontalContentAlignment="Stretch" />
+                                    </ControlTemplate>
+                                </Setter>
+                            </Style>
+                            <Style Selector="Border.message.director">
+                                <Setter Property="HorizontalAlignment" Value="Right" />
+                            </Style>
+                            <Style Selector="Border.message.error">
+                                <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                            </Style>
+                        </ListBox.Styles>
+                        <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,6"
+                                <Border Classes="message"
+                                        Classes.director="{Binding IsDirector}"
+                                        Classes.error="{Binding HasError}"
+                                        Margin="0,6"
                                         Padding="14,10"
                                         CornerRadius="8"
                                         MaxWidth="720"
-                                        HorizontalAlignment="Left">
-<StackPanel>
+                                        HorizontalAlignment="Left"
+                                        Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                        BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                        BorderThickness="1">
+                                    <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
@@ -211,11 +301,10 @@
                                                     Click="OnMoreButtonClick"
                                                     Padding="6,2"
                                                     VerticalAlignment="Top"
-                                                    IsEnabled="{Binding DataContext.IsNotProcessing, RelativeSource={RelativeSource AncestorType=Window}}">
-<TextBlock Text="⋯" FontSize="14" />
+                                            IsEnabled="{Binding DataContext.IsNotProcessing, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                <fa:FASymbolIcon Symbol="MoreVertical" />
                                                 <Button.ContextMenu>
-                                                    <ContextMenu
-                                                        DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                    <ContextMenu>
                                                         <MenuItem
                                                             Header="{Binding [Common.Copy], Source={x:Static loc:Loc.Instance}}"
                                                             Click="OnCopyEntry"
@@ -299,16 +388,24 @@
                                                     Margin="0,0,0,4" />
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                                     <Button
-                                                        Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
                                                         Padding="12,6"
                                                         Margin="0,0,4,0"
                                                         Command="{Binding DataContext.SaveEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}" />
+                                                        CommandParameter="{Binding}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Save" />
+                                                            <TextBlock Text="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
                                                     <Button
-                                                        Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
                                                         Padding="12,6"
                                                         Command="{Binding DataContext.CancelEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}" />
+                                                        CommandParameter="{Binding}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Dismiss" />
+                                                            <TextBlock Text="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
                                                 </StackPanel>
                                             </StackPanel>
                                         </Grid>
@@ -828,6 +925,7 @@
             </TabControl>
 
             <Button Grid.Column="0"
+                       Classes="sidebar-toggle"
                        Width="20"
                        Height="36"
                        Command="{Binding ToggleSessionSidebarCommand}"
@@ -836,10 +934,11 @@
                        Margin="236,0,0,0"
                        IsVisible="{Binding IsSessionSidebarExpanded, Converter={StaticResource BoolToVisibility}}"
                        ToolTip.Tip="{Binding [Navigation.CollapseSidebar], Source={x:Static loc:Loc.Instance}}">
-                
+                <fa:FASymbolIcon Symbol="ChevronLeft" FontSize="12" />
             </Button>
 
             <Button Grid.Column="0"
+                       Classes="sidebar-toggle"
                        Width="20"
                        Height="36"
                        Command="{Binding ToggleSessionSidebarCommand}"
@@ -848,7 +947,7 @@
                        Margin="4,0,0,0"
                        IsVisible="{Binding IsSessionSidebarExpanded, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"
                        ToolTip.Tip="{Binding [Navigation.ExpandSidebar], Source={x:Static loc:Loc.Instance}}">
-                
+                <fa:FASymbolIcon Symbol="ChevronRight" FontSize="12" />
             </Button>
         </Grid>
 
