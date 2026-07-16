@@ -134,7 +134,7 @@
                 </StackPanel>
 
                 <Button x:Name="LanSharingButton"
-                        Grid.Column="2"
+                        Grid.Row="0" Grid.Column="2"
                         Margin="0,0,8,0"
                         Padding="12,6"
                         Command="{Binding OpenLanSharingCommand}"
@@ -146,7 +146,7 @@
                 </Button>
 
                 <Button x:Name="SettingsButton"
-                        Grid.Column="3"
+                        Grid.Row="0" Grid.Column="3"
                         Padding="12,6"
                         Command="{Binding OpenSettingsCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -157,7 +157,7 @@
 
                 <Grid x:Name="MobileProjectToolbar"
                       Grid.Row="1"
-                      Grid.ColumnSpan="4"
+                      Grid.ColumnSpan="4" Grid.Column="0"
                       ColumnDefinitions="*,*,*,*"
                       Margin="0,6,0,0"
                       IsVisible="False">
@@ -365,17 +365,25 @@
                                                           Duration="0:0:0.18"
                                                           Easing="QuadraticEaseOut" />
                                         <DoubleTransition Property="Opacity"
-                                                          Duration="0:0:0.14" />
+                                          Duration="0:0:0.14" />
                                     </Transitions>
                                 </Setter>
                             </Style>
                             <Style Selector="Border.message-actions.open">
-                                <Setter Property="Width" Value="134" />
+                                <Setter Property="Width" Value="90" />
                                 <Setter Property="Opacity" Value="1" />
                             </Style>
-                            <Style Selector="Button.message-menu.open">
-                                <Setter Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
-                                <Setter Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            <Style Selector="Border.message-actions Button">
+                                <Setter Property="Width" Value="26" />
+                                <Setter Property="Height" Value="26" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                            </Style>
+                            <Style Selector="Button.message-menu">
+                                <Setter Property="Width" Value="28" />
+                                <Setter Property="Height" Value="28" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
                             </Style>
                         </ListBox.Styles>
                         <ListBox.ItemTemplate>
@@ -399,44 +407,33 @@
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                        Margin="0,0,8,0"
-                                                       VerticalAlignment="Top" />
+                                                       VerticalAlignment="Center" />
 
                                             <StackPanel Grid.Column="2"
                                                         Orientation="Horizontal"
                                                         Spacing="4"
-                                                        VerticalAlignment="Top">
+                                                        VerticalAlignment="Center">
                                                 <Border x:Name="MessageActionsPanel"
                                                         Classes="message-actions"
                                                         Classes.open="{Binding IsMenuOpen}"
                                                         IsHitTestVisible="{Binding IsMenuOpen}"
-                                                        Height="42"
-                                                        Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                                        BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                        BorderThickness="1"
-                                                        CornerRadius="6"
-                                                        Padding="4,2">
-                                                    <StackPanel Orientation="Horizontal" Spacing="2">
+                                                        Height="28"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Padding="0">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6" Width="90">
                                                         <Button Tag="{Binding}"
                                                                 Click="OnCopyEntry"
-                                                                Width="40"
-                                                                Height="36"
-                                                                Padding="0"
                                                                 ToolTip.Tip="{Binding [Common.Copy], Source={x:Static loc:Loc.Instance}}">
                                                             <fa:FASymbolIcon Symbol="Copy" />
                                                         </Button>
                                                         <Button Tag="{Binding}"
                                                                 Click="OnEditEntry"
-                                                                Width="40"
-                                                                Height="36"
-                                                                Padding="0"
                                                                 ToolTip.Tip="{Binding [Dialog.Edit], Source={x:Static loc:Loc.Instance}}">
                                                             <fa:FASymbolIcon Symbol="Edit" />
                                                         </Button>
                                                         <Button Tag="{Binding}"
                                                                 Click="OnRollbackRound"
-                                                                Width="40"
-                                                                Height="36"
-                                                                Padding="0"
                                                                 ToolTip.Tip="{Binding [Dialog.Rollback], Source={x:Static loc:Loc.Instance}}">
                                                             <fa:FASymbolIcon Symbol="Undo" />
                                                         </Button>
@@ -447,8 +444,7 @@
                                                         Classes.open="{Binding IsMenuOpen}"
                                                         Click="OnMoreButtonClick"
                                                         Tag="{Binding}"
-                                                        Padding="6,2"
-                                                        VerticalAlignment="Top"
+                                                        VerticalAlignment="Center"
                                                         IsEnabled="{Binding DataContext.IsNotProcessing, RelativeSource={RelativeSource AncestorType=ListBox}}">
                                                     <fa:FASymbolIcon Symbol="MoreVertical" />
                                                 </Button>
@@ -1060,7 +1056,7 @@
             </Button>
 
             <Border x:Name="MobileNavigation"
-                    Grid.ColumnSpan="4"
+                    Grid.ColumnSpan="4" Grid.Column="0"
                     VerticalAlignment="Bottom"
                     IsVisible="False"
                     Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
