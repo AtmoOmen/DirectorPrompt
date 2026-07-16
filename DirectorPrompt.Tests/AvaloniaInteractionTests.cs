@@ -89,7 +89,7 @@ public sealed class AvaloniaInteractionTests
 
         window.Show();
 
-        Assert.Single(rail.GetVisualDescendants().OfType<Ellipse>());
+        Assert.Single(rail.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("indicator")));
         var listBox = rail.GetLogicalDescendants().OfType<ListBox>().First(control => control.Name == "RailListBox");
         Assert.Equal(ScrollBarVisibility.Hidden, ScrollViewer.GetVerticalScrollBarVisibility(listBox));
 
