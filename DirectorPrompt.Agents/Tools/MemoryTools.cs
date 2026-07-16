@@ -226,7 +226,7 @@ public sealed class MemoryTools
         foreach (var characterID in parsedCharacterIDs)
             await characterRepository.TouchAsync(characterID, context.RoundID, context.SessionID);
 
-        return ToolResult.Data(new { memoryID, success = true });
+        return ToolResult.Data(new { memoryID });
     }
 
     private async Task<string> MergeMemoriesAsync

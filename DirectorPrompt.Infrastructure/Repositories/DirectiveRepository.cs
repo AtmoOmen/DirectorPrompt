@@ -149,24 +149,30 @@ public sealed class DirectiveRepository
             async (connection, token) =>
             {
                 await using var transaction = await connection.BeginTransactionAsync(token);
-                var affectedRows = (await connection.QueryAsync
-                                    (
-                                        new CommandDefinition
-                                        (
-                                            """
-                                            SELECT id, ttl FROM active_directives
-                                            WHERE session_id = @sessionID AND ttl IS NOT NULL
-                                            """,
-                                            new { sessionID },
-                                            transaction,
-                                            cancellationToken: token
-                                        )
-                                    )).ToList();
+                var affectedIDs = (await connection.QueryAsync<long>
+                                  (
+                                      new CommandDefinition
+                                      (
+                                          """
+                                          SELECT id FROM active_directives
+                                          WHERE session_id = @sessionID AND ttl IS NOT NULL
+                                          """,
+                                          new { sessionID },
+                                          transaction,
+                                          cancellationToken: token
+                                      )
+                                  )).ToList();
 
-                foreach (var row in affectedRows)
+                foreach (var id in affectedIDs)
                 {
-                    var id     = (long)row.id;
-                    var oldTTL = (long)row.ttl;
+                    var oldDataJSON = await RowReader.ReadRowAsJSONAsync
+                                      (
+                                          connection,
+                                          "SELECT * FROM active_directives WHERE id = @id",
+                                          new { id },
+                                          transaction,
+                                          token
+                                      );
                     await connection.ExecuteAsync
                     (
                         new CommandDefinition
@@ -186,7 +192,7 @@ public sealed class DirectiveRepository
                         "active_directives",
                         id,
                         "update",
-                        JsonSerializer.Serialize(new { id, ttl = oldTTL }, JsonOptions.Compact),
+                        oldDataJSON,
                         token
                     );
                 }

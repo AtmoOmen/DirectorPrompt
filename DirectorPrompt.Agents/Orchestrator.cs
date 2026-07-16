@@ -280,15 +280,17 @@ public sealed class Orchestrator
                 Data = JsonSerializer.Serialize
                 (
                     context.DirectiveBatch.Directives.Select
-                    (d => new
+                    (
+                        d => new DirectiveEventData
                         {
-                            type     = d.Type.ToString(),
-                            content  = d.Content,
-                            order    = d.Order,
-                            ttl      = d.TTL,
-                            isSystem = d.IsSystem
+                            Type     = d.Type.ToString(),
+                            Content  = d.Content,
+                            Order    = d.Order,
+                            TTL      = d.TTL,
+                            IsSystem = d.IsSystem
                         }
-                    )
+                    ),
+                    JsonOptions.Compact
                 ),
                 CreatedAt = now
             },
@@ -315,7 +317,7 @@ public sealed class Orchestrator
                     RoundID   = context.RoundID,
                     SceneID   = context.CurrentSceneID,
                     Type      = source.EventType,
-                    Data      = JsonSerializer.Serialize(new { activeKeys = result.ActiveKeys }, JsonOptions.Compact),
+                    Data      = JsonSerializer.Serialize(new TransitionEventData { ActiveKeys = result.ActiveKeys }, JsonOptions.Compact),
                     CreatedAt = now
                 }
             );
@@ -398,10 +400,9 @@ public sealed class Orchestrator
 
         try
         {
-            using var doc = JsonDocument.Parse(transitionEvent.Data);
+            var data = JsonSerializer.Deserialize<TransitionEventData>(transitionEvent.Data, JsonOptions.Compact);
 
-            if (doc.RootElement.TryGetProperty("activeKeys", out var keysEl) && keysEl.ValueKind == JsonValueKind.Array)
-                return keysEl.EnumerateArray().Select(v => v.GetString() ?? string.Empty).ToList();
+            return data?.ActiveKeys;
         }
         catch (Exception ex)
         {
@@ -480,5 +481,10 @@ public sealed class Orchestrator
         Log.Information("系统指令注入完成: 总指令数={Total}", allDirectives.Count);
 
         return batch with { Directives = allDirectives };
+    }
+
+    private sealed class TransitionEventData
+    {
+        public IReadOnlyList<string>? ActiveKeys { get; set; }
     }
 }

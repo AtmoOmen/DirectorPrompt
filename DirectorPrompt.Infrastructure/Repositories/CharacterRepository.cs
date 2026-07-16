@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Dapper;
 using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Enums;
@@ -924,7 +925,7 @@ public sealed class CharacterRepository
                         "character_scene_presence",
                         0,
                         "create",
-                        JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID }, JsonOptions.Compact),
+                        JsonSerializer.Serialize(new CharacterScenePresenceSnapshot(characterID, sceneID), JsonOptions.Compact),
                         token
                     );
                 }
@@ -962,7 +963,7 @@ public sealed class CharacterRepository
                         "character_scene_presence",
                         0,
                         "delete",
-                        JsonSerializer.Serialize(new { character_id = characterID, scene_id = sceneID }, JsonOptions.Compact),
+                        JsonSerializer.Serialize(new CharacterScenePresenceSnapshot(characterID, sceneID), JsonOptions.Compact),
                         token
                     );
                 }
@@ -1087,7 +1088,7 @@ public sealed class CharacterRepository
                         "create" :
                         "update",
                     oldRow is null ?
-                        JsonSerializer.Serialize(new { character_id = characterID, attribute_id = attributeID, value, updated_at = now }, JsonOptions.Compact) :
+                        JsonSerializer.Serialize(new CharacterStateValueSnapshot(characterID, attributeID, value, now), JsonOptions.Compact) :
                         JsonSerializer.Serialize(oldRow,                                                                                  JsonOptions.Compact),
                     token
                 );
@@ -1178,11 +1179,25 @@ public sealed class CharacterRepository
                 "delete",
                 JsonSerializer.Serialize
                 (
-                    new { character_id = (long)row.character_id, scene_id = (long)row.scene_id },
+                    new CharacterScenePresenceSnapshot((long)row.character_id, (long)row.scene_id),
                     JsonOptions.Compact
                 ),
                 cancellationToken
             );
         }
     }
+
+    private sealed record CharacterScenePresenceSnapshot
+    (
+        [property: JsonPropertyName("character_id")] long CharacterID,
+        [property: JsonPropertyName("scene_id")]   long SceneID
+    );
+
+    private sealed record CharacterStateValueSnapshot
+    (
+        [property: JsonPropertyName("character_id")]     long       CharacterID,
+        [property: JsonPropertyName("attribute_id")]    long       AttributeID,
+        [property: JsonPropertyName("value")]          string     Value,
+        [property: JsonPropertyName("updated_at")]      DateTime   UpdatedAt
+    );
 }

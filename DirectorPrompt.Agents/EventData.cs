@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DirectorPrompt.Agents;
 
 public sealed class DirectiveEventData
@@ -8,5 +10,8 @@ public sealed class DirectiveEventData
 
     public bool IsSystem { get; set; }
 
+    [JsonPropertyName("ttl")]
     public int? TTL { get; set; }
+
+    public int Order { get; set; }
 }

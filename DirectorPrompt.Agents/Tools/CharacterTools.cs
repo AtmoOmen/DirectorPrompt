@@ -479,7 +479,7 @@ public sealed class CharacterTools
 
         await GenerateAndSaveEmbeddingAsync(context, updated);
 
-        return ToolResult.Data(new { name, success = true });
+        return ToolResult.Data(new { name });
     }
 
     private async Task<string> AddAliasAsync
@@ -497,7 +497,7 @@ public sealed class CharacterTools
             return ToolResult.Error($"人物 {name} 不存在");
 
         if (character.Aliases.Contains(alias))
-            return ToolResult.Data(new { name, alias, success = true, message = "别称已存在" });
+            return ToolResult.Data(new { name, alias, message = "别称已存在" });
 
         await characterRepository.AddAliasAsync(character.ID, alias, context.SessionID, context.RoundID);
 
@@ -508,7 +508,7 @@ public sealed class CharacterTools
         if (refreshed is not null)
             await GenerateAndSaveEmbeddingAsync(context, refreshed);
 
-        return ToolResult.Data(new { name, alias, success = true });
+        return ToolResult.Data(new { name, alias });
     }
 
     private async Task<string> SetRelationAsync
@@ -558,8 +558,7 @@ public sealed class CharacterTools
             {
                 source = sourceName,
                 target = targetName,
-                relationType,
-                success = true
+                relationType
             }
         );
     }
