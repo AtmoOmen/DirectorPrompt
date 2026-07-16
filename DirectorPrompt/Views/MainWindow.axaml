@@ -1,22 +1,22 @@
 <windowing:FAAppWindow x:Class="DirectorPrompt.Views.MainWindow"
-                 xmlns="https://github.com/avaloniaui"
-                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                 xmlns:fa="using:FluentAvalonia.UI.Controls"
-                 xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
-                 xmlns:loc="clr-namespace:DirectorPrompt.Localization"
-                 xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
-                 xmlns:windowing="using:FluentAvalonia.UI.Windowing"
-                 mc:Ignorable="d"
-                 d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-                 Title="DirectorPrompt"
-                 Width="1280"
-                 Height="800"
-                 MinWidth="960"
-                 MinHeight="600"
-                 Icon="/Assets/Images/Icon-NoBackground.png"
-                 TransparencyLevelHint="Mica">
+                       xmlns="https://github.com/avaloniaui"
+                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                       xmlns:fa="using:FluentAvalonia.UI.Controls"
+                       xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+                       xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+                       xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+                       xmlns:windowing="using:FluentAvalonia.UI.Windowing"
+                       mc:Ignorable="d"
+                       d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+                       Title="DirectorPrompt"
+                       Width="1280"
+                       Height="800"
+                       MinWidth="960"
+                       MinHeight="600"
+                       Icon="/Assets/Images/Icon-NoBackground.png"
+                       TransparencyLevelHint="Mica">
     <windowing:FAAppWindow.Styles>
         <Style Selector="Button.sidebar-toggle">
             <Setter Property="Background" Value="{DynamicResource SolidBackgroundFillColorBaseBrush}" />
@@ -53,7 +53,7 @@
             <Setter Property="BorderThickness" Value="2" />
         </Style>
     </windowing:FAAppWindow.Styles>
-<Grid>
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -75,36 +75,35 @@
                                VerticalAlignment="Center"
                                Margin="0,0,6,0" />
                     <components:PathComboBox Width="300"
-                              Margin="0,0,4,0"
-                              ItemsSource="{Binding Projects}"
-                              DisplayMemberPath="Name"
-                              SelectedItem="{Binding CurrentProject}"
-                              IsEnabled="{Binding IsNotProcessing}">
-</components:PathComboBox>
+                                             Margin="0,0,4,0"
+                                             ItemsSource="{Binding Projects}"
+                                             DisplayMemberPath="Name"
+                                             SelectedItem="{Binding CurrentProject}"
+                                             IsEnabled="{Binding IsNotProcessing}" />
                     <Button
-                               Padding="12,6"
-                               Margin="0,0,4,0"
-                               Command="{Binding EditProjectCommand}"
-                               IsEnabled="{Binding CanInteractProject}">
+                        Padding="12,6"
+                        Margin="0,0,4,0"
+                        Command="{Binding EditProjectCommand}"
+                        IsEnabled="{Binding CanInteractProject}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <fa:FASymbolIcon Symbol="Edit" />
                             <TextBlock Text="{Binding [Navigation.EditProject], Source={x:Static loc:Loc.Instance}}" />
                         </StackPanel>
                     </Button>
                     <Button
-                               Padding="12,6"
-                               Command="{Binding NewProjectCommand}"
-                               IsEnabled="{Binding IsNotProcessing}">
+                        Padding="12,6"
+                        Command="{Binding NewProjectCommand}"
+                        IsEnabled="{Binding IsNotProcessing}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <fa:FASymbolIcon Symbol="Add" />
                             <TextBlock Text="{Binding [Navigation.NewProject], Source={x:Static loc:Loc.Instance}}" />
                         </StackPanel>
                     </Button>
                     <Button x:Name="ImportButton"
-                               Padding="12,6"
-                               Margin="4,0,0,0"
-                               Click="OnImportButtonClick"
-                               IsEnabled="{Binding IsNotProcessing}">
+                            Padding="12,6"
+                            Margin="4,0,0,0"
+                            Click="OnImportButtonClick"
+                            IsEnabled="{Binding IsNotProcessing}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <fa:FASymbolIcon Symbol="Import" />
                             <TextBlock Text="{Binding [Navigation.ImportProject], Source={x:Static loc:Loc.Instance}}" />
@@ -123,8 +122,8 @@
                 </StackPanel>
 
                 <Button Grid.Column="2"
-                           Padding="12,6"
-                           Command="{Binding OpenSettingsCommand}">
+                        Padding="12,6"
+                        Command="{Binding OpenSettingsCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <fa:FASymbolIcon Symbol="Settings" />
                         <TextBlock Text="{Binding [Navigation.Settings], Source={x:Static loc:Loc.Instance}}" />
@@ -153,10 +152,10 @@
                     </Grid.RowDefinitions>
 
                     <Button Grid.Row="0"
-                               Command="{Binding NewSessionCommand}"
-                               IsEnabled="{Binding CanInteractProject}"
-                               Margin="0,8,8,12"
-                               HorizontalAlignment="Stretch">
+                            Command="{Binding NewSessionCommand}"
+                            IsEnabled="{Binding CanInteractProject}"
+                            Margin="0,8,8,12"
+                            HorizontalAlignment="Stretch">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <fa:FASymbolIcon Symbol="Add" />
                             <TextBlock Text="{Binding [Navigation.NewSession], Source={x:Static loc:Loc.Instance}}" />
@@ -170,7 +169,7 @@
                              Background="Transparent"
                              BorderThickness="0"
                              Padding="0,0,0,8">
-<ListBox.ItemTemplate>
+                        <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
                             </DataTemplate>
@@ -200,7 +199,7 @@
                             <Border Margin="0,0,8,0"
                                     Padding="10,4"
                                     CornerRadius="6">
-<StackPanel Orientation="Horizontal">
+                                <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding Stage}"
                                                FontWeight="SemiBold"
                                                FontSize="12"
@@ -263,7 +262,8 @@
                                 <Setter Property="HorizontalAlignment" Value="Right" />
                             </Style>
                             <Style Selector="Border.message.error">
-                                <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                                <Setter Property="Background"
+                                        Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
                                 <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
                             </Style>
                         </ListBox.Styles>
@@ -299,7 +299,7 @@
                                                     Click="OnMoreButtonClick"
                                                     Padding="6,2"
                                                     VerticalAlignment="Top"
-                                            IsEnabled="{Binding DataContext?.IsNotProcessing, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                    IsEnabled="{Binding DataContext?.IsNotProcessing, RelativeSource={RelativeSource AncestorType=Window}}">
                                                 <fa:FASymbolIcon Symbol="MoreVertical" />
                                                 <Button.ContextMenu>
                                                     <ContextMenu>
@@ -326,7 +326,7 @@
                                             Margin="0,4,0,0"
                                             FontSize="12"
                                             Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-<TextBlock Text="{Binding Thinking}"
+                                            <TextBlock Text="{Binding Thinking}"
                                                        TextWrapping="Wrap"
                                                        FontSize="12"
                                                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
@@ -339,7 +339,7 @@
                                             <StackPanel
                                                 IsVisible="{Binding HasError, Converter={StaticResource BoolToVisibility}}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    
+
                                                     <TextBlock Text="{Binding ErrorMessage}"
                                                                TextWrapping="Wrap"
                                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}"
@@ -349,7 +349,7 @@
                                             <!-- 导演指令: 按指令分块渲染 Markdown -->
                                             <ItemsControl ItemsSource="{Binding DirectorBlocks}"
                                                           IsVisible="{Binding ShowDirectorContent}">
-<ItemsControl.ItemTemplate>
+                                                <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
                                                         <Border Margin="0,4"
                                                                 Padding="8,6"
@@ -363,7 +363,8 @@
                                                                            FontSize="11"
                                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                                            Margin="0,0,0,2" />
-                                                                <components:LiveMarkdownView Markdown="{Binding Content}" />
+                                                                <components:LiveMarkdownView
+                                                                    Markdown="{Binding Content}" />
                                                             </StackPanel>
                                                         </Border>
                                                     </DataTemplate>
@@ -372,7 +373,7 @@
 
                                             <!-- 叙事输出: 已渲染 Markdown 与尚未渲染的流式文本尾部同时显示 -->
                                             <StackPanel IsVisible="{Binding ShowNarrativeContent}">
-<components:LiveMarkdownView Markdown="{Binding Content}" />
+                                                <components:LiveMarkdownView Markdown="{Binding Content}" />
                                             </StackPanel>
 
                                             <!-- 编辑模式: TextBox 替换正文 -->
@@ -392,7 +393,8 @@
                                                         CommandParameter="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Save" />
-                                                            <TextBlock Text="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}" />
+                                                            <TextBlock
+                                                                Text="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}" />
                                                         </StackPanel>
                                                     </Button>
                                                     <Button
@@ -401,7 +403,8 @@
                                                         CommandParameter="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Dismiss" />
-                                                            <TextBlock Text="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}" />
+                                                            <TextBlock
+                                                                Text="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}" />
                                                         </StackPanel>
                                                     </Button>
                                                 </StackPanel>
@@ -449,15 +452,15 @@
                 <TabItem>
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal">
-                            
+
                             <TextBlock Text="{Binding [State.Panel.Title], Source={x:Static loc:Loc.Instance}}" />
                         </StackPanel>
                     </TabItem.Header>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
                         <StackPanel>
                             <Expander Header="{Binding [State.Panel.Title], Source={x:Static loc:Loc.Instance}}"
-                                             IsExpanded="True"
-                                             Margin="0,0,0,8">
+                                      IsExpanded="True"
+                                      Margin="0,0,0,8">
                                 <StackPanel>
                                     <Grid Margin="0,2">
                                         <Grid.ColumnDefinitions>
@@ -502,8 +505,10 @@
                                                     CornerRadius="4">
                                                 <StackPanel>
                                                     <DockPanel>
-                                                        <TextBlock Text="{Binding Type}" Margin="0,0,4,0" DockPanel.Dock="Left" VerticalAlignment="Top" />
-                                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap" VerticalAlignment="Top" />
+                                                        <TextBlock Text="{Binding Type}" Margin="0,0,4,0"
+                                                                   DockPanel.Dock="Left" VerticalAlignment="Top" />
+                                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                                                   VerticalAlignment="Top" />
                                                     </DockPanel>
                                                     <TextBlock Text="{Binding TTLLabel}"
                                                                FontSize="11"
@@ -523,7 +528,7 @@
                 <TabItem>
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal">
-                            
+
                             <TextBlock Text="{Binding [Character.Panel.Title], Source={x:Static loc:Loc.Instance}}" />
                         </StackPanel>
                     </TabItem.Header>
@@ -535,15 +540,15 @@
                         </Grid.RowDefinitions>
 
                         <TextBox Grid.Row="0"
-                                    Text="{Binding CharacterPanel.SearchText}"
-                                    PlaceholderText="{Binding [Character.Panel.SearchPlaceholder], Source={x:Static loc:Loc.Instance}}"
-                                    Margin="0,0,0,6" />
+                                 Text="{Binding CharacterPanel.SearchText}"
+                                 PlaceholderText="{Binding [Character.Panel.SearchPlaceholder], Source={x:Static loc:Loc.Instance}}"
+                                 Margin="0,0,0,6" />
 
                         <components:PathComboBox Grid.Row="1"
-                                  ItemsSource="{Binding CharacterPanel.AvailableCategories}"
-                                  SelectedItem="{Binding CharacterPanel.SelectedCategory, Mode=TwoWay}"
-                                  HorizontalAlignment="Stretch"
-                                  Margin="0,0,0,8" />
+                                                 ItemsSource="{Binding CharacterPanel.AvailableCategories}"
+                                                 SelectedItem="{Binding CharacterPanel.SelectedCategory, Mode=TwoWay}"
+                                                 HorizontalAlignment="Stretch"
+                                                 Margin="0,0,0,8" />
 
                         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding CharacterPanel.Groups}">
@@ -574,7 +579,7 @@
                                                                         <ColumnDefinition Width="*" />
                                                                         <ColumnDefinition Width="Auto" />
                                                                     </Grid.ColumnDefinitions>
-                                                                    
+
                                                                     <TextBlock Grid.Column="1"
                                                                                Text="{Binding CategoryName}"
                                                                                FontWeight="SemiBold"
@@ -594,7 +599,7 @@
                                                                     </Border>
                                                                 </Grid>
                                                             </Border>
-                                                            
+
                                                         </ControlTemplate>
                                                     </ToggleButton.Template>
                                                 </ToggleButton>
@@ -630,10 +635,7 @@
                                                                                 VerticalAlignment="Center">
                                                                             <ToggleButton.Template>
                                                                                 <ControlTemplate
-                                                                                    TargetType="ToggleButton">
-                                                                                    
-                                                                                    
-                                                                                </ControlTemplate>
+                                                                                    TargetType="ToggleButton" />
                                                                             </ToggleButton.Template>
                                                                         </ToggleButton>
                                                                     </Grid>
@@ -723,7 +725,7 @@
                 <TabItem>
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal">
-                            
+
                             <TextBlock Text="{Binding [Memory.Panel.Title], Source={x:Static loc:Loc.Instance}}" />
                         </StackPanel>
                     </TabItem.Header>
@@ -736,9 +738,9 @@
 
 
                         <TextBox Grid.Row="0"
-                                    Text="{Binding MemoryPanel.SearchText}"
-                                    PlaceholderText="{Binding [Memory.Panel.SearchPlaceholder], Source={x:Static loc:Loc.Instance}}"
-                                    Margin="0,0,0,6" />
+                                 Text="{Binding MemoryPanel.SearchText}"
+                                 PlaceholderText="{Binding [Memory.Panel.SearchPlaceholder], Source={x:Static loc:Loc.Instance}}"
+                                 Margin="0,0,0,6" />
 
 
                         <Grid Grid.Row="1" Margin="0,0,0,8">
@@ -748,13 +750,13 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <components:PathComboBox Grid.Column="0"
-                                      ItemsSource="{Binding MemoryPanel.AvailableScenes}"
-                                      SelectedItem="{Binding MemoryPanel.SelectedScene, Mode=TwoWay}"
-                                      HorizontalAlignment="Stretch" />
+                                                     ItemsSource="{Binding MemoryPanel.AvailableScenes}"
+                                                     SelectedItem="{Binding MemoryPanel.SelectedScene, Mode=TwoWay}"
+                                                     HorizontalAlignment="Stretch" />
                             <components:PathComboBox Grid.Column="2"
-                                      ItemsSource="{Binding MemoryPanel.AvailableTags}"
-                                      SelectedItem="{Binding MemoryPanel.SelectedTag, Mode=TwoWay}"
-                                      HorizontalAlignment="Stretch" />
+                                                     ItemsSource="{Binding MemoryPanel.AvailableTags}"
+                                                     SelectedItem="{Binding MemoryPanel.SelectedTag, Mode=TwoWay}"
+                                                     HorizontalAlignment="Stretch" />
                         </Grid>
 
 
@@ -793,7 +795,7 @@
                                                                         <ColumnDefinition Width="*" />
                                                                         <ColumnDefinition Width="Auto" />
                                                                     </Grid.ColumnDefinitions>
-                                                                    
+
                                                                     <TextBlock Grid.Column="1"
                                                                                Text="{Binding SceneLabel}"
                                                                                FontWeight="SemiBold"
@@ -813,7 +815,7 @@
                                                                     </Border>
                                                                 </Grid>
                                                             </Border>
-                                                            
+
                                                         </ControlTemplate>
                                                     </ToggleButton.Template>
                                                 </ToggleButton>
@@ -849,17 +851,13 @@
                                                                                     Margin="4,0,0,0"
                                                                                     Click="OnEditMemory"
                                                                                     Tag="{Binding}"
-                                                                                    ToolTip.Tip="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}">
-                                                                                    
-                                                                                </Button>
+                                                                                    ToolTip.Tip="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}" />
                                                                                 <Button
                                                                                     Padding="6,2"
                                                                                     Margin="4,0,0,0"
                                                                                     Click="OnDeleteMemory"
                                                                                     Tag="{Binding}"
-                                                                                    ToolTip.Tip="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}">
-                                                                                    
-                                                                                </Button>
+                                                                                    ToolTip.Tip="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}" />
                                                                             </StackPanel>
                                                                         </DockPanel>
                                                                         <TextBlock Text="{Binding Content}"
@@ -923,28 +921,28 @@
             </TabControl>
 
             <Button Grid.Column="0"
-                       Classes="sidebar-toggle"
-                       Width="20"
-                       Height="36"
-                       Command="{Binding ToggleSessionSidebarCommand}"
-                       HorizontalAlignment="Left"
-                       VerticalAlignment="Center"
-                       Margin="236,0,0,0"
-                       IsVisible="{Binding IsSessionSidebarExpanded, Converter={StaticResource BoolToVisibility}}"
-                       ToolTip.Tip="{Binding [Navigation.CollapseSidebar], Source={x:Static loc:Loc.Instance}}">
+                    Classes="sidebar-toggle"
+                    Width="20"
+                    Height="36"
+                    Command="{Binding ToggleSessionSidebarCommand}"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Margin="236,0,0,0"
+                    IsVisible="{Binding IsSessionSidebarExpanded, Converter={StaticResource BoolToVisibility}}"
+                    ToolTip.Tip="{Binding [Navigation.CollapseSidebar], Source={x:Static loc:Loc.Instance}}">
                 <fa:FASymbolIcon Symbol="ChevronLeft" FontSize="12" />
             </Button>
 
             <Button Grid.Column="0"
-                       Classes="sidebar-toggle"
-                       Width="20"
-                       Height="36"
-                       Command="{Binding ToggleSessionSidebarCommand}"
-                       HorizontalAlignment="Left"
-                       VerticalAlignment="Center"
-                       Margin="4,0,0,0"
-                       IsVisible="{Binding IsSessionSidebarExpanded, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"
-                       ToolTip.Tip="{Binding [Navigation.ExpandSidebar], Source={x:Static loc:Loc.Instance}}">
+                    Classes="sidebar-toggle"
+                    Width="20"
+                    Height="36"
+                    Command="{Binding ToggleSessionSidebarCommand}"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Margin="4,0,0,0"
+                    IsVisible="{Binding IsSessionSidebarExpanded, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"
+                    ToolTip.Tip="{Binding [Navigation.ExpandSidebar], Source={x:Static loc:Loc.Instance}}">
                 <fa:FASymbolIcon Symbol="ChevronRight" FontSize="12" />
             </Button>
         </Grid>

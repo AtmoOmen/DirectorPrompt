@@ -1,11 +1,11 @@
 <windowing:FAAppWindow x:Class="DirectorPrompt.Views.ChangelogWindow"
-        xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:components="using:DirectorPrompt.Views.Components"
-        xmlns:windowing="using:FluentAvalonia.UI.Windowing"
-        Width="720" Height="640" MinWidth="480" MinHeight="360"
-        Icon="/Assets/Images/Icon-NoBackground.png"
-        WindowStartupLocation="CenterOwner" TransparencyLevelHint="Mica">
+                       xmlns="https://github.com/avaloniaui"
+                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                       xmlns:components="using:DirectorPrompt.Views.Components"
+                       xmlns:windowing="using:FluentAvalonia.UI.Windowing"
+                       Width="720" Height="640" MinWidth="480" MinHeight="360"
+                       Icon="/Assets/Images/Icon-NoBackground.png"
+                       WindowStartupLocation="CenterOwner" TransparencyLevelHint="Mica">
     <Grid RowDefinitions="*,Auto" Margin="20">
         <ScrollViewer Grid.Row="0">
             <components:LiveMarkdownView x:Name="ChangelogViewer" />

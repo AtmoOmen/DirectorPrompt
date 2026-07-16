@@ -1,23 +1,23 @@
 <windowing:FAAppWindow x:Class="DirectorPrompt.Views.SettingsWindow"
-                 xmlns="https://github.com/avaloniaui"
-                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                 xmlns:fa="using:FluentAvalonia.UI.Controls"
-                 xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
-                 xmlns:loc="clr-namespace:DirectorPrompt.Localization"
-                 xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
-                 xmlns:windowing="using:FluentAvalonia.UI.Windowing"
-                 mc:Ignorable="d"
-                 d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
-                 Title="{Binding [Settings.Title], Source={x:Static loc:Loc.Instance}}"
-                 Width="960"
-                 Height="800"
-                 MinWidth="600"
-                 MinHeight="480"
-                 Icon="/Assets/Images/Icon-NoBackground.png"
-                 TransparencyLevelHint="Mica">
-<Grid>
+                       xmlns="https://github.com/avaloniaui"
+                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                       xmlns:fa="using:FluentAvalonia.UI.Controls"
+                       xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+                       xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+                       xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+                       xmlns:windowing="using:FluentAvalonia.UI.Windowing"
+                       mc:Ignorable="d"
+                       d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
+                       Title="{Binding [Settings.Title], Source={x:Static loc:Loc.Instance}}"
+                       Width="960"
+                       Height="800"
+                       MinWidth="600"
+                       MinHeight="480"
+                       Icon="/Assets/Images/Icon-NoBackground.png"
+                       TransparencyLevelHint="Mica">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -30,12 +30,12 @@
             </Grid.ColumnDefinitions>
 
             <ListBox Grid.Column="0"
-                      x:Name="NavList"
-                      Background="{DynamicResource ControlFillColorTransparentBrush}"
-                      BorderThickness="0"
-                      Padding="4"
-                      SelectionChanged="OnNavSelectionChanged"
-                      SelectedIndex="0">
+                     x:Name="NavList"
+                     Background="{DynamicResource ControlFillColorTransparentBrush}"
+                     BorderThickness="0"
+                     Padding="4"
+                     SelectionChanged="OnNavSelectionChanged"
+                     SelectedIndex="0">
                 <ListBoxItem Tag="providers" Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Cloud" />
@@ -109,8 +109,8 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           VerticalAlignment="Center"
-                                           Command="{Binding AddProviderCommand}">
+                                        VerticalAlignment="Center"
+                                        Command="{Binding AddProviderCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <fa:FASymbolIcon Symbol="Add" />
                                         <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
@@ -138,13 +138,14 @@
                                                                    VerticalAlignment="Center" />
                                                     </StackPanel>
                                                     <Button Grid.Column="1"
-                                                               Padding="6,4"
-                                                               Margin="0,0,-16,0"
-                                                               Click="OnRemoveProvider"
-                                                               Tag="{Binding}">
+                                                            Padding="6,4"
+                                                            Margin="0,0,-16,0"
+                                                            Click="OnRemoveProvider"
+                                                            Tag="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Delete" />
-                                                            <TextBlock Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
+                                                            <TextBlock
+                                                                Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
                                                         </StackPanel>
                                                     </Button>
                                                 </Grid>
@@ -160,7 +161,7 @@
                                                                Text="{Binding [Settings.Provider.DisplayName], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <TextBox Grid.Column="1"
-                                                                Text="{Binding DisplayName}" />
+                                                             Text="{Binding DisplayName}" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -172,9 +173,9 @@
                                                                Text="{Binding [Settings.Provider.Provider], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <components:PathComboBox Grid.Column="1"
-                                                              ItemsSource="{x:Static vm:ProviderSettingViewModel.AvailableProviders}"
-                                                              SelectedItem="{Binding Provider}"
-                                                              HorizontalAlignment="Stretch" />
+                                                                             ItemsSource="{x:Static vm:ProviderSettingViewModel.AvailableProviders}"
+                                                                             SelectedItem="{Binding Provider}"
+                                                                             HorizontalAlignment="Stretch" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -186,8 +187,8 @@
                                                                Text="{Binding [Settings.Provider.Endpoint], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <TextBox Grid.Column="1"
-                                                                Text="{Binding Endpoint}"
-                                                                PlaceholderText="{Binding [Settings.Agent.Placeholder.Endpoint], Source={x:Static loc:Loc.Instance}}" />
+                                                             Text="{Binding Endpoint}"
+                                                             PlaceholderText="{Binding [Settings.Agent.Placeholder.Endpoint], Source={x:Static loc:Loc.Instance}}" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -199,8 +200,8 @@
                                                                Text="{Binding [Settings.Agent.APIKey], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <TextBox Grid.Column="1"
-                                                                Text="{Binding APIKey}"
-                                                                PlaceholderText="{Binding [Settings.Agent.Placeholder.APIKey], Source={x:Static loc:Loc.Instance}}" />
+                                                             Text="{Binding APIKey}"
+                                                             PlaceholderText="{Binding [Settings.Agent.Placeholder.APIKey], Source={x:Static loc:Loc.Instance}}" />
                                                 </Grid>
 
                                                 <StackPanel Margin="0, 8">
@@ -236,8 +237,8 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           VerticalAlignment="Center"
-                                           Command="{Binding AddModelCommand}">
+                                        VerticalAlignment="Center"
+                                        Command="{Binding AddModelCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <fa:FASymbolIcon Symbol="Add" />
                                         <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
@@ -265,13 +266,14 @@
                                                                    VerticalAlignment="Center" />
                                                     </StackPanel>
                                                     <Button Grid.Column="1"
-                                                               Padding="6,4"
-                                                               Margin="0,0,-16,0"
-                                                               Click="OnRemoveModel"
-                                                               Tag="{Binding}">
+                                                            Padding="6,4"
+                                                            Margin="0,0,-16,0"
+                                                            Click="OnRemoveModel"
+                                                            Tag="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Delete" />
-                                                            <TextBlock Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
+                                                            <TextBlock
+                                                                Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
                                                         </StackPanel>
                                                     </Button>
                                                 </Grid>
@@ -287,7 +289,7 @@
                                                                Text="{Binding [Settings.Model.DisplayName], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <TextBox Grid.Column="1"
-                                                                Text="{Binding DisplayName}" />
+                                                             Text="{Binding DisplayName}" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -313,14 +315,15 @@
                                                             ItemsSource="{Binding AvailableModels}"
                                                             Text="{Binding ModelName}" />
                                                     <Button Grid.Column="2"
-                                                               Padding="6,4"
-                                                               Margin="8,0,0,0"
-                                                               Command="{Binding DataContext?.FetchModelsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                               CommandParameter="{Binding}"
-                                                               IsEnabled="{Binding IsFetchingModels, Converter={StaticResource InverseBool}}">
+                                                            Padding="6,4"
+                                                            Margin="8,0,0,0"
+                                                            Command="{Binding DataContext?.FetchModelsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            IsEnabled="{Binding IsFetchingModels, Converter={StaticResource InverseBool}}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Download" />
-                                                            <TextBlock Text="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}" />
+                                                            <TextBlock
+                                                                Text="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}" />
                                                         </StackPanel>
                                                     </Button>
                                                 </Grid>
@@ -340,13 +343,13 @@
                                                                Text="{Binding [Settings.Agent.Temperature], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <fa:FANumberBox Grid.Column="1"
-                                                                  Value="{Binding Temperature}"
-                                                                  Minimum="0"
-                                                                  Maximum="2"
-                                                                  SmallChange="0.1"
-                                                                  LargeChange="0.5"
-                                                                  SpinButtonPlacementMode="Compact"
-                                                                  HorizontalAlignment="Stretch" />
+                                                                    Value="{Binding Temperature}"
+                                                                    Minimum="0"
+                                                                    Maximum="2"
+                                                                    SmallChange="0.1"
+                                                                    LargeChange="0.5"
+                                                                    SpinButtonPlacementMode="Compact"
+                                                                    HorizontalAlignment="Stretch" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -358,8 +361,8 @@
                                                                Text="{Binding [Settings.Model.ReasoningEffort], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <TextBox Grid.Column="1"
-                                                                Text="{Binding ReasoningEffort}"
-                                                                PlaceholderText="high" />
+                                                             Text="{Binding ReasoningEffort}"
+                                                             PlaceholderText="high" />
                                                 </Grid>
 
                                                 <StackPanel Margin="0, 8">
@@ -392,11 +395,11 @@
                                                             SelectedValuePath="ID"
                                                             SelectedValue="{Binding PromptID}" />
                                                     <Button Grid.Column="2"
-                                                               Content="{Binding [Common.Clear], Source={x:Static loc:Loc.Instance}}"
-                                                               Padding="6,4"
-                                                               Margin="8,0,0,0"
-                                                               Command="{Binding DataContext?.ClearModelPromptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                               CommandParameter="{Binding}" />
+                                                            Content="{Binding [Common.Clear], Source={x:Static loc:Loc.Instance}}"
+                                                            Padding="6,4"
+                                                            Margin="8,0,0,0"
+                                                            Command="{Binding DataContext?.ClearModelPromptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}" />
                                                 </Grid>
 
 
@@ -410,7 +413,8 @@
                                                         IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBool}}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Link" />
-                                                            <TextBlock Text="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}" />
+                                                            <TextBlock
+                                                                Text="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}" />
                                                         </StackPanel>
                                                     </Button>
 
@@ -418,8 +422,7 @@
                                                                Margin="8,0,0,0"
                                                                TextWrapping="Wrap"
                                                                VerticalAlignment="Center"
-                                                               FontSize="12">
-</TextBlock>
+                                                               FontSize="12" />
 
                                                 </StackPanel>
                                             </StackPanel>
@@ -442,8 +445,8 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                           VerticalAlignment="Center"
-                                           Command="{Binding AddPromptCommand}">
+                                        VerticalAlignment="Center"
+                                        Command="{Binding AddPromptCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <fa:FASymbolIcon Symbol="Add" />
                                         <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
@@ -466,13 +469,14 @@
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
                                                     <Button Grid.Column="1"
-                                                               Padding="6,4"
-                                                               Margin="0,0,-16,0"
-                                                               Click="OnRemovePrompt"
-                                                               Tag="{Binding}">
+                                                            Padding="6,4"
+                                                            Margin="0,0,-16,0"
+                                                            Click="OnRemovePrompt"
+                                                            Tag="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Delete" />
-                                                            <TextBlock Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
+                                                            <TextBlock
+                                                                Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
                                                         </StackPanel>
                                                     </Button>
                                                 </Grid>
@@ -488,7 +492,7 @@
                                                                Text="{Binding [Settings.Prompt.DisplayName], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <TextBox Grid.Column="1"
-                                                                Text="{Binding DisplayName}" />
+                                                             Text="{Binding DisplayName}" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -500,12 +504,12 @@
                                                                Text="{Binding [Settings.Prompt.Content], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Top" />
                                                     <TextBox Grid.Column="1"
-                                                                Text="{Binding Content}"
-                                                                AcceptsReturn="True"
-                                                                TextWrapping="Wrap"
-                                                                MinHeight="120"
-                                                                MaxHeight="300"
-                                                                ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                                                             Text="{Binding Content}"
+                                                             AcceptsReturn="True"
+                                                             TextWrapping="Wrap"
+                                                             MinHeight="120"
+                                                             MaxHeight="300"
+                                                             ScrollViewer.VerticalScrollBarVisibility="Auto" />
                                                 </Grid>
                                             </StackPanel>
                                         </Expander>
@@ -562,11 +566,11 @@
                                                             SelectedValuePath="ID"
                                                             SelectedValue="{Binding PromptID}" />
                                                     <Button Grid.Column="2"
-                                                               Content="{Binding [Common.Clear], Source={x:Static loc:Loc.Instance}}"
-                                                               Padding="6,4"
-                                                               Margin="8,0,0,0"
-                                                               Command="{Binding DataContext?.ClearTaskPromptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                               CommandParameter="{Binding}" />
+                                                            Content="{Binding [Common.Clear], Source={x:Static loc:Loc.Instance}}"
+                                                            Padding="6,4"
+                                                            Margin="8,0,0,0"
+                                                            Command="{Binding DataContext?.ClearTaskPromptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}" />
                                                 </Grid>
                                             </StackPanel>
                                         </Expander>
@@ -611,12 +615,13 @@
                                                                ItemsSource="{Binding Embedding.AvailableModels}"
                                                                Text="{Binding Embedding.ModelName}" />
                                 <Button Grid.Column="2"
-                                           Margin="8,0,0,0"
-                                           Command="{Binding FetchEmbeddingModelsCommand}"
-                                           IsEnabled="{Binding Embedding.IsFetchingModels, Converter={StaticResource InverseBool}}">
+                                        Margin="8,0,0,0"
+                                        Command="{Binding FetchEmbeddingModelsCommand}"
+                                        IsEnabled="{Binding Embedding.IsFetchingModels, Converter={StaticResource InverseBool}}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <fa:FASymbolIcon Symbol="Download" />
-                                        <TextBlock Text="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}" />
+                                        <TextBlock
+                                            Text="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}" />
                                     </StackPanel>
                                 </Button>
                             </Grid>
@@ -634,15 +639,15 @@
                                     IsEnabled="{Binding Embedding.IsTestingConnection, Converter={StaticResource InverseBool}}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <fa:FASymbolIcon Symbol="Link" />
-                                        <TextBlock Text="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}" />
+                                        <TextBlock
+                                            Text="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}" />
                                     </StackPanel>
                                 </Button>
                                 <TextBlock
                                     Text="{Binding Embedding.ConnectionMessage}"
                                     TextWrapping="Wrap"
                                     VerticalAlignment="Center"
-                                    FontSize="12">
-</TextBlock>
+                                    FontSize="12" />
 
                             </StackPanel>
 
@@ -659,37 +664,37 @@
                                            FontWeight="SemiBold" />
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Memory.RecallTopK}"
-                                          Minimum="1"
-                                          Maximum="100"
-                                          Margin="0,0,0,12"
-                                          HorizontalAlignment="Stretch" />
+                                            Minimum="1"
+                                            Maximum="100"
+                                            Margin="0,0,0,12"
+                                            HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock Text="{Binding [Memory.TokenBudget], Source={x:Static loc:Loc.Instance}}"
                                            FontWeight="SemiBold" />
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Memory.TokenBudget}"
-                                          Minimum="100"
-                                          Maximum="10000"
-                                          Margin="0,0,0,12"
-                                          HorizontalAlignment="Stretch" />
+                                            Minimum="100"
+                                            Maximum="10000"
+                                            Margin="0,0,0,12"
+                                            HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock Text="{Binding [Memory.MinRelevance], Source={x:Static loc:Loc.Instance}}"
                                            FontWeight="SemiBold" />
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Memory.MinRelevance}"
-                                          Minimum="0"
-                                          Maximum="1"
-                                          Margin="0,0,0,12"
-                                          HorizontalAlignment="Stretch" />
+                                            Minimum="0"
+                                            Maximum="1"
+                                            Margin="0,0,0,12"
+                                            HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock
                                     Text="{Binding [Memory.TimeDecayLambda], Source={x:Static loc:Loc.Instance}}"
                                     FontWeight="SemiBold" />
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Memory.TimeDecayLambda}"
-                                          Minimum="0"
-                                          Maximum="1"
-                                          HorizontalAlignment="Stretch" />
+                                            Minimum="0"
+                                            Maximum="1"
+                                            HorizontalAlignment="Stretch" />
                         </StackPanel>
 
                         <!-- 知识检索配置面板 -->
@@ -705,29 +710,29 @@
                                     FontWeight="SemiBold" />
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Knowledge.SemanticTopK}"
-                                          Minimum="1"
-                                          Maximum="100"
-                                          Margin="0,0,0,12"
-                                          HorizontalAlignment="Stretch" />
+                                            Minimum="1"
+                                            Maximum="100"
+                                            Margin="0,0,0,12"
+                                            HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock
                                     Text="{Binding [Knowledge.Retrieval.TokenBudget], Source={x:Static loc:Loc.Instance}}"
                                     FontWeight="SemiBold" />
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Knowledge.TokenBudget}"
-                                          Minimum="100"
-                                          Maximum="10000"
-                                          Margin="0,0,0,12"
-                                          HorizontalAlignment="Stretch" />
+                                            Minimum="100"
+                                            Maximum="10000"
+                                            Margin="0,0,0,12"
+                                            HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock
                                     Text="{Binding [Knowledge.Retrieval.MinRelevance], Source={x:Static loc:Loc.Instance}}"
                                     FontWeight="SemiBold" />
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Knowledge.MinRelevance}"
-                                          Minimum="0"
-                                          Maximum="1"
-                                          HorizontalAlignment="Stretch" />
+                                            Minimum="0"
+                                            Maximum="1"
+                                            HorizontalAlignment="Stretch" />
                         </StackPanel>
 
                         <!-- 其他面板 -->
@@ -735,15 +740,16 @@
                             <TextBlock Text="{Binding [Settings.Others.Title], Source={x:Static loc:Loc.Instance}}"
                                        FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock Text="{Binding [Settings.Language.Title], Source={x:Static loc:Loc.Instance}}"
-                                           FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Settings.Language.Title], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
                             </StackPanel>
                             <components:SearchableComboBox ItemsSource="{Binding AvailableLanguages}"
-                                                            DisplayMemberPath="Value"
-                                                            SelectedValuePath="Key"
-                                                            SelectedValue="{Binding SelectedLanguage}"
-                                                            HorizontalAlignment="Stretch"
-                                                            Margin="0,0,0,12" />
+                                                           DisplayMemberPath="Value"
+                                                           SelectedValuePath="Key"
+                                                           SelectedValue="{Binding SelectedLanguage}"
+                                                           HorizontalAlignment="Stretch"
+                                                           Margin="0,0,0,12" />
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>
