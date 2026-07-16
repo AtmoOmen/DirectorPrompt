@@ -26,6 +26,8 @@ public sealed partial class LiveMarkdownView : UserControl
 
     internal ObservableStringBuilder MarkdownBuilder { get; } = new();
 
+    internal bool IsRenderCurrent => string.Equals(Markdown ?? string.Empty, renderedMarkdown, StringComparison.Ordinal);
+
     static LiveMarkdownView() =>
         MarkdownProperty.Changed.AddClassHandler<LiveMarkdownView>(static (view, _) => view.ScheduleMarkdownUpdate());
 

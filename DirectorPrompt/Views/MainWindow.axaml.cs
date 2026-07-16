@@ -11,6 +11,7 @@ using Avalonia.VisualTree;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Localization;
 using DirectorPrompt.ViewModels;
+using DirectorPrompt.Views.Components;
 using FluentAvalonia.UI.Windowing;
 
 namespace DirectorPrompt.Views;
@@ -20,6 +21,7 @@ public partial class MainWindow : FAAppWindow
     private readonly MainViewModel viewModel;
 
     private ScrollViewer? dialogScrollViewer;
+    private int           dialogScrollRequestID;
 
     private ListBox DialogList =>
         this.GetLogicalDescendants().OfType<ListBox>().First(control => control.Name == "DialogListBox");
@@ -67,18 +69,65 @@ public partial class MainWindow : FAAppWindow
             ScrollDialogToBottom();
     }
 
-    private void ScrollDialogToBottom() =>
+    private void ScrollDialogToBottom()
+    {
+        var requestID = ++dialogScrollRequestID;
+        var sessionID = viewModel.CurrentSession?.ID;
+
         Dispatcher.UIThread.Post
         (
-            () =>
-            {
-                if (dialogScrollViewer is not null)
-                    dialogScrollViewer.Offset = dialogScrollViewer.Offset.WithY(double.MaxValue);
-                else if (viewModel.Dialog.Entries.Count > 0)
-                    DialogList.ScrollIntoView(viewModel.Dialog.Entries[^1]);
-            },
-            DispatcherPriority.Background
+            () => ScrollDialogToBottomWhenStable(requestID, sessionID, 0, double.NaN, 0),
+            DispatcherPriority.ContextIdle
         );
+    }
+
+    private void ScrollDialogToBottomWhenStable
+    (
+        int    requestID,
+        long?  sessionID,
+        int    attempt,
+        double previousExtent,
+        int    stablePasses
+    )
+    {
+        if (requestID != dialogScrollRequestID ||
+            sessionID != viewModel.CurrentSession?.ID ||
+            viewModel.IsLoadingDialog)
+            return;
+
+        if (dialogScrollViewer is null)
+        {
+            if (viewModel.Dialog.Entries.Count > 0)
+                DialogList.ScrollIntoView(viewModel.Dialog.Entries[^1]);
+
+            return;
+        }
+
+        var lastEntryRealized = viewModel.Dialog.Entries.Count == 0 ||
+                                DialogList.ContainerFromItem(viewModel.Dialog.Entries[^1]) is not null;
+        var markdownCurrent = DialogList.GetVisualDescendants()
+                                        .OfType<LiveMarkdownView>()
+                                        .All(view => view.IsRenderCurrent);
+        var extent = dialogScrollViewer.Extent.Height;
+
+        dialogScrollViewer.ScrollToEnd();
+
+        if (lastEntryRealized && markdownCurrent &&
+            !double.IsNaN(previousExtent) &&
+            Math.Abs(extent - previousExtent) < 0.5)
+            stablePasses++;
+        else
+            stablePasses = 0;
+
+        if (stablePasses >= 2 || attempt >= 31)
+            return;
+
+        Dispatcher.UIThread.Post
+        (
+            () => ScrollDialogToBottomWhenStable(requestID, sessionID, attempt + 1, extent, stablePasses),
+            DispatcherPriority.ContextIdle
+        );
+    }
 
     private void OnRollbackRound(object sender, RoutedEventArgs e)
     {

@@ -11,8 +11,11 @@ public sealed class LiveMarkdownViewTests
         var view = new LiveMarkdownView();
 
         view.Markdown = "# Title";
+        Assert.False(view.IsRenderCurrent);
+
         view.UpdateMarkdown();
         Assert.Equal("# Title", view.MarkdownBuilder.ToString());
+        Assert.True(view.IsRenderCurrent);
 
         view.Markdown = "# Title\n\nBody";
         view.UpdateMarkdown();
