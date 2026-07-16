@@ -183,18 +183,8 @@
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
                                                     <StackPanel Grid.Column="1"
-                                                                Margin="0, 0, 8, 0"
+                                                                Margin="0, 0, -16, 0"
                                                                 Orientation="Horizontal">
-                                                        <Button
-                                                            Padding="6,4"
-                                                            Margin="0,0,4,0"
-                                                            Command="{Binding DataContext.AddKnowledgeEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}">
-                                                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                <fa:FASymbolIcon Symbol="Add" />
-                                                                <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
-                                                            </StackPanel>
-                                                        </Button>
                                                         <Button Padding="6,4" Click="OnDeleteKnowledgeGroup" Tag="{Binding}">
                                                             <StackPanel Orientation="Horizontal" Spacing="6">
                                                                 <fa:FASymbolIcon Symbol="Delete" />
@@ -242,46 +232,49 @@
                                                     PlaceholderText="{Binding [Knowledge.Group.PlaceholderOptional], Source={x:Static loc:Loc.Instance}}"
                                                     Margin="0,0,0,12" />
 
-                                                <TextBlock
-                                                    Text="{Binding [Knowledge.Entry.Title], Source={x:Static loc:Loc.Instance}}"
-                                                    FontWeight="SemiBold"
-                                                    Margin="0,8,0,8" />
+                                                <Grid Margin="0,8,0,8">
+                                                     <Grid.ColumnDefinitions>
+                                                         <ColumnDefinition Width="*" />
+                                                         <ColumnDefinition Width="Auto" />
+                                                     </Grid.ColumnDefinitions>
+                                                     <TextBlock Grid.Column="0"
+                                                                Text="{Binding [Knowledge.Entry.Title], Source={x:Static loc:Loc.Instance}}"
+                                                                FontWeight="SemiBold"
+                                                                VerticalAlignment="Center" />
+                                                     <Button Grid.Column="1"
+                                                             Padding="6,4"
+                                                             Command="{Binding DataContext.AddKnowledgeEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                             CommandParameter="{Binding}">
+                                                         <StackPanel Orientation="Horizontal" Spacing="6">
+                                                             <fa:FASymbolIcon Symbol="Add" />
+                                                             <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                                                         </StackPanel>
+                                                     </Button>
+                                                 </Grid>
                                                 <ItemsControl ItemsSource="{Binding Entries}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Border Margin="0,0,0,6"
-                                                                    Padding="12,8"
-                                                                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                                    BorderThickness="1"
-                                                                    CornerRadius="4">
-                                                                <StackPanel>
-                                                                    <Grid>
-                                                                        <Grid.ColumnDefinitions>
-                                                                            <ColumnDefinition Width="*" />
-                                                                            <ColumnDefinition Width="Auto" />
-                                                                        </Grid.ColumnDefinitions>
-                                                                        <TextBlock Grid.Column="0"
-                                                                                Text="{Binding Remarks}"
-                                                                                FontWeight="SemiBold"
-                                                                                VerticalAlignment="Center" />
-                                                                        <StackPanel Grid.Column="1"
-                                                                                Orientation="Horizontal">
-                                                                            <Button
-                                                                                Content="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}"
-                                                                                Padding="6,4"
-                                                                                Margin="0,0,4,0"
-                                                                                Click="OnEditKnowledgeEntry"
-                                                                                Tag="{Binding}" />
-                                                                            <Button
-                                                                                Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
-                                                                                Padding="6,4"
-                                                                                Click="OnDeleteKnowledgeEntry"
-                                                                                Tag="{Binding}" />
-                                                                        </StackPanel>
-                                                                    </Grid>
-                                                                    <StackPanel
-                                                                        IsVisible="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                             <Expander Margin="0,0,0,6" IsExpanded="{Binding IsEditing, Mode=TwoWay}">
+                                                                 <Expander.Header>
+                                                                     <Grid>
+                                                                         <Grid.ColumnDefinitions>
+                                                                             <ColumnDefinition Width="*" />
+                                                                             <ColumnDefinition Width="Auto" />
+                                                                         </Grid.ColumnDefinitions>
+                                                                         <TextBlock Grid.Column="0"
+                                                                                 Text="{Binding Remarks}"
+                                                                                 FontWeight="SemiBold"
+                                                                                 VerticalAlignment="Center" />
+                                                                         <Button Grid.Column="1"
+                                                                                 Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                                                                 Padding="6,4"
+                                                                                 Margin="0,0,-16,0"
+                                                                                 Click="OnDeleteKnowledgeEntry"
+                                                                                 Tag="{Binding}" />
+                                                                     </Grid>
+                                                                 </Expander.Header>
+                                                                 <StackPanel>
+                                                             <StackPanel>
 
                                                                         <CheckBox
                                                                             Content="{Binding [Knowledge.Entry.Active], Source={x:Static loc:Loc.Instance}}"
@@ -334,7 +327,7 @@
                                                                             PlaceholderText="{Binding [Knowledge.Entry.KeywordsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
                                                                     </StackPanel>
                                                                 </StackPanel>
-                                                            </Border>
+                                                             </Expander>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
@@ -370,43 +363,34 @@
                             <ItemsControl ItemsSource="{Binding StateAttributes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,2"
-                                                Padding="12,8"
-                                                Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="6">
-                                            <StackPanel>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                        <TextBlock Text="{Binding DisplayName}"
-                                                                   FontWeight="SemiBold"
-                                                                   VerticalAlignment="Center"
-                                                                   Margin="0,0,8,0" />
-                                                        <TextBlock Text="{Binding Name}"
-                                                                   Foreground="Gray"
-                                                                   FontSize="12"
-                                                                   VerticalAlignment="Center" />
-                                                    </StackPanel>
-                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                        <Button
-                                                            Content="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}"
-                                                            Margin="0,0,4,0"
-                                                            Click="OnEditStateAttribute"
-                                                            Tag="{Binding}" />
-                                                        <Button
-                                                            Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
-                                                            Click="OnDeleteStateAttribute"
-                                                            Tag="{Binding}" />
-                                                    </StackPanel>
-                                                </Grid>
+                                         <Expander Margin="0,2" IsExpanded="{Binding IsEditing, Mode=TwoWay}">
+                                             <Expander.Header>
+                                                 <Grid>
+                                                     <Grid.ColumnDefinitions>
+                                                         <ColumnDefinition Width="*" />
+                                                         <ColumnDefinition Width="Auto" />
+                                                     </Grid.ColumnDefinitions>
+                                                     <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                         <TextBlock Text="{Binding DisplayName}"
+                                                                    FontWeight="SemiBold"
+                                                                    VerticalAlignment="Center"
+                                                                    Margin="0,0,8,0" />
+                                                         <TextBlock Text="{Binding Name}"
+                                                                    Foreground="Gray"
+                                                                    FontSize="12"
+                                                                    VerticalAlignment="Center" />
+                                                     </StackPanel>
+                                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,-16,0">
+                                                         <Button
+                                                             Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                                             Click="OnDeleteStateAttribute"
+                                                             Tag="{Binding}" />
+                                                     </StackPanel>
+                                                 </Grid>
+                                             </Expander.Header>
+                                             <StackPanel>
 
-                                                <StackPanel
-                                                    IsVisible="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                             <StackPanel>
                                                     <Grid Margin="0,8,0,4">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*" />
@@ -461,7 +445,7 @@
                                                                 ItemsSource="{Binding ValueTypes, Source={x:Static vm:EnumOptions.Instance}}"
                                                                 SelectedValue="{Binding ValueType}"
                                                                 SelectedValuePath="Value"
-                                                                DisplayMemberPath="Display" />
+                                                                DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1" Margin="4,0,0,0"
                                                                     IsVisible="{Binding IsNumericConfig, Converter={StaticResource BoolToVisibility}}">
@@ -479,7 +463,7 @@
                                                                 ItemsSource="{Binding Drivers, Source={x:Static vm:EnumOptions.Instance}}"
                                                                 SelectedValue="{Binding Driver}"
                                                                 SelectedValuePath="Value"
-                                                                DisplayMemberPath="Display" />
+                                                                DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
                                                         </StackPanel>
                                                     </Grid>
 
@@ -498,7 +482,7 @@
                                                         </StackPanel>
                                                         <fa:FANumberBox Value="{Binding MinValue}"
                                                                       Minimum="-999999"
-                                                                      Maximum="999999" />
+                                                                      Maximum="999999"  HorizontalAlignment="Stretch" />
                                                         <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
                                                             <TextBlock
                                                                 Text="{Binding [State.Attribute.MaxValue], Source={x:Static loc:Loc.Instance}}" />
@@ -511,7 +495,7 @@
                                                         </StackPanel>
                                                         <fa:FANumberBox Value="{Binding MaxValue}"
                                                                       Minimum="-999999"
-                                                                      Maximum="999999" />
+                                                                      Maximum="999999"  HorizontalAlignment="Stretch" />
                                                         <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
                                                             <TextBlock
                                                                 Text="{Binding [State.Attribute.Unit], Source={x:Static loc:Loc.Instance}}" />
@@ -573,7 +557,7 @@
                                                             ItemsSource="{Binding SystemTriggers, Source={x:Static vm:EnumOptions.Instance}}"
                                                             SelectedValue="{Binding Trigger}"
                                                             SelectedValuePath="Value"
-                                                            DisplayMemberPath="Display" />
+                                                            DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
 
                                                         <ItemsControl ItemsSource="{Binding Transitions}"
                                                                       Margin="0,8,0,0">
@@ -601,7 +585,7 @@
                                                                                 ItemsSource="{Binding TransitionMethods, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                 SelectedValue="{Binding Method}"
                                                                                 SelectedValuePath="Value"
-                                                                                DisplayMemberPath="Display" />
+                                                                                DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
 
                                                                             <StackPanel
                                                                                 IsVisible="{Binding IsRandom, Converter={StaticResource BoolToVisibility}}"
@@ -617,7 +601,7 @@
                                                                                         Margin="8,0,0,0" />
                                                                                 </StackPanel>
                                                                                 <fa:FANumberBox Value="{Binding Weight}"
-                                                                                    Minimum="0" />
+                                                                                    Minimum="0"  HorizontalAlignment="Stretch" />
                                                                             </StackPanel>
 
                                                                             <StackPanel
@@ -635,7 +619,7 @@
                                                                                 </StackPanel>
                                                                                 <components:PathComboBox
                                                                                     ItemsSource="{Binding DataContext.AvailableNumericAttributes, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                                    SelectedItem="{Binding AttributeName}" />
+                                                                                    SelectedItem="{Binding AttributeName}"  HorizontalAlignment="Stretch" />
                                                                                 <StackPanel Orientation="Horizontal"
                                                                                     Margin="0,8,0,4">
                                                                                     <TextBlock
@@ -663,7 +647,7 @@
                                                                                     ItemsSource="{Binding SwitchModes, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                     SelectedValue="{Binding SwitchMode}"
                                                                                     SelectedValuePath="Value"
-                                                                                    DisplayMemberPath="Display" />
+                                                                                    DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
                                                                             </StackPanel>
 
                                                                             <StackPanel
@@ -680,7 +664,7 @@
                                                                                         Margin="8,0,0,0" />
                                                                                 </StackPanel>
                                                                                 <fa:FANumberBox Value="{Binding Weight}"
-                                                                                    Minimum="0" />
+                                                                                    Minimum="0"  HorizontalAlignment="Stretch" />
                                                                             </StackPanel>
                                                                         </StackPanel>
                                                                     </Border>
@@ -696,7 +680,7 @@
 
                                                 </StackPanel>
                                             </StackPanel>
-                                        </Border>
+                                         </Expander>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -730,38 +714,25 @@
                                     <DataTemplate>
                                         <Expander Margin="0,0,0,8" IsExpanded="False">
                                             <Expander.Header>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="{Binding ID}"
-                                                               Foreground="Gray"
-                                                               FontSize="12"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,8,0" />
-                                                    <TextBlock Grid.Column="1"
-                                                               Text="{Binding Name}"
-                                                               FontWeight="SemiBold"
-                                                               VerticalAlignment="Center" />
-                                                    <StackPanel Grid.Column="2"
-                                                                Orientation="Horizontal"
-                                                                Margin="0, 0, 8, 0">
-                                                        <Button
-                                                            Content="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}"
-                                                            Padding="6,4"
-                                                            Margin="0,0,4,0"
-                                                            Click="OnEditCharacterCategory"
-                                                            Tag="{Binding}" />
-                                                        <Button
-                                                            Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
-                                                            Padding="6,4"
-                                                            Click="OnDeleteCharacterCategory"
-                                                            Tag="{Binding}" />
-                                                    </StackPanel>
-                                                </Grid>
+                                                 <Grid>
+                                                     <Grid.ColumnDefinitions>
+                                                         <ColumnDefinition Width="*" />
+                                                         <ColumnDefinition Width="Auto" />
+                                                     </Grid.ColumnDefinitions>
+                                                     <TextBlock Grid.Column="0"
+                                                                Text="{Binding Name}"
+                                                                FontWeight="SemiBold"
+                                                                VerticalAlignment="Center" />
+                                                     <StackPanel Grid.Column="1"
+                                                                 Orientation="Horizontal"
+                                                                 Margin="0, 0, -16, 0">
+                                                         <Button
+                                                             Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                                             Padding="6,4"
+                                                             Click="OnDeleteCharacterCategory"
+                                                             Tag="{Binding}" />
+                                                     </StackPanel>
+                                                 </Grid>
                                             </Expander.Header>
 
                                             <StackPanel>
@@ -845,47 +816,37 @@
                                                 <ItemsControl ItemsSource="{Binding StateAttributes}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Border Margin="0,0,0,6"
-                                                                    Padding="10,6"
-                                                                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                                    BorderThickness="1"
-                                                                    CornerRadius="4">
-                                                                <StackPanel>
-                                                                    <Grid>
-                                                                        <Grid.ColumnDefinitions>
-                                                                            <ColumnDefinition Width="*" />
-                                                                            <ColumnDefinition Width="Auto" />
-                                                                        </Grid.ColumnDefinitions>
-                                                                        <StackPanel Grid.Column="0"
-                                                                                Orientation="Horizontal">
-                                                                            <TextBlock Text="{Binding DisplayName}"
-                                                                                    FontWeight="SemiBold"
-                                                                                    VerticalAlignment="Center"
-                                                                                    Margin="0,0,8,0" />
-                                                                            <TextBlock Text="{Binding Name}"
-                                                                                    Foreground="Gray"
-                                                                                    FontSize="12"
-                                                                                    VerticalAlignment="Center" />
-                                                                        </StackPanel>
-                                                                        <StackPanel Grid.Column="1"
-                                                                                Orientation="Horizontal">
-                                                                            <Button
-                                                                                Content="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}"
-                                                                                Padding="6,4"
-                                                                                Margin="0,0,4,0"
-                                                                                Click="OnEditStateAttribute"
-                                                                                Tag="{Binding}" />
-                                                                            <Button
-                                                                                Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
-                                                                                Padding="6,4"
-                                                                                Click="OnDeleteStateAttribute"
-                                                                                Tag="{Binding}" />
-                                                                        </StackPanel>
-                                                                    </Grid>
+                                                             <Expander Margin="0,0,0,6" IsExpanded="{Binding IsEditing, Mode=TwoWay}">
+                                                                 <Expander.Header>
+                                                                     <Grid>
+                                                                         <Grid.ColumnDefinitions>
+                                                                             <ColumnDefinition Width="*" />
+                                                                             <ColumnDefinition Width="Auto" />
+                                                                         </Grid.ColumnDefinitions>
+                                                                         <StackPanel Grid.Column="0"
+                                                                                 Orientation="Horizontal">
+                                                                             <TextBlock Text="{Binding DisplayName}"
+                                                                                     FontWeight="SemiBold"
+                                                                                     VerticalAlignment="Center"
+                                                                                     Margin="0,0,8,0" />
+                                                                             <TextBlock Text="{Binding Name}"
+                                                                                     Foreground="Gray"
+                                                                                     FontSize="12"
+                                                                                     VerticalAlignment="Center" />
+                                                                         </StackPanel>
+                                                                         <StackPanel Grid.Column="1"
+                                                                                 Orientation="Horizontal" Margin="0,0,-16,0">
+                                                                             <Button
+                                                                                 Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                                                                 Padding="6,4"
+                                                                                 Click="OnDeleteStateAttribute"
+                                                                                 Tag="{Binding}" />
+                                                                         </StackPanel>
+                                                                     </Grid>
+                                                                 </Expander.Header>
+                                                                 <StackPanel>
 
-                                                                    <StackPanel
-                                                                        IsVisible="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                                 <StackPanel>
                                                                         <Grid Margin="0,8,0,4">
                                                                             <Grid.ColumnDefinitions>
                                                                                 <ColumnDefinition Width="*" />
@@ -946,7 +907,7 @@
                                                                                     ItemsSource="{Binding ValueTypes, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                     SelectedValue="{Binding ValueType}"
                                                                                     SelectedValuePath="Value"
-                                                                                    DisplayMemberPath="Display" />
+                                                                                    DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
                                                                             </StackPanel>
                                                                             <StackPanel Grid.Column="1"
                                                                                     Margin="4,0,0,0"
@@ -966,7 +927,7 @@
                                                                                     ItemsSource="{Binding Drivers, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                     SelectedValue="{Binding Driver}"
                                                                                     SelectedValuePath="Value"
-                                                                                    DisplayMemberPath="Display" />
+                                                                                    DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
                                                                             </StackPanel>
                                                                         </Grid>
 
@@ -985,7 +946,7 @@
                                                                             </StackPanel>
                                                                             <fa:FANumberBox Value="{Binding MinValue}"
                                                                                     Minimum="-999999"
-                                                                                    Maximum="999999" />
+                                                                                    Maximum="999999"  HorizontalAlignment="Stretch" />
                                                                             <StackPanel Orientation="Horizontal"
                                                                                     Margin="0,8,0,4">
                                                                                 <TextBlock
@@ -999,7 +960,7 @@
                                                                             </StackPanel>
                                                                             <fa:FANumberBox Value="{Binding MaxValue}"
                                                                                     Minimum="-999999"
-                                                                                    Maximum="999999" />
+                                                                                    Maximum="999999"  HorizontalAlignment="Stretch" />
                                                                             <StackPanel Orientation="Horizontal"
                                                                                     Margin="0,8,0,4">
                                                                                 <TextBlock
@@ -1064,7 +1025,7 @@
                                                                                 ItemsSource="{Binding SystemTriggers, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                 SelectedValue="{Binding Trigger}"
                                                                                 SelectedValuePath="Value"
-                                                                                DisplayMemberPath="Display" />
+                                                                                DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
 
                                                                             <ItemsControl
                                                                                 ItemsSource="{Binding Transitions}"
@@ -1098,7 +1059,7 @@
                                                                                                     ItemsSource="{Binding TransitionMethods, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                                     SelectedValue="{Binding Method}"
                                                                                                     SelectedValuePath="Value"
-                                                                                                    DisplayMemberPath="Display" />
+                                                                                                    DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
 
                                                                                                 <StackPanel
                                                                                                     IsVisible="{Binding IsRandom, Converter={StaticResource BoolToVisibility}}"
@@ -1117,7 +1078,7 @@
                                                                                                     </StackPanel>
                                                                                                     <fa:FANumberBox
                                                                                                         Value="{Binding Weight}"
-                                                                                                        Minimum="0" />
+                                                                                                        Minimum="0"  HorizontalAlignment="Stretch" />
                                                                                                 </StackPanel>
 
                                                                                                 <StackPanel
@@ -1137,7 +1098,7 @@
                                                                                                     </StackPanel>
                                                                                                     <components:PathComboBox
                                                                                                         ItemsSource="{Binding DataContext.AvailableNumericAttributes, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                                                        SelectedItem="{Binding AttributeName}" />
+                                                                                                        SelectedItem="{Binding AttributeName}"  HorizontalAlignment="Stretch" />
                                                                                                     <StackPanel
                                                                                                         Orientation="Horizontal"
                                                                                                         Margin="0,8,0,4">
@@ -1169,7 +1130,7 @@
                                                                                                         ItemsSource="{Binding SwitchModes, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                                         SelectedValue="{Binding SwitchMode}"
                                                                                                         SelectedValuePath="Value"
-                                                                                                        DisplayMemberPath="Display" />
+                                                                                                        DisplayMemberPath="Display"  HorizontalAlignment="Stretch" />
                                                                                                 </StackPanel>
 
                                                                                                 <StackPanel
@@ -1189,7 +1150,7 @@
                                                                                                     </StackPanel>
                                                                                                     <fa:FANumberBox
                                                                                                         Value="{Binding Weight}"
-                                                                                                        Minimum="0" />
+                                                                                                        Minimum="0"  HorizontalAlignment="Stretch" />
                                                                                                 </StackPanel>
                                                                                             </StackPanel>
                                                                                         </Border>
@@ -1204,7 +1165,7 @@
                                                                             DeletePhaseCommand="{Binding DataContext.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                                                                     </StackPanel>
                                                                 </StackPanel>
-                                                            </Border>
+                                                             </Expander>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>

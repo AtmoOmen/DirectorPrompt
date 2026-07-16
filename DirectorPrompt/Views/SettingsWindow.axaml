@@ -145,7 +145,7 @@
                                                     </StackPanel>
                                                     <Button Grid.Column="1"
                                                                Padding="6,4"
-                                                               Margin="0,0,8,0"
+                                                               Margin="0,0,-16,0"
                                                                Click="OnRemoveProvider"
                                                                Tag="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
@@ -272,7 +272,7 @@
                                                     </StackPanel>
                                                     <Button Grid.Column="1"
                                                                Padding="6,4"
-                                                               Margin="0,0,8,0"
+                                                               Margin="0,0,-16,0"
                                                                Click="OnRemoveModel"
                                                                Tag="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
@@ -478,7 +478,7 @@
                                                                VerticalAlignment="Center" />
                                                     <Button Grid.Column="1"
                                                                Padding="6,4"
-                                                               Margin="0,0,8,0"
+                                                               Margin="0,0,-16,0"
                                                                Click="OnRemovePrompt"
                                                                Tag="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
