@@ -2,7 +2,6 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
 using DirectorPrompt.Localization;
 using DirectorPrompt.ViewModels;
@@ -37,13 +36,6 @@ public partial class PhaseEditControl : UserControl
         get => GetValue(DeletePhaseCommandProperty);
         set => SetValue(DeletePhaseCommandProperty, value);
     }
-
-    private Panel Root =>
-        this.GetLogicalDescendants().OfType<Panel>().First(control => control.Name == "RootPanel");
-
-    static PhaseEditControl() =>
-        PhaseSourceProperty.Changed.AddClassHandler<PhaseEditControl>
-            (static (control, _) => control.Root.DataContext = control.PhaseSource);
 
     public PhaseEditControl() =>
         AvaloniaXamlLoader.Load(this);

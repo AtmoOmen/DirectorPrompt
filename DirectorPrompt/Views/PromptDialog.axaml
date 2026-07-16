@@ -8,7 +8,7 @@
                        CanResize="False"
                        ShowAsDialog="True"
                        ShowInTaskbar="False"
-                       Icon="/Assets/Images/Icon-NoBackground.png"
+                       Icon="/Assets/Images/Icon-NoBackground.ico"
                        WindowStartupLocation="CenterOwner"
                        TransparencyLevelHint="Mica">
     <Grid RowDefinitions="Auto,Auto,Auto">

@@ -15,7 +15,7 @@
                        Height="720"
                        MinWidth="800"
                        MinHeight="600"
-                       Icon="/Assets/Images/Icon-NoBackground.png"
+                       Icon="/Assets/Images/Icon-NoBackground.ico"
                        TransparencyLevelHint="Mica">
     <Grid>
         <Grid.RowDefinitions>
@@ -243,7 +243,7 @@
                                                                VerticalAlignment="Center" />
                                                     <Button Grid.Column="1"
                                                             Padding="6,4"
-                                                            Command="{Binding DataContext?.AddKnowledgeEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            Command="{Binding DataContext.AddKnowledgeEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Add" />
@@ -622,7 +622,7 @@
                                                                                         Margin="8,0,0,0" />
                                                                                 </StackPanel>
                                                                                 <components:PathComboBox
-                                                                                    ItemsSource="{Binding DataContext?.AvailableNumericAttributes, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                                    ItemsSource="{Binding DataContext.AvailableNumericAttributes, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                                     SelectedItem="{Binding AttributeName}"
                                                                                     HorizontalAlignment="Stretch" />
                                                                                 <StackPanel Orientation="Horizontal"
@@ -683,8 +683,8 @@
 
                                                     <components:PhaseEditControl
                                                         PhaseSource="{Binding}"
-                                                        AddPhaseCommand="{Binding DataContext?.AddPhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        DeletePhaseCommand="{Binding DataContext?.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                        AddPhaseCommand="{Binding DataContext.AddPhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        DeletePhaseCommand="{Binding DataContext.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
 
                                                 </StackPanel>
                                             </StackPanel>
@@ -1116,7 +1116,7 @@
                                                                                                             Margin="8,0,0,0" />
                                                                                                     </StackPanel>
                                                                                                     <components:PathComboBox
-                                                                                                        ItemsSource="{Binding DataContext?.AvailableNumericAttributes, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                                                        ItemsSource="{Binding DataContext.AvailableNumericAttributes, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                                                         SelectedItem="{Binding AttributeName}"
                                                                                                         HorizontalAlignment="Stretch" />
                                                                                                     <StackPanel
@@ -1183,8 +1183,8 @@
 
                                                                         <components:PhaseEditControl
                                                                             PhaseSource="{Binding}"
-                                                                            AddPhaseCommand="{Binding DataContext?.AddPhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                            DeletePhaseCommand="{Binding DataContext?.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                            AddPhaseCommand="{Binding DataContext.AddPhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                            DeletePhaseCommand="{Binding DataContext.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                                                                     </StackPanel>
                                                                 </StackPanel>
                                                             </Expander>

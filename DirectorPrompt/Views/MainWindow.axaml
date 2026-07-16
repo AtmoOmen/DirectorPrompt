@@ -15,7 +15,7 @@
                        Height="800"
                        MinWidth="960"
                        MinHeight="600"
-                       Icon="/Assets/Images/Icon-NoBackground.png"
+                       Icon="/Assets/Images/Icon-NoBackground.ico"
                        TransparencyLevelHint="Mica">
     <windowing:FAAppWindow.Styles>
         <Style Selector="Button.sidebar-toggle">
@@ -299,7 +299,7 @@
                                                     Click="OnMoreButtonClick"
                                                     Padding="6,2"
                                                     VerticalAlignment="Top"
-                                                    IsEnabled="{Binding DataContext?.IsNotProcessing, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                    IsEnabled="{Binding DataContext.IsNotProcessing, RelativeSource={RelativeSource AncestorType=Window}}">
                                                 <fa:FASymbolIcon Symbol="MoreVertical" />
                                                 <Button.ContextMenu>
                                                     <ContextMenu>
@@ -389,7 +389,7 @@
                                                     <Button
                                                         Padding="12,6"
                                                         Margin="0,0,4,0"
-                                                        Command="{Binding DataContext?.SaveEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        Command="{Binding DataContext.SaveEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Save" />
@@ -399,7 +399,7 @@
                                                     </Button>
                                                     <Button
                                                         Padding="12,6"
-                                                        Command="{Binding DataContext?.CancelEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        Command="{Binding DataContext.CancelEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}">
                                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                                             <fa:FASymbolIcon Symbol="Dismiss" />
@@ -896,12 +896,12 @@
                                                                                 Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
                                                                                 Padding="12,6"
                                                                                 Margin="0,0,4,0"
-                                                                                Command="{Binding DataContext?.SaveMemoryEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                Command="{Binding DataContext.SaveMemoryEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                                 CommandParameter="{Binding}" />
                                                                             <Button
                                                                                 Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
                                                                                 Padding="12,6"
-                                                                                Command="{Binding DataContext?.CancelMemoryEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                Command="{Binding DataContext.CancelMemoryEditCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                                 CommandParameter="{Binding}" />
                                                                         </StackPanel>
                                                                     </StackPanel>

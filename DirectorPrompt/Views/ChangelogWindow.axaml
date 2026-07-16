@@ -4,7 +4,7 @@
                        xmlns:components="using:DirectorPrompt.Views.Components"
                        xmlns:windowing="using:FluentAvalonia.UI.Windowing"
                        Width="720" Height="640" MinWidth="480" MinHeight="360"
-                       Icon="/Assets/Images/Icon-NoBackground.png"
+                       Icon="/Assets/Images/Icon-NoBackground.ico"
                        WindowStartupLocation="CenterOwner" TransparencyLevelHint="Mica">
     <Grid RowDefinitions="*,Auto" Margin="20">
         <ScrollViewer Grid.Row="0">

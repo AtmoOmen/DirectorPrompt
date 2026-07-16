@@ -27,7 +27,8 @@
                    FontSize="11"
                    Foreground="Gray"
                    Margin="0,0,0,8" />
-        <ItemsControl ItemsSource="{Binding Phases}">
+        <ItemsControl x:Name="PhaseItems"
+                      ItemsSource="{Binding PhaseSource.Phases, RelativeSource={RelativeSource AncestorType=components:PhaseEditControl}}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border Margin="0,0,0,6"

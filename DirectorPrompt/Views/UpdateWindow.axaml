@@ -2,9 +2,13 @@
                        xmlns="https://github.com/avaloniaui"
                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                        xmlns:windowing="using:FluentAvalonia.UI.Windowing"
-                       Width="480" SizeToContent="Height" CanResize="False"
-                       ShowAsDialog="True" Icon="/Assets/Images/Icon-NoBackground.png"
-                       WindowStartupLocation="CenterScreen" TransparencyLevelHint="Mica">
+                       Width="480" 
+                       SizeToContent="Height"
+                       CanResize="False"
+                       ShowAsDialog="True"
+                       Icon="/Assets/Images/Icon-NoBackground.ico"
+                       WindowStartupLocation="CenterScreen"
+                       TransparencyLevelHint="Mica">
     <StackPanel Margin="24" Spacing="12">
         <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
         <StackPanel x:Name="ProgressPanel" Spacing="8">
