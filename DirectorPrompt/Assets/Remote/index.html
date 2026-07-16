@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <title>DirectorPrompt</title>
+    <style>
+        html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#111;color-scheme:dark;touch-action:none}canvas{display:block;width:100%;height:100%;object-fit:contain;outline:0;touch-action:none}textarea{position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01;border:0;padding:0}#keyboardButton{display:none;position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(76px,calc(env(safe-area-inset-bottom) + 76px));width:48px;height:48px;border:1px solid #777;border-radius:50%;background:#292929;color:#fff;font-size:22px;line-height:1;box-shadow:0 2px 8px #0008}@media(pointer:coarse){#keyboardButton{display:block}}
+    </style>
+</head>
+<body>
+<canvas id="screen" tabindex="0"></canvas>
+<textarea id="keyboard" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+<button id="keyboardButton" type="button" title="键盘" aria-label="键盘">⌨</button>
+<script>
+const canvas=document.getElementById('screen');
+const keyboard=document.getElementById('keyboard');
+const keyboardButton=document.getElementById('keyboardButton');
+const context=canvas.getContext('2d');
+let socket;
+let frame;
+let buttons=0;
+let touch;
+let composing=false;
+
+function connect(){
+    socket=new WebSocket(`ws://${location.host}/remote`);
+    socket.binaryType='arraybuffer';
+    socket.onopen=()=>resize();
+    socket.onclose=()=>setTimeout(connect,1000);
+    socket.onmessage=event=>{
+        if(typeof event.data==='string'){
+            const parts=event.data.split(':');
+            if(parts[0]==='frame'){
+                frame={sequence:parts[1],width:+parts[2],height:+parts[3],stride:+parts[4]};
+            }
+            return;
+        }
+        if(!frame)return;
+        const pixels=new Uint8ClampedArray(event.data);
+        canvas.width=frame.width;
+        canvas.height=frame.height;
+        context.putImageData(new ImageData(pixels,frame.width,frame.height),0,0);
+        send(`frame-received:${frame.sequence}`);
+        frame=null;
+    };
+}
+
+function send(message){
+    if(socket?.readyState===WebSocket.OPEN)socket.send(message);
+}
+
+function modifiers(event){
+    const values=[];
+    if(event.altKey)values.push('Alt');
+    if(event.ctrlKey)values.push('Control');
+    if(event.shiftKey)values.push('Shift');
+    if(event.metaKey)values.push('Windows');
+    if(buttons&1)values.push('LeftMouseButton');
+    if(buttons&2)values.push('RightMouseButton');
+    if(buttons&4)values.push('MiddleMouseButton');
+    return values.join(',');
+}
+
+function point(event){
+    const rect=canvas.getBoundingClientRect();
+    return [(event.clientX-rect.left)*canvas.width/rect.width,(event.clientY-rect.top)*canvas.height/rect.height];
+}
+
+function button(value){
+    return value===0?'Left':value===1?'Middle':value===2?'Right':'None';
+}
+
+function pointerMessage(kind,event){
+    const [x,y]=point(event);
+    send(`${kind}:${modifiers(event)}:${x}:${y}:${button(event.button)}`);
+}
+
+canvas.addEventListener('pointerdown',event=>{
+    if(event.pointerType==='touch'){
+        canvas.setPointerCapture(event.pointerId);
+        touch={pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,lastX:event.clientX,lastY:event.clientY,moved:false};
+        return;
+    }
+    buttons=event.buttons;
+    canvas.setPointerCapture(event.pointerId);
+    pointerMessage('pointer-pressed',event);
+    keyboard.focus({preventScroll:true});
+});
+canvas.addEventListener('pointermove',event=>{
+    if(event.pointerType==='touch'&&touch?.pointerId===event.pointerId){
+        const dx=event.clientX-touch.lastX;
+        const dy=event.clientY-touch.lastY;
+        if(Math.hypot(event.clientX-touch.startX,event.clientY-touch.startY)>6)touch.moved=true;
+        if(touch.moved){
+            const [x,y]=point(event);
+            send(`scroll::${x}:${y}:${dx/30}:${dy/30}`);
+        }
+        touch.lastX=event.clientX;
+        touch.lastY=event.clientY;
+        return;
+    }
+    buttons=event.buttons;
+    const [x,y]=point(event);
+    send(`pointer-moved:${modifiers(event)}:${x}:${y}`);
+});
+canvas.addEventListener('pointerup',event=>{
+    if(event.pointerType==='touch'&&touch?.pointerId===event.pointerId){
+        if(!touch.moved){
+            const [x,y]=point(event);
+            send(`pointer-pressed::${x}:${y}:Left`);
+            send(`pointer-released::${x}:${y}:Left`);
+        }
+        touch=null;
+        return;
+    }
+    pointerMessage('pointer-released',event);
+    buttons=event.buttons;
+});
+canvas.addEventListener('wheel',event=>{
+    event.preventDefault();
+    const [x,y]=point(event);
+    send(`scroll:${modifiers(event)}:${x}:${y}:${-event.deltaX/100}:${-event.deltaY/100}`);
+},{passive:false});
+canvas.addEventListener('contextmenu',event=>event.preventDefault());
+canvas.addEventListener('pointercancel',()=>touch=null);
+keyboardButton.addEventListener('click',()=>keyboard.focus({preventScroll:true}));
+
+keyboard.addEventListener('keydown',event=>{
+    if(event.isComposing)return;
+    send(`key:down:${modifiers(event)}:${event.key}:${event.code}`);
+    if(event.key==='Tab'||event.key.startsWith('Arrow')||event.key==='Backspace'||event.key==='Delete'||event.key==='Enter')event.preventDefault();
+});
+keyboard.addEventListener('keyup',event=>{
+    if(!event.isComposing)send(`key:up:${modifiers(event)}:${event.key}:${event.code}`);
+});
+keyboard.addEventListener('compositionstart',()=>composing=true);
+keyboard.addEventListener('compositionend',event=>{
+    composing=false;
+    if(event.data)send(`text:${encodeURIComponent(event.data)}`);
+    keyboard.value='';
+});
+keyboard.addEventListener('input',()=>{
+    if(composing)return;
+    if(keyboard.value)send(`text:${encodeURIComponent(keyboard.value)}`);
+    keyboard.value='';
+});
+
+function resize(){
+    send(`resize:${Math.max(360,innerWidth)}:${Math.max(480,innerHeight)}`);
+}
+
+addEventListener('resize',resize);
+connect();
+</script>
+</body>
+</html>

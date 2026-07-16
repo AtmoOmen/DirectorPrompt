@@ -664,6 +664,10 @@
                                                            SelectedValue="{Binding SelectedLanguage}"
                                                            HorizontalAlignment="Stretch"
                                                            Margin="0,0,0,12" />
+                            <ToggleSwitch x:Name="LanSharingToggle"
+                                          IsChecked="{Binding IsLanSharingEnabled}"
+                                          OnContent="{Binding [Settings.Others.LanSharing], Source={x:Static loc:Loc.Instance}}"
+                                          OffContent="{Binding [Settings.Others.LanSharing], Source={x:Static loc:Loc.Instance}}" />
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>

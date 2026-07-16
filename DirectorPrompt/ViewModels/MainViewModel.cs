@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Text;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -30,7 +31,8 @@ public sealed partial class MainViewModel
     NotificationService  notificationService,
     IUserSettingsStore   userSettingsStore,
     IWindowService       windowService,
-    IFilePickerService   filePickerService
+    IFilePickerService   filePickerService,
+    ILanSharingService   lanSharingService
 )
     : ObservableObject
 {
@@ -84,6 +86,8 @@ public sealed partial class MainViewModel
     public bool IsSessionSelected => CurrentSession is not null;
 
     public bool ShowPipelineStages => IsProcessing || HasError;
+
+    public ILanSharingService LanSharingService => lanSharingService;
 
     public DialogViewModel Dialog { get; } = new();
 
@@ -441,6 +445,15 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private Task OpenSettingsAsync() =>
         windowService.ShowSettingsAsync();
+
+    [RelayCommand]
+    private void OpenLanSharing()
+    {
+        if (lanSharingService.Endpoint is null)
+            return;
+
+        Process.Start(new ProcessStartInfo(lanSharingService.Endpoint.AbsoluteUri) { UseShellExecute = true });
+    }
 
     private void ResetPipelineStages() =>
         PipelineStages.Clear();

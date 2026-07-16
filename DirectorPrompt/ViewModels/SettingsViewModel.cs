@@ -27,6 +27,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string SelectedLanguage { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial bool IsLanSharingEnabled { get; set; }
+
     public ObservableCollection<ProviderSettingViewModel> Providers { get; }
 
     public ObservableCollection<ModelSettingViewModel> Models { get; }
@@ -58,6 +61,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         this.userSettingsStore   = userSettingsStore;
 
         SelectedLanguage = userSettings.Localization.Language;
+        IsLanSharingEnabled = userSettings.RemoteControl.IsLanSharingEnabled;
 
         if (string.IsNullOrEmpty(SelectedLanguage))
             SelectedLanguage = localizationService.CurrentLanguage;
@@ -172,6 +176,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             userSettings.Localization.Language = SelectedLanguage;
+            userSettings.RemoteControl.IsLanSharingEnabled = IsLanSharingEnabled;
 
             await userSettingsStore.SaveAsync(userSettings);
 

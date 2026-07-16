@@ -9,4 +9,6 @@ public class UserSettings
     public LocalizationConfig Localization { get; set; } = new();
 
     public SessionStateConfig Session { get; set; } = new();
+
+    public RemoteControlConfig RemoteControl { get; set; } = new();
 }

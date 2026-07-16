@@ -16,6 +16,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Avalonia"/>
         <PackageReference Include="Avalonia.Desktop"/>
         <PackageReference Include="CommunityToolkit.Mvvm"/>
@@ -58,6 +62,7 @@
         <AvaloniaResource Include="..\Assets\Images\*.png">
             <Link>Assets\Images\%(Filename)%(Extension)</Link>
         </AvaloniaResource>
+        <EmbeddedResource Include="Assets\Remote\index.html" />
     </ItemGroup>
 
 </Project>

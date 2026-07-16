@@ -87,6 +87,17 @@ public class App : Application
             desktop.MainWindow   = mainWindow;
             desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
             mainWindow.Show();
+
+            var lanSharingService = host.Services.GetRequiredService<ILanSharingService>();
+
+            try
+            {
+                await lanSharingService.ApplyAsync(host.Services.GetRequiredService<UserSettings>().RemoteControl.IsLanSharingEnabled);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "启动局域网共享失败");
+            }
         }
         catch (Exception ex)
         {
@@ -239,6 +250,7 @@ public class App : Application
         services.AddSingleton<NotificationService>();
         services.AddSingleton<IWindowService, WindowService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
+        services.AddSingleton<ILanSharingService, LanSharingService>();
 
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();

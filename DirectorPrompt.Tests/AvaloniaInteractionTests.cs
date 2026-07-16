@@ -1,12 +1,15 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Avalonia.Controls.Shapes;
 using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Services;
 using DirectorPrompt.ViewModels;
 using DirectorPrompt.Views;
 using DirectorPrompt.Views.Components;
@@ -50,6 +53,105 @@ public sealed class AvaloniaInteractionTests
         Assert.False(panels["ProvidersPanel"].IsVisible);
 
         window.Close();
+    }
+
+    [AvaloniaFact]
+    public void SettingsOthersPanelContainsLanSharingToggle()
+    {
+        var window = new SettingsWindow();
+
+        Assert.NotNull(window.FindControl<ToggleSwitch>("LanSharingToggle"));
+    }
+
+    [AvaloniaFact]
+    public void RemoteMainWindowUsesMobileLayout()
+    {
+        var viewModel = new MainViewModel
+        (
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            new LanSharingStub()
+        );
+        var entry = new DialogEntryViewModel { Content = "Message" };
+        viewModel.Dialog.Entries.Add(entry);
+        var remoteWindow = new MainWindow(viewModel, false);
+        var content      = Assert.IsAssignableFrom<Control>(remoteWindow.Content);
+        remoteWindow.Content = null;
+        content.DataContext  = viewModel;
+
+        var host = new Window { Width = 390, Height = 700, Content = content };
+        host.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        string[] controlNames =
+        [
+            "MobileNavigation",
+            "EditProjectButton",
+            "DetailsPanel",
+            "MobileDetailsButton",
+            "MobileSessionsButton",
+            "SessionSidebar",
+            "MobileConversationButton",
+            "MobileMessageRail",
+            "DialogListBox",
+            "MobileProjectToolbar"
+        ];
+        var controls = content.GetLogicalDescendants()
+                              .OfType<Control>()
+                              .Where(control => control.Name is not null && controlNames.Contains(control.Name))
+                              .ToDictionary(static control => control.Name!);
+
+        Assert.True(controls["MobileNavigation"].IsVisible);
+        Assert.False(controls["EditProjectButton"].IsVisible);
+        Assert.False(controls["DetailsPanel"].IsVisible);
+        Assert.True(controls["MobileProjectToolbar"].IsVisible);
+        Assert.Equal(1, Grid.GetColumn(controls["MobileMessageRail"]));
+
+        ((ListBox)controls["DialogListBox"]).ScrollIntoView(entry);
+        Dispatcher.UIThread.RunJobs();
+        var messageMenuButton = content.GetVisualDescendants()
+                                       .OfType<Button>()
+                                       .First(button => button.Name == "MessageMenuButton");
+        Assert.True(messageMenuButton.IsEnabled);
+        messageMenuButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.True(entry.IsMenuOpen);
+        var messageActionsPanel = content.GetVisualDescendants()
+                                         .OfType<Border>()
+                                         .First(border => border.Name == "MessageActionsPanel");
+        Assert.True(messageActionsPanel.IsHitTestVisible);
+        Assert.Contains("open", messageActionsPanel.Classes);
+        Assert.Same(messageActionsPanel.Parent, messageMenuButton.Parent);
+
+        var sessionsWidth     = controls["MobileSessionsButton"].Bounds.Width;
+        var conversationWidth = controls["MobileConversationButton"].Bounds.Width;
+        var detailsWidth      = controls["MobileDetailsButton"].Bounds.Width;
+        Assert.InRange(Math.Abs(sessionsWidth - conversationWidth), 0, 1);
+        Assert.InRange(Math.Abs(conversationWidth - detailsWidth), 0, 1);
+
+        controls["MobileDetailsButton"].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.True(controls["DetailsPanel"].IsVisible);
+
+        controls["MobileSessionsButton"].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.True(controls["SessionSidebar"].IsVisible);
+
+        controls["MobileConversationButton"].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.False(controls["SessionSidebar"].IsVisible);
+        Assert.False(controls["DetailsPanel"].IsVisible);
+        Assert.True(controls["MobileMessageRail"].IsVisible);
+        Assert.True(((ToggleButton)controls["MobileConversationButton"]).IsChecked);
+
+        host.Close();
     }
 
     [AvaloniaFact]
@@ -148,5 +250,21 @@ public sealed class AvaloniaInteractionTests
         Assert.Equal(memoryPanel.SelectedTag, tagComboBox.SelectedItem);
 
         window.Close();
+    }
+
+    private sealed class LanSharingStub : ILanSharingService
+    {
+        public Uri? Endpoint => null;
+
+        public bool IsActive => false;
+
+        public event PropertyChangedEventHandler? PropertyChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public Task ApplyAsync(bool enabled, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

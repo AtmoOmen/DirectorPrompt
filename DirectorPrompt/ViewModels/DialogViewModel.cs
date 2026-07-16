@@ -37,6 +37,19 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
         }
     } = string.Empty;
 
+    public bool IsMenuOpen
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMenuOpen)));
+        }
+    }
+
     public string Preview
     {
         get
