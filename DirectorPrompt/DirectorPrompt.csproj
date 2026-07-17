@@ -30,11 +30,6 @@
         </PackageReference>
         <PackageReference Include="FluentAvaloniaUI"/>
         <PackageReference Include="LiveMarkdown.Avalonia"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json"/>
-        <PackageReference Include="Microsoft.Extensions.Hosting"/>
-        <PackageReference Include="Microsoft.Extensions.Options"/>
-        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
         <PackageReference Include="Serilog"/>
         <PackageReference Include="Serilog.Extensions.Hosting"/>
         <PackageReference Include="System.Drawing.Common"/>

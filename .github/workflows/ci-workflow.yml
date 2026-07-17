@@ -13,18 +13,18 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -32,7 +32,7 @@ jobs:
         run: dotnet restore DirectorPrompt.slnx
 
       - name: Run Tests
-        run: dotnet test DirectorPrompt.slnx -c Release --no-restore
+        run: dotnet test --solution DirectorPrompt.slnx -c Release --no-restore
 
       - name: Define VERSION
         run: |
@@ -90,13 +90,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
@@ -104,7 +104,7 @@ jobs:
         run: dotnet restore DirectorPrompt.slnx
 
       - name: Run Tests
-        run: dotnet test DirectorPrompt.slnx -c Release --no-restore
+        run: dotnet test --solution DirectorPrompt.slnx -c Release --no-restore
 
       - name: Define VERSION
         run: |
@@ -123,7 +123,7 @@ jobs:
         run: .\scripts\CreateHashList.ps1 .\bin\Release
 
       - name: Upload artifact
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v4
         with:
           name: directorprompt-artifact
           path: bin\Release\

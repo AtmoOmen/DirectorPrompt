@@ -96,26 +96,23 @@ public sealed class AvaloniaInteractionTests
 
         string[] controlNames =
         [
-            "MobileNavigation",
+            "MobileSessionsToggle",
             "EditProjectButton",
             "DetailsPanel",
-            "MobileDetailsButton",
-            "MobileSessionsButton",
+            "MobileDetailsToggle",
+            "MobileMoreActionsButton",
             "SessionSidebar",
-            "MobileConversationButton",
             "MobileMessageRail",
-            "DialogListBox",
-            "MobileProjectToolbar"
+            "DialogListBox"
         ];
         var controls = content.GetLogicalDescendants()
                               .OfType<Control>()
                               .Where(control => control.Name is not null && controlNames.Contains(control.Name))
                               .ToDictionary(static control => control.Name!);
 
-        Assert.True(controls["MobileNavigation"].IsVisible);
+        Assert.True(controls["MobileSessionsToggle"].IsVisible);
         Assert.False(controls["EditProjectButton"].IsVisible);
         Assert.False(controls["DetailsPanel"].IsVisible);
-        Assert.True(controls["MobileProjectToolbar"].IsVisible);
         Assert.Equal(1, Grid.GetColumn(controls["MobileMessageRail"]));
 
         ((ListBox)controls["DialogListBox"]).ScrollIntoView(entry);
@@ -133,23 +130,28 @@ public sealed class AvaloniaInteractionTests
         Assert.Contains("open", messageActionsPanel.Classes);
         Assert.Same(messageActionsPanel.Parent, messageMenuButton.Parent);
 
-        var sessionsWidth     = controls["MobileSessionsButton"].Bounds.Width;
-        var conversationWidth = controls["MobileConversationButton"].Bounds.Width;
-        var detailsWidth      = controls["MobileDetailsButton"].Bounds.Width;
-        Assert.InRange(Math.Abs(sessionsWidth - conversationWidth), 0, 1);
-        Assert.InRange(Math.Abs(conversationWidth - detailsWidth), 0, 1);
+        var sessionsWidth = controls["MobileSessionsToggle"].Bounds.Width;
+        var actionsWidth  = controls["MobileMoreActionsButton"].Bounds.Width;
+        var detailsWidth  = controls["MobileDetailsToggle"].Bounds.Width;
+        Assert.InRange(Math.Abs(sessionsWidth - actionsWidth), 0, 1);
+        Assert.InRange(Math.Abs(actionsWidth - detailsWidth), 0, 1);
 
-        controls["MobileDetailsButton"].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var detailsToggle = (ToggleButton)controls["MobileDetailsToggle"];
+        detailsToggle.IsChecked = true;
+        detailsToggle.RaiseEvent(new RoutedEventArgs(ToggleButton.ClickEvent));
         Assert.True(controls["DetailsPanel"].IsVisible);
 
-        controls["MobileSessionsButton"].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var sessionsToggle = (ToggleButton)controls["MobileSessionsToggle"];
+        sessionsToggle.IsChecked = true;
+        sessionsToggle.RaiseEvent(new RoutedEventArgs(ToggleButton.ClickEvent));
         Assert.True(controls["SessionSidebar"].IsVisible);
 
-        controls["MobileConversationButton"].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        sessionsToggle.IsChecked = false;
+        sessionsToggle.RaiseEvent(new RoutedEventArgs(ToggleButton.ClickEvent));
         Assert.False(controls["SessionSidebar"].IsVisible);
         Assert.False(controls["DetailsPanel"].IsVisible);
         Assert.True(controls["MobileMessageRail"].IsVisible);
-        Assert.True(((ToggleButton)controls["MobileConversationButton"]).IsChecked);
+        Assert.False(sessionsToggle.IsChecked);
 
         host.Close();
     }
@@ -191,7 +193,7 @@ public sealed class AvaloniaInteractionTests
 
         window.Show();
 
-        Assert.Single(rail.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("indicator")));
+        Assert.Single(rail.GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("indicator"));
         var listBox = rail.GetLogicalDescendants().OfType<ListBox>().First(control => control.Name == "RailListBox");
         Assert.Equal(ScrollBarVisibility.Hidden, ScrollViewer.GetVerticalScrollBarVisibility(listBox));
 
