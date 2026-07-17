@@ -183,7 +183,7 @@
     "Settings.Language.Title": "语言",
     "Settings.MCP.AddEnvironment": "添加环境变量",
     "Settings.MCP.AddHeader": "添加请求头",
-    "Settings.MCP.AddServer": "添加服务",
+    "Settings.MCP.AddServer": "添加",
     "Settings.MCP.Arguments": "参数",
     "Settings.MCP.ArgumentsPlaceholder": "每行输入一个参数",
     "Settings.MCP.Command": "命令",

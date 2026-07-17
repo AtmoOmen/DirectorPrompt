@@ -63,4 +63,12 @@ public sealed class AgentTaskSettingViewModel : ObservableObject
             }
         }
     }
+
+    public string TaskIcon => TaskType switch
+    {
+        AgentTaskType.Narrator => "Message",
+        AgentTaskType.MemoryUpdate => "SaveLocal",
+        AgentTaskType.Scene => "Pictures",
+        _ => "Bullets"
+    };
 }
