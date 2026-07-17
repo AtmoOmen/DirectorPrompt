@@ -86,6 +86,7 @@ public sealed class AvaloniaInteractionTests
         var entry = new DialogEntryViewModel { Content = "Message" };
         viewModel.Dialog.Entries.Add(entry);
         var remoteWindow = new MainWindow(viewModel, false);
+        remoteWindow.SetRemoteViewportWidth(390);
         var content      = Assert.IsAssignableFrom<Control>(remoteWindow.Content);
         remoteWindow.Content = null;
         content.DataContext  = viewModel;
@@ -201,15 +202,13 @@ public sealed class AvaloniaInteractionTests
     }
 
     [AvaloniaFact]
-    public void ImportButtonOpensItsMenu()
+    public void ImportButtonUsesFlyout()
     {
         var window = new MainWindow();
         window.Show();
         var button = window.GetLogicalDescendants().OfType<Button>().First(control => control.Name == "ImportButton");
 
-        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-
-        Assert.True(button.ContextMenu?.IsOpen);
+        Assert.NotNull(button.Flyout);
 
         window.Close();
     }

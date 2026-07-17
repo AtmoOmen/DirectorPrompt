@@ -356,17 +356,10 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
 
     private void OnImportButtonClick(object sender, RoutedEventArgs e)
     {
-        if (isRemote)
-        {
-            OpenRemoteMenu((Control)sender, remoteImportMenu!);
-            e.Handled = true;
-            return;
-        }
-
-        if (sender is not Control element)
+        if (!isRemote || sender is not Control element)
             return;
 
-        FlyoutBase.ShowAttachedFlyout(element);
+        OpenRemoteMenu(element, remoteImportMenu!);
         e.Handled = true;
     }
 
