@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
@@ -147,6 +148,17 @@ public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
             return;
 
         viewModel.RemoveMCPServerCommand.Execute(server);
+    }
+
+    private async void OnCopyInternalEndpoint(object sender, RoutedEventArgs e)
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard is not null)
+        {
+            var transfer = new DataTransfer();
+            transfer.Add(DataTransferItem.CreateText(viewModel.InternalMCPEndpoint));
+            await clipboard.SetDataAsync(transfer);
+        }
     }
 
     private async void OnSaveClick(object sender, RoutedEventArgs e)

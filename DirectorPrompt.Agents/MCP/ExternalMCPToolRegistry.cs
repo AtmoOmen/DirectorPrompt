@@ -56,9 +56,9 @@ public sealed class ExternalMCPToolRegistry : IExternalMCPToolRegistry
         try
         {
             var connection = await GetConnectionAsync(config, refresh, cancellationToken);
-            var names = connection.Tools.Select(tool => tool.Name).ToList();
+            var tools = connection.Tools.Select(tool => new MCPToolInfo(tool.Name, tool.Description ?? string.Empty)).ToList();
 
-            return new MCPServerInspection(true, names, null);
+            return new MCPServerInspection(true, tools, null);
         }
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {

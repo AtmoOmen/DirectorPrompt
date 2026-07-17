@@ -554,15 +554,48 @@
                         </StackPanel>
 
                         <StackPanel x:Name="MCPPanel" IsVisible="False">
-                            <TextBlock Text="{Binding [Settings.MCP.Title], Source={x:Static loc:Loc.Instance}}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8" />
-                            <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,4">
-                                <TextBlock Text="{Binding [Settings.MCP.InternalService], Source={x:Static loc:Loc.Instance}}" />
-                                <TextBlock Text="{Binding InternalMCPEndpoint}" />
-                            </StackPanel>
-                            <TextBlock Text="{Binding InternalMCPStatus}"
-                                       TextWrapping="Wrap"
-                                       Foreground="Gray"
-                                       Margin="0,0,0,16" />
+                            <TextBlock Text="{Binding [Settings.MCP.Title], Source={x:Static loc:Loc.Instance}}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            
+                            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="16"
+                                    Margin="0,0,0,20">
+                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                                    <fa:FASymbolIcon Grid.Column="0" Grid.RowSpan="2"
+                                                     Symbol="Globe"
+                                                     FontSize="24"
+                                                     Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                     Margin="0,0,16,0"
+                                                     VerticalAlignment="Center"/>
+                                    
+                                    <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding [Settings.MCP.InternalService], Source={x:Static loc:Loc.Instance}}" FontWeight="SemiBold" FontSize="14" />
+                                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,0">
+                                            <Ellipse Width="8" Height="8" Fill="#107C41" IsVisible="{Binding IsInternalMCPAvailable}" VerticalAlignment="Center" />
+                                            <Ellipse Width="8" Height="8" Fill="#E81123" IsVisible="{Binding IsInternalMCPAvailable, Converter={StaticResource InverseBool}}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding InternalMCPStatus}" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    
+                                    <TextBlock Grid.Column="1" Grid.Row="1"
+                                               Text="{Binding InternalMCPEndpoint}"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               FontSize="12"
+                                               Margin="0,4,0,0" />
+                                               
+                                    <Button Grid.Column="2" Grid.RowSpan="2"
+                                            VerticalAlignment="Center"
+                                            Click="OnCopyInternalEndpoint"
+                                            ToolTip.Tip="{Binding [Settings.MCP.CopyEndpoint], Source={x:Static loc:Loc.Instance}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <fa:FASymbolIcon Symbol="Copy" />
+                                            <TextBlock Text="{Binding [Settings.MCP.CopyEndpoint], Source={x:Static loc:Loc.Instance}}" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </Border>
 
                             <Grid Margin="0,0,0,12" ColumnDefinitions="*,Auto">
                                 <TextBlock Text="{Binding [Settings.MCP.ExternalServers], Source={x:Static loc:Loc.Instance}}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -573,9 +606,6 @@
                                     </StackPanel>
                                 </Button>
                             </Grid>
-                            <TextBlock Text="{Binding [Settings.MCP.Timeout], Source={x:Static loc:Loc.Instance}}"
-                                       Foreground="Gray"
-                                       Margin="0,0,0,8" />
 
                             <ItemsControl ItemsSource="{Binding MCPServers}">
                                 <ItemsControl.ItemTemplate>
@@ -583,99 +613,167 @@
                                         <Expander Margin="0,0,0,8">
                                             <Expander.Header>
                                                 <Grid ColumnDefinitions="*,Auto">
-                                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                                        <CheckBox IsChecked="{Binding Enabled}" />
-                                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                        <CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        
+                                                        <Border Background="#1F513B" CornerRadius="4" Padding="6,2" Margin="4,0" IsVisible="{Binding IsStdio}" VerticalAlignment="Center">
+                                                            <TextBlock Text="STDIO" FontSize="10" FontWeight="SemiBold" Foreground="#4EC9B0" />
+                                                        </Border>
+                                                        <Border Background="#1F3B51" CornerRadius="4" Padding="6,2" Margin="4,0" IsVisible="{Binding IsStreamableHTTP}" VerticalAlignment="Center">
+                                                            <TextBlock Text="HTTP" FontSize="10" FontWeight="SemiBold" Foreground="#569CD6" />
+                                                        </Border>
+                                                        
+                                                        <!-- 连接状态指示器 -->
+                                                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,0" VerticalAlignment="Center">
+                                                            <Ellipse Width="6" Height="6" Fill="Gray" IsVisible="{Binding IsUnknown}" VerticalAlignment="Center" />
+                                                            <Ellipse Width="6" Height="6" Fill="#107C41" IsVisible="{Binding IsConnected}" VerticalAlignment="Center" />
+                                                            <Ellipse Width="6" Height="6" Fill="#E81123" IsVisible="{Binding IsFailed}" VerticalAlignment="Center" ToolTip.Tip="{Binding InspectionMessage}" />
+                                                            <Ellipse Width="6" Height="6" Fill="#FF8C00" IsVisible="{Binding IsTesting}" VerticalAlignment="Center" />
+                                                            <TextBlock Text="{Binding ConnectionStatusText}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                                        </StackPanel>
                                                     </StackPanel>
-                                                    <Button Grid.Column="1"
-                                                            Padding="6,4"
-                                                            Margin="0,0,-16,0"
-                                                            Click="OnRemoveMCPServer"
-                                                            Tag="{Binding}">
-                                                        <fa:FASymbolIcon Symbol="Delete" />
-                                                    </Button>
+                                                    
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                        <Button Command="{Binding DataContext.RefreshMCPServerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"
+                                                                IsEnabled="{Binding IsTesting, Converter={StaticResource InverseBool}}"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                Padding="6"
+                                                                ToolTip.Tip="{Binding [Settings.MCP.Refresh], Source={x:Static loc:Loc.Instance}}">
+                                                            <fa:FASymbolIcon Symbol="Refresh" />
+                                                        </Button>
+                                                        
+                                                        <Button Click="OnRemoveMCPServer"
+                                                                Tag="{Binding}"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                Padding="6"
+                                                                Margin="0,0,-16,0"
+                                                                ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+                                                            <fa:FASymbolIcon Symbol="Delete" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                        </Button>
+                                                    </StackPanel>
                                                 </Grid>
                                             </Expander.Header>
 
                                             <StackPanel Margin="0,8,0,0">
-                                                <Grid Margin="0,0,0,8" ColumnDefinitions="110,*">
+                                                <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
                                                     <TextBlock Text="{Binding [Settings.MCP.DisplayName], Source={x:Static loc:Loc.Instance}}" VerticalAlignment="Center" />
                                                     <TextBox Grid.Column="1" Text="{Binding DisplayName}" />
                                                 </Grid>
-                                                <Grid Margin="0,0,0,8" ColumnDefinitions="110,*">
+                                                <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
                                                     <TextBlock Text="{Binding [Settings.MCP.Transport], Source={x:Static loc:Loc.Instance}}" VerticalAlignment="Center" />
                                                     <ComboBox Grid.Column="1"
+                                                              HorizontalAlignment="Stretch"
                                                               ItemsSource="{Binding DataContext.AvailableMCPTransports, RelativeSource={RelativeSource AncestorType=Window}}"
                                                               SelectedItem="{Binding Transport}" />
                                                 </Grid>
 
                                                 <StackPanel IsVisible="{Binding IsStdio}">
-                                                    <Grid Margin="0,0,0,8" ColumnDefinitions="110,*">
+                                                    <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
                                                         <TextBlock Text="{Binding [Settings.MCP.Command], Source={x:Static loc:Loc.Instance}}" VerticalAlignment="Center" />
                                                         <TextBox Grid.Column="1" Text="{Binding Command}" />
                                                     </Grid>
-                                                    <Grid Margin="0,0,0,8" ColumnDefinitions="110,*">
-                                                        <TextBlock Text="{Binding [Settings.MCP.Arguments], Source={x:Static loc:Loc.Instance}}" VerticalAlignment="Top" />
+                                                    <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                                        <TextBlock Text="{Binding [Settings.MCP.Arguments], Source={x:Static loc:Loc.Instance}}" VerticalAlignment="Top" Margin="0,4,0,0" />
                                                         <TextBox Grid.Column="1"
                                                                  Text="{Binding ArgumentsText}"
                                                                  AcceptsReturn="True"
                                                                  TextWrapping="Wrap"
-                                                                 MinHeight="64" />
+                                                                 MinHeight="80"
+                                                                 PlaceholderText="{Binding [Settings.MCP.ArgumentsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
                                                     </Grid>
-                                                    <Grid Margin="0,0,0,8" ColumnDefinitions="110,*">
+                                                    <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
                                                         <TextBlock Text="{Binding [Settings.MCP.WorkingDirectory], Source={x:Static loc:Loc.Instance}}" VerticalAlignment="Center" />
                                                         <TextBox Grid.Column="1" Text="{Binding WorkingDirectory}" />
                                                     </Grid>
-                                                    <TextBlock Text="{Binding [Settings.MCP.Environment], Source={x:Static loc:Loc.Instance}}" FontWeight="SemiBold" Margin="110,0,0,4" />
-                                                    <ItemsControl ItemsSource="{Binding EnvironmentVariables}" Margin="110,0,0,4">
+                                                    
+                                                    <TextBlock Text="{Binding [Settings.MCP.Environment], Source={x:Static loc:Loc.Instance}}" FontWeight="SemiBold" Margin="0,12,0,6" />
+                                                    <ItemsControl ItemsSource="{Binding EnvironmentVariables}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Grid ColumnDefinitions="*,*,Auto" Margin="0,0,0,4">
-                                                                    <TextBox Text="{Binding Key}" PlaceholderText="名称" />
-                                                                    <TextBox Grid.Column="1" Text="{Binding Value}" Margin="6,0" PlaceholderText="值" />
-                                                                    <Button Grid.Column="2" Command="{Binding RemoveCommand}" Padding="6,4">
-                                                                        <fa:FASymbolIcon Symbol="Delete" />
+                                                                <Grid ColumnDefinitions="*,*,Auto" Margin="0,0,0,6">
+                                                                    <TextBox Text="{Binding Key}" PlaceholderText="键 (例如 PATH)" />
+                                                                    <TextBox Grid.Column="1" Text="{Binding Value}" Margin="8,0" PlaceholderText="值" />
+                                                                    <Button Grid.Column="2" Command="{Binding RemoveCommand}" Padding="6,4" ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+                                                                        <fa:FASymbolIcon Symbol="Delete" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
                                                                     </Button>
                                                                 </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
-                                                    <Button HorizontalAlignment="Left" Margin="110,0,0,8" Command="{Binding AddEnvironmentCommand}" Content="{Binding [Settings.MCP.AddEnvironment], Source={x:Static loc:Loc.Instance}}" />
+                                                    <Button HorizontalAlignment="Left" Margin="0,4,0,8" Command="{Binding AddEnvironmentCommand}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Add" />
+                                                            <TextBlock Text="{Binding [Settings.MCP.AddEnvironment], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
                                                 </StackPanel>
 
                                                 <StackPanel IsVisible="{Binding IsStreamableHTTP}">
-                                                    <Grid Margin="0,0,0,8" ColumnDefinitions="110,*">
+                                                    <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
                                                         <TextBlock Text="{Binding [Settings.MCP.Endpoint], Source={x:Static loc:Loc.Instance}}" VerticalAlignment="Center" />
                                                         <TextBox Grid.Column="1" Text="{Binding Endpoint}" PlaceholderText="http://127.0.0.1:3000/mcp" />
                                                     </Grid>
-                                                    <TextBlock Text="{Binding [Settings.MCP.Headers], Source={x:Static loc:Loc.Instance}}" FontWeight="SemiBold" Margin="110,0,0,4" />
-                                                    <ItemsControl ItemsSource="{Binding Headers}" Margin="110,0,0,4">
+                                                    
+                                                    <TextBlock Text="{Binding [Settings.MCP.Headers], Source={x:Static loc:Loc.Instance}}" FontWeight="SemiBold" Margin="0,12,0,6" />
+                                                    <ItemsControl ItemsSource="{Binding Headers}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Grid ColumnDefinitions="*,*,Auto" Margin="0,0,0,4">
+                                                                <Grid ColumnDefinitions="*,*,Auto" Margin="0,0,0,6">
                                                                     <TextBox Text="{Binding Key}" PlaceholderText="名称" />
-                                                                    <TextBox Grid.Column="1" Text="{Binding Value}" Margin="6,0" PlaceholderText="值或 Bearer Token" />
-                                                                    <Button Grid.Column="2" Command="{Binding RemoveCommand}" Padding="6,4">
-                                                                        <fa:FASymbolIcon Symbol="Delete" />
+                                                                    <TextBox Grid.Column="1" Text="{Binding Value}" Margin="8,0" PlaceholderText="值或 Bearer Token" />
+                                                                    <Button Grid.Column="2" Command="{Binding RemoveCommand}" Padding="6,4" ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+                                                                        <fa:FASymbolIcon Symbol="Delete" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
                                                                     </Button>
                                                                 </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
-                                                    <Button HorizontalAlignment="Left" Margin="110,0,0,8" Command="{Binding AddHeaderCommand}" Content="{Binding [Settings.MCP.AddHeader], Source={x:Static loc:Loc.Instance}}" />
+                                                    <Button HorizontalAlignment="Left" Margin="0,4,0,8" Command="{Binding AddHeaderCommand}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <fa:FASymbolIcon Symbol="Add" />
+                                                            <TextBlock Text="{Binding [Settings.MCP.AddHeader], Source={x:Static loc:Loc.Instance}}" />
+                                                        </StackPanel>
+                                                    </Button>
                                                 </StackPanel>
 
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <Button Command="{Binding DataContext.TestMCPServerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}"
-                                                            IsEnabled="{Binding IsTesting, Converter={StaticResource InverseBool}}"
-                                                            Content="{Binding [Settings.MCP.Test], Source={x:Static loc:Loc.Instance}}" />
-                                                    <Button Command="{Binding DataContext.RefreshMCPServerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}"
-                                                            IsEnabled="{Binding IsTesting, Converter={StaticResource InverseBool}}"
-                                                            Content="{Binding [Settings.MCP.Refresh], Source={x:Static loc:Loc.Instance}}" />
-                                                    <TextBlock Text="{Binding InspectionMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                                                </StackPanel>
+                                                <!-- 二级 Expander 可用工具列表 -->
+                                                <Expander Header="可用工具列表" IsVisible="{Binding IsConnected}" Margin="0,12,0,0">
+                                                    <ItemsControl ItemsSource="{Binding ToolNames}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="0,6">
+                                                                    <fa:FASymbolIcon Grid.Column="0" Grid.RowSpan="2" Symbol="Setting" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" FontFamily="Consolas,Courier New,Monospace"/>
+                                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0" VerticalAlignment="Center"/>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Expander>
+
+                                                <!-- 诊断信息终端 -->
+                                                <Border Margin="0,12,0,0"
+                                                        Padding="12"
+                                                        Background="#1E1E1E"
+                                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        IsVisible="{Binding IsFailed}">
+                                                    <Grid RowDefinitions="Auto,*">
+                                                        <TextBlock Grid.Row="0" Text="{Binding [Settings.MCP.DiagnosticInfo], Source={x:Static loc:Loc.Instance}}" FontWeight="SemiBold" FontSize="11" Foreground="Gray" Margin="0,0,0,6" />
+                                                        <ScrollViewer Grid.Row="1" MaxHeight="150" VerticalScrollBarVisibility="Auto">
+                                                            <TextBlock Text="{Binding InspectionMessage}"
+                                                                       TextWrapping="Wrap"
+                                                                       FontFamily="Consolas,Courier New,Monospace"
+                                                                       FontSize="12"
+                                                                       Foreground="#D4D4D4" />
+                                                        </ScrollViewer>
+                                                    </Grid>
+                                                </Border>
                                             </StackPanel>
                                         </Expander>
                                     </DataTemplate>

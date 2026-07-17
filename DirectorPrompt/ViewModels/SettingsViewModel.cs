@@ -58,6 +58,8 @@ public sealed partial class SettingsViewModel : ObservableObject
                                            "运行中" :
                                            $"不可用: {directorPromptMCPStatus.ErrorMessage ?? "未启动"}";
 
+    public bool IsInternalMCPAvailable => directorPromptMCPStatus.IsAvailable;
+
     public IReadOnlyDictionary<string, string> AvailableLanguages =>
         localizationService.AvailableLanguages;
 
@@ -112,6 +114,20 @@ public sealed partial class SettingsViewModel : ObservableObject
         Embedding = new EmbeddingSettingViewModel(userSettings.EmbeddingConfig);
         Memory    = new MemorySettingViewModel(userSettings.Orchestrator.MemoryConfig);
         Knowledge = new KnowledgeSettingViewModel(userSettings.Orchestrator.KnowledgeConfig);
+        _ = InitializeMCPServersAsync();
+    }
+
+    private async Task InitializeMCPServersAsync()
+    {
+        await Task.Delay(100);
+
+        foreach (var server in MCPServers)
+        {
+            if (server.Enabled)
+            {
+                _ = RefreshMCPServerAsync(server);
+            }
+        }
     }
 
     private void EnsureAgentTasks()
@@ -230,8 +246,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             var inspection = await externalMCPToolRegistry.InspectAsync(server.Config, false);
+            server.ConnectionStatus = inspection.IsAvailable;
+            server.ToolNames.Clear();
+            if (inspection.IsAvailable)
+            {
+                foreach (var tool in inspection.Tools)
+                    server.ToolNames.Add(tool);
+            }
             server.InspectionMessage = inspection.IsAvailable ?
-                                           $"连接成功, 发现 {inspection.ToolNames.Count} 个工具: {string.Join(", ", inspection.ToolNames)}" :
+                                           $"连接成功, 发现 {inspection.Tools.Count} 个工具: {string.Join(", ", inspection.Tools.Select(t => t.Name))}" :
                                            $"连接失败: {inspection.ErrorMessage}";
         }
         finally
@@ -253,8 +276,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             var inspection = await externalMCPToolRegistry.InspectAsync(server.Config, true);
+            server.ConnectionStatus = inspection.IsAvailable;
+            server.ToolNames.Clear();
+            if (inspection.IsAvailable)
+            {
+                foreach (var tool in inspection.Tools)
+                    server.ToolNames.Add(tool);
+            }
             server.InspectionMessage = inspection.IsAvailable ?
-                                           $"已刷新, 发现 {inspection.ToolNames.Count} 个工具: {string.Join(", ", inspection.ToolNames)}" :
+                                           $"已刷新, 发现 {inspection.Tools.Count} 个工具: {string.Join(", ", inspection.Tools.Select(t => t.Name))}" :
                                            $"刷新失败: {inspection.ErrorMessage}";
         }
         finally

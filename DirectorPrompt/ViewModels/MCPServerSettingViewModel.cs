@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DirectorPrompt.Agents.MCP;
 using DirectorPrompt.Domain.Configurations;
 
 namespace DirectorPrompt.ViewModels;
@@ -33,14 +34,43 @@ public sealed partial class MCPServerSettingViewModel : ObservableObject
     public partial string Endpoint { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ConnectionStatusText))]
+    [NotifyPropertyChangedFor(nameof(IsConnected))]
+    [NotifyPropertyChangedFor(nameof(IsFailed))]
+    [NotifyPropertyChangedFor(nameof(IsUnknown))]
+    public partial bool? ConnectionStatus { get; set; }
+    
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ConnectionStatusText))]
+    [NotifyPropertyChangedFor(nameof(IsConnected))]
+    [NotifyPropertyChangedFor(nameof(IsFailed))]
+    [NotifyPropertyChangedFor(nameof(IsUnknown))]
     public partial bool IsTesting { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasInspectionMessage))]
     public partial string InspectionMessage { get; set; } = string.Empty;
 
     public bool IsStdio => Transport == MCPTransportType.Stdio;
 
     public bool IsStreamableHTTP => Transport == MCPTransportType.StreamableHttp;
+
+    public bool HasInspectionMessage => !string.IsNullOrWhiteSpace(InspectionMessage);
+
+    public ObservableCollection<MCPToolInfo> ToolNames { get; } = [];
+
+    public string ConnectionStatusText => IsTesting ? "正在连接" : ConnectionStatus switch
+    {
+        true => "已连接",
+        false => "连接失败",
+        _ => "未连接"
+    };
+
+    public bool IsConnected => !IsTesting && ConnectionStatus == true;
+
+    public bool IsFailed => !IsTesting && ConnectionStatus == false;
+
+    public bool IsUnknown => !IsTesting && ConnectionStatus == null;
 
     public ObservableCollection<MCPKeyValueViewModel> EnvironmentVariables { get; } = [];
 

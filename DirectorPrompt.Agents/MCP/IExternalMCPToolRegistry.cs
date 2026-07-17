@@ -21,9 +21,15 @@ public interface IExternalMCPToolRegistry : IAsyncDisposable
     Task InvalidateAsync(CancellationToken cancellationToken = default);
 }
 
+public sealed record MCPToolInfo
+(
+    string Name,
+    string Description
+);
+
 public sealed record MCPServerInspection
 (
-    bool                    IsAvailable,
-    IReadOnlyList<string>   ToolNames,
-    string?                 ErrorMessage
+    bool                       IsAvailable,
+    IReadOnlyList<MCPToolInfo> Tools,
+    string?                    ErrorMessage
 );
