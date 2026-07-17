@@ -5,6 +5,8 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Remote.Protocol;
 using Avalonia.Threading;
 using DirectorPrompt.ViewModels;
@@ -17,15 +19,17 @@ namespace DirectorPrompt.Services;
 
 public sealed class LanSharingService
 (
-    IServiceProvider serviceProvider,
-    UserSettings     userSettings
+    IServiceProvider         serviceProvider,
+    UserSettings             userSettings,
+    RemoteInteractionRouter  remoteInteractionRouter
 ) : ILanSharingService, IAsyncDisposable
 {
     private readonly SemaphoreSlim stateLock = new(1, 1);
 
-    private BrowserRemoteTransport? transport;
-    private IDisposable? remoteServer;
-    private MainWindow? remoteWindow;
+    private BrowserRemoteTransport?  transport;
+    private IDisposable?             remoteServer;
+    private Control?                 remoteContent;
+    private MainWindow?              remoteWindow;
     private RemoteWindowService? remoteWindowService;
     private Uri? endpoint;
 
@@ -112,25 +116,12 @@ public sealed class LanSharingService
         catch
         {
             if (Dispatcher.UIThread.CheckAccess())
-            {
-                remoteServer?.Dispose();
-                remoteServer = null;
-                remoteWindowService?.Detach();
-                remoteWindowService = null;
-                remoteWindow = null;
-            }
+                DisposeRemoteVisual();
             else
             {
                 await Dispatcher.UIThread.InvokeAsync
                 (
-                    () =>
-                    {
-                        remoteServer?.Dispose();
-                        remoteServer = null;
-                        remoteWindowService?.Detach();
-                        remoteWindowService = null;
-                        remoteWindow = null;
-                    }
+                    DisposeRemoteVisual
                 );
             }
             currentTransport.OnException     -= OnTransportException;
@@ -145,25 +136,12 @@ public sealed class LanSharingService
         Endpoint = null;
 
         if (Dispatcher.UIThread.CheckAccess())
-        {
-            remoteServer?.Dispose();
-            remoteServer = null;
-            remoteWindowService?.Detach();
-            remoteWindowService = null;
-            remoteWindow = null;
-        }
+            DisposeRemoteVisual();
         else
         {
             await Dispatcher.UIThread.InvokeAsync
             (
-                () =>
-                {
-                    remoteServer?.Dispose();
-                    remoteServer = null;
-                    remoteWindowService?.Detach();
-                    remoteWindowService = null;
-                    remoteWindow = null;
-                }
+                DisposeRemoteVisual
             );
         }
 
@@ -178,10 +156,25 @@ public sealed class LanSharingService
         Log.Information("局域网共享已关闭");
     }
 
-    private void CreateRemoteVisual(BrowserRemoteTransport currentTransport)
+    private void DisposeRemoteVisual()
+    {
+        remoteServer?.Dispose();
+        remoteServer = null;
+        remoteContent?.RemoveHandler(InputElement.PointerReleasedEvent, OnRemoteInteraction);
+        remoteContent?.RemoveHandler(InputElement.KeyDownEvent, OnRemoteInteraction);
+        remoteContent?.DataContext = null;
+        remoteContent = null;
+        remoteInteractionRouter.Detach(remoteWindowService);
+        remoteWindowService?.Detach();
+        remoteWindowService = null;
+        remoteWindow?.DisposeRemoteVisual();
+        remoteWindow = null;
+    }
+
+    internal MainWindow CreateRemoteVisual(BrowserRemoteTransport currentTransport)
     {
         var currentWindowService = new RemoteWindowService(serviceProvider, userSettings, this);
-        var viewModel = ActivatorUtilities.CreateInstance<MainViewModel>(serviceProvider, currentWindowService);
+        var viewModel = serviceProvider.GetRequiredService<MainViewModel>();
         remoteWindow  = new MainWindow(viewModel, false);
         remoteWindow.RemoteDialogHost = currentWindowService;
 
@@ -195,6 +188,8 @@ public sealed class LanSharingService
 
         remoteWindow.Content = null;
         content.DataContext  = viewModel;
+        content.AddHandler(InputElement.PointerReleasedEvent, OnRemoteInteraction, RoutingStrategies.Tunnel, true);
+        content.AddHandler(InputElement.KeyDownEvent, OnRemoteInteraction, RoutingStrategies.Tunnel, true);
 
         var serverType = typeof(Control).Assembly.GetType("Avalonia.Controls.Remote.RemoteServer", true)!;
         remoteServer = (IDisposable?)Activator.CreateInstance
@@ -208,9 +203,22 @@ public sealed class LanSharingService
 
         serverType.GetProperty("Content")!.SetValue(remoteServer, content);
         currentWindowService.Attach(remoteOverlay, remotePopupLayer);
+        remoteInteractionRouter.Attach(currentWindowService);
         currentTransport.ViewportChanged += OnRemoteViewportChanged;
+        remoteContent = content;
         remoteWindowService = currentWindowService;
-        _ = viewModel.LoadProjectsCommand.ExecuteAsync(null);
+        return remoteWindow;
+    }
+
+    private void OnRemoteInteraction(object? sender, RoutedEventArgs e)
+    {
+        var interactionID = remoteInteractionRouter.Activate();
+
+        Dispatcher.UIThread.Post
+        (
+            () => remoteInteractionRouter.Deactivate(interactionID),
+            DispatcherPriority.ContextIdle
+        );
     }
 
     private void OnRemoteViewportChanged(double width, double height)

@@ -109,6 +109,15 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         ResetMobileNavigation();
     }
 
+    internal void DisposeRemoteVisual()
+    {
+        if (!isRemote)
+            return;
+
+        viewModel.Dialog.Entries.CollectionChanged -= OnDialogEntriesChanged;
+        viewModel.PropertyChanged                  -= OnViewModelPropertyChanged;
+    }
+
     private void OnMobileSessionsToggleClick(object? sender, RoutedEventArgs e)
     {
         if (!isMobileRemote)

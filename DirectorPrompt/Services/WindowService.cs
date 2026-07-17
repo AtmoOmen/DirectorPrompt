@@ -9,16 +9,28 @@ namespace DirectorPrompt.Services;
 
 public sealed class WindowService
 (
-    IServiceProvider    serviceProvider,
-    UserSettings        userSettings,
-    ILanSharingService  lanSharingService
+    IServiceProvider         serviceProvider,
+    UserSettings             userSettings,
+    ILanSharingService       lanSharingService,
+    RemoteInteractionRouter remoteInteractionRouter
 ) : IWindowService
 {
-    public Task<string?> InputAsync(string title, string prompt, string defaultValue) =>
-        PromptDialog.InputAsync(App.GetActiveWindow(), title, prompt, defaultValue);
+    public Task<string?> InputAsync(string title, string prompt, string defaultValue)
+    {
+        var remoteWindowService = remoteInteractionRouter.Consume();
+
+        return remoteWindowService is not null ?
+                   remoteWindowService.InputAsync(title, prompt, defaultValue) :
+                   PromptDialog.InputAsync(App.GetActiveWindow(), title, prompt, defaultValue);
+    }
 
     public async Task<bool> EditProjectAsync(Project project)
     {
+        var remoteWindowService = remoteInteractionRouter.Consume();
+
+        if (remoteWindowService is not null)
+            return await remoteWindowService.EditProjectAsync(project);
+
         var window = serviceProvider.GetRequiredService<ProjectEditWindow>();
         await window.ViewModel.LoadFromProjectAsync(project);
         var owner = App.GetActiveWindow();
@@ -28,6 +40,14 @@ public sealed class WindowService
 
     public async Task ShowSettingsAsync()
     {
+        var remoteWindowService = remoteInteractionRouter.Consume();
+
+        if (remoteWindowService is not null)
+        {
+            await remoteWindowService.ShowSettingsAsync();
+            return;
+        }
+
         var window = serviceProvider.GetRequiredService<SettingsWindow>();
         var owner  = App.GetActiveWindow();
         var saved  = false;

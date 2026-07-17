@@ -248,6 +248,7 @@ public class App : Application
         services.AddSingleton<DialogHistoryService>();
         services.AddSingleton<SidebarQueryService>();
         services.AddSingleton<NotificationService>();
+        services.AddSingleton<RemoteInteractionRouter>();
         services.AddSingleton<IWindowService, WindowService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<ILanSharingService, LanSharingService>();
