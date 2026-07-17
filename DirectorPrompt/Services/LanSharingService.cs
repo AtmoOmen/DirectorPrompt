@@ -26,6 +26,7 @@ public sealed class LanSharingService
     private BrowserRemoteTransport? transport;
     private IDisposable? remoteServer;
     private MainWindow? remoteWindow;
+    private RemoteWindowService? remoteWindowService;
     private Uri? endpoint;
 
     public Uri? Endpoint
@@ -114,6 +115,8 @@ public sealed class LanSharingService
             {
                 remoteServer?.Dispose();
                 remoteServer = null;
+                remoteWindowService?.Detach();
+                remoteWindowService = null;
                 remoteWindow = null;
             }
             else
@@ -124,6 +127,8 @@ public sealed class LanSharingService
                     {
                         remoteServer?.Dispose();
                         remoteServer = null;
+                        remoteWindowService?.Detach();
+                        remoteWindowService = null;
                         remoteWindow = null;
                     }
                 );
@@ -142,6 +147,8 @@ public sealed class LanSharingService
         {
             remoteServer?.Dispose();
             remoteServer = null;
+            remoteWindowService?.Detach();
+            remoteWindowService = null;
             remoteWindow = null;
         }
         else
@@ -152,6 +159,8 @@ public sealed class LanSharingService
                 {
                     remoteServer?.Dispose();
                     remoteServer = null;
+                    remoteWindowService?.Detach();
+                    remoteWindowService = null;
                     remoteWindow = null;
                 }
             );
@@ -169,11 +178,17 @@ public sealed class LanSharingService
 
     private void CreateRemoteVisual(IAvaloniaRemoteTransportConnection currentTransport)
     {
-        var viewModel = serviceProvider.GetRequiredService<MainViewModel>();
+        var currentWindowService = new RemoteWindowService(serviceProvider, userSettings, this);
+        var viewModel = ActivatorUtilities.CreateInstance<MainViewModel>(serviceProvider, currentWindowService);
         remoteWindow  = new MainWindow(viewModel, false);
 
         if (remoteWindow.Content is not Control content)
             throw new InvalidOperationException("主界面内容无法用于远程控制");
+
+        var remoteOverlay = remoteWindow.FindControl<Panel>("RemoteOverlay") ??
+                            throw new InvalidOperationException("远程覆盖层不存在");
+        var remotePopupLayer = remoteWindow.FindControl<Canvas>("RemotePopupLayer") ??
+                               throw new InvalidOperationException("远程弹出层不存在");
 
         remoteWindow.Content = null;
         content.DataContext  = viewModel;
@@ -189,6 +204,9 @@ public sealed class LanSharingService
         ) ?? throw new InvalidOperationException("Avalonia 远程控制服务不可用");
 
         serverType.GetProperty("Content")!.SetValue(remoteServer, content);
+        currentWindowService.Attach(remoteOverlay, remotePopupLayer);
+        remoteWindowService = currentWindowService;
+        _ = viewModel.LoadProjectsCommand.ExecuteAsync(null);
     }
 
     private static IPAddress GetLanAddress()

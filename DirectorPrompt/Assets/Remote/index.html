@@ -19,31 +19,52 @@ const keyboardButton=document.getElementById('keyboardButton');
 const context=canvas.getContext('2d');
 let socket;
 let frame;
+let renderedFrame;
 let buttons=0;
 let touch;
 let composing=false;
+let deviceScale=1;
 
 function connect(){
     socket=new WebSocket(`ws://${location.host}/remote`);
     socket.binaryType='arraybuffer';
     socket.onopen=()=>resize();
     socket.onclose=()=>setTimeout(connect,1000);
-    socket.onmessage=event=>{
+    socket.onmessage=async event=>{
         if(typeof event.data==='string'){
             const parts=event.data.split(':');
             if(parts[0]==='frame'){
-                frame={sequence:parts[1],width:+parts[2],height:+parts[3],stride:+parts[4]};
+                frame={sequence:parts[1],width:+parts[2],height:+parts[3],stride:+parts[4],dpiX:+parts[5],dpiY:+parts[6],compression:parts[7]||'raw'};
             }
             return;
         }
         if(!frame)return;
-        const pixels=new Uint8ClampedArray(event.data);
-        canvas.width=frame.width;
-        canvas.height=frame.height;
-        context.putImageData(new ImageData(pixels,frame.width,frame.height),0,0);
-        send(`frame-received:${frame.sequence}`);
+        const currentFrame=frame;
         frame=null;
+        renderedFrame=currentFrame;
+        const bytes=await decodeFrame(event.data,currentFrame.compression);
+        const pixels=toPixels(bytes,currentFrame);
+        canvas.width=currentFrame.width;
+        canvas.height=currentFrame.height;
+        context.putImageData(new ImageData(pixels,currentFrame.width,currentFrame.height),0,0);
+        send(`frame-received:${currentFrame.sequence}`);
     };
+}
+
+async function decodeFrame(data,compression){
+    if(compression!=='gzip')return new Uint8Array(data);
+    const stream=new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function toPixels(bytes,currentFrame){
+    const rowSize=currentFrame.width*4;
+    if(currentFrame.stride===rowSize)return new Uint8ClampedArray(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+    const pixels=new Uint8ClampedArray(rowSize*currentFrame.height);
+    for(let row=0;row<currentFrame.height;row++){
+        pixels.set(bytes.subarray(row*currentFrame.stride,row*currentFrame.stride+rowSize),row*rowSize);
+    }
+    return pixels;
 }
 
 function send(message){
@@ -64,7 +85,18 @@ function modifiers(event){
 
 function point(event){
     const rect=canvas.getBoundingClientRect();
-    return [(event.clientX-rect.left)*canvas.width/rect.width,(event.clientY-rect.top)*canvas.height/rect.height];
+    const currentFrame=renderedFrame;
+    const scale=currentFrame?.dpiX>0?currentFrame.dpiX/96:deviceScale;
+    const logicalWidth=currentFrame?.width>0?currentFrame.width/scale:innerWidth;
+    const logicalHeight=currentFrame?.height>0?currentFrame.height/scale:innerHeight;
+    const contentScale=Math.min(rect.width/logicalWidth,rect.height/logicalHeight);
+    const contentWidth=logicalWidth*contentScale;
+    const contentHeight=logicalHeight*contentScale;
+    const contentLeft=rect.left+(rect.width-contentWidth)/2;
+    const contentTop=rect.top+(rect.height-contentHeight)/2;
+    const x=(event.clientX-contentLeft)/contentScale;
+    const y=(event.clientY-contentTop)/contentScale;
+    return [Math.max(0,Math.min(logicalWidth,x)),Math.max(0,Math.min(logicalHeight,y))];
 }
 
 function button(value){
@@ -147,7 +179,8 @@ keyboard.addEventListener('input',()=>{
 });
 
 function resize(){
-    send(`resize:${Math.max(360,innerWidth)}:${Math.max(480,innerHeight)}`);
+    deviceScale=Math.min(2,Math.max(1,window.devicePixelRatio||1));
+    send(`resize:${Math.max(360,innerWidth)}:${Math.max(480,innerHeight)}:${deviceScale}`);
 }
 
 addEventListener('resize',resize);

@@ -1114,5 +1114,65 @@
             </StackPanel>
         </Border>
 
+        <Panel x:Name="RemoteOverlay"
+               Grid.Row="0"
+               Grid.RowSpan="2"
+               ZIndex="1000"
+               IsVisible="False">
+            <Canvas x:Name="RemotePopupLayer"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    IsHitTestVisible="True" />
+            <Border x:Name="RemoteImportMenuBackdrop"
+                    Background="Transparent"
+                    IsVisible="False"
+                    PointerPressed="OnRemoteImportMenuBackdropPressed" />
+            <Border x:Name="RemoteImportMenu"
+                    Width="260"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Margin="0,58,12,0"
+                    Padding="4"
+                    Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    IsVisible="False">
+                <Border.Styles>
+                    <Style Selector="Button.menu-item">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="HorizontalAlignment" Value="Stretch" />
+                        <Setter Property="HorizontalContentAlignment" Value="Left" />
+                        <Setter Property="Padding" Value="12,10" />
+                        <Setter Property="CornerRadius" Value="4" />
+                    </Style>
+                    <Style Selector="Button.menu-item:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                    </Style>
+                </Border.Styles>
+                <StackPanel Spacing="2">
+                    <Button Classes="menu-item"
+                            Click="OnRemoteImportDirectorPromptClick"
+                            IsEnabled="{Binding IsNotProcessing}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <fa:FASymbolIcon Symbol="Import" FontSize="16" />
+                            <TextBlock Text="{Binding [Navigation.ImportDirectorPrompt], Source={x:Static loc:Loc.Instance}}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="menu-item"
+                            Click="OnRemoteImportSillyTavernClick"
+                            IsEnabled="{Binding IsNotProcessing}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <fa:FASymbolIcon Symbol="Import" FontSize="16" />
+                            <TextBlock Text="{Binding [Navigation.ImportSillyTavern], Source={x:Static loc:Loc.Instance}}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Panel>
+
     </Grid>
 </windowing:FAAppWindow>

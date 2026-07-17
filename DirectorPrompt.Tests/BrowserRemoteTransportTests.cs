@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
+using System.IO.Compression;
 using Avalonia.Remote.Protocol.Viewport;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Services;
@@ -32,6 +33,10 @@ public sealed class BrowserRemoteTransportTests
         Assert.Contains("<canvas id=\"screen\"", page);
         Assert.Contains("id=\"keyboardButton\"", page);
         Assert.Contains("Math.max(360,innerWidth)", page);
+        Assert.Contains("devicePixelRatio", page);
+        Assert.Contains("DecompressionStream", page);
+        Assert.Contains("logicalWidth", page);
+        Assert.Contains("currentFrame?.dpiX", page);
 
         await transport.DisposeAsync();
 
@@ -69,6 +74,49 @@ public sealed class BrowserRemoteTransportTests
         Assert.StartsWith("frame:7:1:1:4", header);
         Assert.Equal(WebSocketMessageType.Binary, frameResult.MessageType);
         Assert.Equal([1, 2, 3, 4], buffer[..frameResult.Count]);
+
+        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+        await transport.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task RepetitiveFrameIsDeliveredAsLosslessGzip()
+    {
+        var port      = GetAvailablePort();
+        var transport = new BrowserRemoteTransport(IPAddress.Loopback, port);
+        var data      = Enumerable.Repeat((byte)42, 32 * 32 * 4).ToArray();
+
+        await transport.StartServerAsync();
+        await transport.Send(new FrameMessage
+        {
+            SequenceId = 8,
+            Width      = 32,
+            Height     = 32,
+            Stride     = 32 * 4,
+            DpiX       = 192,
+            DpiY       = 192,
+            Format     = PixelFormat.Rgba8888,
+            Data       = data
+        });
+
+        using var socket = new ClientWebSocket();
+        await socket.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/remote"), CancellationToken.None);
+
+        var headerBuffer = new byte[256];
+        var headerResult = await socket.ReceiveAsync(headerBuffer, CancellationToken.None);
+        var header       = Encoding.UTF8.GetString(headerBuffer, 0, headerResult.Count);
+        var frameBuffer  = new byte[4096];
+        var frameResult  = await socket.ReceiveAsync(frameBuffer, CancellationToken.None);
+
+        Assert.EndsWith(":gzip", header);
+        Assert.Equal(WebSocketMessageType.Binary, frameResult.MessageType);
+
+        using var compressed = new MemoryStream(frameBuffer[..frameResult.Count].ToArray());
+        using var gzip       = new GZipStream(compressed, CompressionMode.Decompress);
+        using var restored   = new MemoryStream();
+        gzip.CopyTo(restored);
+
+        Assert.Equal(data, restored.ToArray());
 
         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
         await transport.DisposeAsync();

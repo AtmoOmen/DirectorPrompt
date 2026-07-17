@@ -10,6 +10,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
+using DirectorPrompt.Services;
 
 namespace DirectorPrompt.Views.Components;
 
@@ -35,6 +36,8 @@ public sealed partial class SearchableComboBox : UserControl
 
     private readonly List<object>              allItems = [];
     private          INotifyCollectionChanged? observedCollection;
+    private          Control?                  remotePopupContent;
+    private          Popup?                    remotePopup;
     private          bool                      isUpdatingText;
 
     private TextBox SearchInput =>
@@ -176,7 +179,7 @@ public sealed partial class SearchableComboBox : UserControl
 
         Text = SearchInput.Text ?? string.Empty;
         FilterItems();
-        DropDownPopup.IsOpen = FilteredItems.Count > 0 && SearchInput.IsFocused;
+        SetDropDownOpen(FilteredItems.Count > 0 && SearchInput.IsFocused);
     }
 
     private void FilterItems()
@@ -197,7 +200,7 @@ public sealed partial class SearchableComboBox : UserControl
     {
         SearchInput.SelectAll();
         FilterItems();
-        DropDownPopup.IsOpen = FilteredItems.Count > 0;
+        SetDropDownOpen(FilteredItems.Count > 0);
     }
 
     private void OnResultSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -217,12 +220,12 @@ public sealed partial class SearchableComboBox : UserControl
         SelectedValue        = GetValue(selectedItem, SelectedValuePath);
         isUpdatingText       = false;
         Results.SelectedItem = null;
-        DropDownPopup.IsOpen = false;
+        SetDropDownOpen(false);
     }
 
     private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Down && DropDownPopup.IsOpen && FilteredItems.Count > 0)
+        if (e.Key == Key.Down && IsDropDownOpen && FilteredItems.Count > 0)
         {
             Results.Focus();
             Results.SelectedIndex = 0;
@@ -230,7 +233,7 @@ public sealed partial class SearchableComboBox : UserControl
         }
         else if (e.Key == Key.Escape)
         {
-            DropDownPopup.IsOpen = false;
+            SetDropDownOpen(false);
             UpdateDisplayText();
             e.Handled = true;
         }
@@ -240,7 +243,7 @@ public sealed partial class SearchableComboBox : UserControl
     {
         if (e.Key == Key.Escape)
         {
-            DropDownPopup.IsOpen = false;
+            SetDropDownOpen(false);
             UpdateDisplayText();
             SearchInput.Focus();
             e.Handled = true;
@@ -252,5 +255,64 @@ public sealed partial class SearchableComboBox : UserControl
             SearchInput.Focus();
             e.Handled = true;
         }
+    }
+
+    private bool IsDropDownOpen =>
+        RemotePopupHost.IsRemote(this) ?
+            remotePopupContent is not null :
+            DropDownPopup.IsOpen;
+
+    private void SetDropDownOpen(bool value)
+    {
+        if (!RemotePopupHost.IsRemote(this))
+        {
+            DropDownPopup.IsOpen = value;
+            return;
+        }
+
+        if (value)
+            ShowRemoteDropdown();
+        else
+            HideRemoteDropdown();
+    }
+
+    private void ShowRemoteDropdown()
+    {
+        if (remotePopupContent is not null)
+            return;
+
+        remotePopup = DropDownPopup;
+
+        if (remotePopup.Child is not Control content)
+            return;
+
+        remotePopup.Child  = null;
+        remotePopupContent = content;
+
+        if (!RemotePopupHost.Show(this, content, Bounds.Width, RestoreRemotePopupContent))
+        {
+            remotePopupContent = null;
+            remotePopup.Child  = content;
+        }
+    }
+
+    private void HideRemoteDropdown()
+    {
+        if (remotePopupContent is null)
+            return;
+
+        var content = RemotePopupHost.Hide(this) ?? remotePopupContent;
+        remotePopupContent = null;
+
+        if (remotePopup is not null)
+            remotePopup.Child = content;
+    }
+
+    private void RestoreRemotePopupContent(Control content)
+    {
+        remotePopupContent = null;
+
+        if (remotePopup is not null)
+            remotePopup.Child = content;
     }
 }

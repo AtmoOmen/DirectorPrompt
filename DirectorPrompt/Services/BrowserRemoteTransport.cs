@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Net;
 using System.Net.WebSockets;
 using System.Reflection;
@@ -85,14 +86,15 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
             return;
 
         var frameData = frame.Data.ToArray();
+        var encodedFrame = await Task.Run(() => EncodeFrame(frameData)).ConfigureAwait(false);
         var header = FormattableString.Invariant
         (
-            $"frame:{frame.SequenceId}:{frame.Width}:{frame.Height}:{frame.Stride}:{frame.DpiX}:{frame.DpiY}"
+            $"frame:{frame.SequenceId}:{frame.Width}:{frame.Height}:{frame.Stride}:{frame.DpiX}:{frame.DpiY}:{encodedFrame.Encoding}"
         );
 
         lock (connectionLock)
         {
-            latestFrame = new PendingFrame(frame.SequenceId, header, frameData);
+            latestFrame = new PendingFrame(frame.SequenceId, header, encodedFrame.Data);
         }
 
         await SendLatestFrameAsync();
@@ -224,7 +226,12 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
                     OnMessage?.Invoke(this, new FrameReceivedMessage { SequenceId = long.Parse(parts[1], CultureInfo.InvariantCulture) });
                     break;
                 case "resize":
-                    Resize(ParseDouble(parts[1]), ParseDouble(parts[2]));
+                    Resize
+                    (
+                        ParseDouble(parts[1]),
+                        ParseDouble(parts[2]),
+                        parts.Length > 3 ? ParseDouble(parts[3]) * 96 : 96
+                    );
                     break;
                 case "pointer-moved":
                     OnMessage?.Invoke(this, new PointerMovedEventMessage
@@ -276,14 +283,27 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
         }
     }
 
-    private void Resize(double width, double height) =>
+    private void Resize(double width, double height, double dpi = 96) =>
         OnMessage?.Invoke(this, new ClientViewportAllocatedMessage
         {
             Width  = width,
             Height = height,
-            DpiX   = 96,
-            DpiY   = 96
+            DpiX   = dpi,
+            DpiY   = dpi
         });
+
+    private static EncodedFrame EncodeFrame(byte[] data)
+    {
+        using var compressed = new MemoryStream();
+
+        using (var gzip = new GZipStream(compressed, CompressionLevel.Fastest, true))
+            gzip.Write(data);
+
+        if (compressed.Length >= data.Length)
+            return new EncodedFrame(data, "raw");
+
+        return new EncodedFrame(compressed.ToArray(), "gzip");
+    }
 
     private static KeyEventMessage CreateKeyMessage(string[] parts)
     {
@@ -363,6 +383,8 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
             sendLock.Release();
         }
     }
+
+    private sealed record EncodedFrame(byte[] Data, string Encoding);
 
     private sealed record PendingFrame(long SequenceID, string Header, byte[] Data);
 }

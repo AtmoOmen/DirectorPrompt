@@ -1,16 +1,22 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
 using DirectorPrompt.Localization;
+using DirectorPrompt.Services;
 using DirectorPrompt.ViewModels;
 using FluentAvalonia.UI.Windowing;
 
 namespace DirectorPrompt.Views;
 
-public partial class SettingsWindow : FAAppWindow
+public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
 {
     private readonly SettingsViewModel viewModel;
+    private Action<bool>? remoteCloseAction;
+
+    public IRemoteDialogHost? RemoteDialogHost { get; set; }
 
     public SettingsWindow()
     {
@@ -25,13 +31,36 @@ public partial class SettingsWindow : FAAppWindow
         AvaloniaXamlLoader.Load(this);
     }
 
+    internal void SetRemoteCloseAction(Action<bool>? action) =>
+        remoteCloseAction = action;
+
+    private void Complete(bool result)
+    {
+        if (remoteCloseAction is { } action)
+        {
+            remoteCloseAction = null;
+            action(result);
+            return;
+        }
+
+        Close(result);
+    }
+
     private void OnNavSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (sender is not ListBox { SelectedItem: ListBoxItem item })
             return;
 
         var tag    = item.Tag as string;
-        var panels = this.GetLogicalDescendants().OfType<StackPanel>().Where(panel => panel.Name is not null);
+        if (sender is not Visual visual)
+            return;
+
+        var root = TopLevel.GetTopLevel(visual);
+
+        if (root is null)
+            return;
+
+        var panels = root.GetVisualDescendants().OfType<StackPanel>().Where(panel => panel.Name is not null);
 
         foreach (var panel in panels)
         {
@@ -88,9 +117,9 @@ public partial class SettingsWindow : FAAppWindow
         await viewModel.SaveCommand.ExecuteAsync(null);
 
         if (viewModel.SaveSuccess)
-            Close(true);
+            Complete(true);
     }
 
     private void OnCancelClick(object sender, RoutedEventArgs e) =>
-        Close(false);
+        Complete(false);
 }

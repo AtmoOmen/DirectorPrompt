@@ -34,6 +34,9 @@ public partial class MainWindow : FAAppWindow
     private bool closeAuthorized;
     private bool closeInProgress;
 
+    private Border? remoteImportMenu;
+    private Border? remoteImportMenuBackdrop;
+
     private ListBox DialogList =>
         this.GetLogicalDescendants().OfType<ListBox>().First(control => control.Name == "DialogListBox");
 
@@ -75,6 +78,8 @@ public partial class MainWindow : FAAppWindow
         MobileMoreActionsButton   = this.FindControl<Button>(nameof(MobileMoreActionsButton))!;
         MobileMoreActionsMenu     = this.FindControl<Border>(nameof(MobileMoreActionsMenu))!;
         MobileMoreActionsBackdrop = this.FindControl<Panel>(nameof(MobileMoreActionsBackdrop))!;
+        remoteImportMenu          = this.FindControl<Border>(nameof(RemoteImportMenu));
+        remoteImportMenuBackdrop  = this.FindControl<Border>(nameof(RemoteImportMenuBackdrop));
         WorkspaceGrid             = this.FindControl<Grid>(nameof(WorkspaceGrid))!;
         SessionSidebar            = this.FindControl<Border>(nameof(SessionSidebar))!;
         ConversationPanel         = this.FindControl<Grid>(nameof(ConversationPanel))!;
@@ -133,6 +138,8 @@ public partial class MainWindow : FAAppWindow
         MobileMessageRail.IsVisible         = false;
         MobileMoreActionsMenu.IsVisible     = false;
         MobileMoreActionsBackdrop.IsVisible = false;
+        remoteImportMenu!.IsVisible         = false;
+        remoteImportMenuBackdrop!.IsVisible = false;
 
         if (mobile)
         {
@@ -458,6 +465,14 @@ public partial class MainWindow : FAAppWindow
 
     private void OnImportButtonClick(object sender, RoutedEventArgs e)
     {
+        if (isRemote)
+        {
+            remoteImportMenu!.IsVisible         = true;
+            remoteImportMenuBackdrop!.IsVisible = true;
+            e.Handled                            = true;
+            return;
+        }
+
         if (sender is not Control { ContextMenu: { } menu } element)
             return;
 
@@ -470,6 +485,26 @@ public partial class MainWindow : FAAppWindow
 
     private void OnImportSillyTavern(object sender, RoutedEventArgs e) =>
         viewModel.ImportSillyTavernProjectCommand.Execute(null);
+
+    private void OnRemoteImportMenuBackdropPressed(object? sender, PointerPressedEventArgs e)
+    {
+        remoteImportMenu!.IsVisible         = false;
+        remoteImportMenuBackdrop!.IsVisible = false;
+    }
+
+    private void OnRemoteImportDirectorPromptClick(object? sender, RoutedEventArgs e)
+    {
+        remoteImportMenu!.IsVisible         = false;
+        remoteImportMenuBackdrop!.IsVisible = false;
+        viewModel.ImportProjectCommand.Execute(null);
+    }
+
+    private void OnRemoteImportSillyTavernClick(object? sender, RoutedEventArgs e)
+    {
+        remoteImportMenu!.IsVisible         = false;
+        remoteImportMenuBackdrop!.IsVisible = false;
+        viewModel.ImportSillyTavernProjectCommand.Execute(null);
+    }
 
     private void OnEditProjectItem(object sender, RoutedEventArgs e)
     {

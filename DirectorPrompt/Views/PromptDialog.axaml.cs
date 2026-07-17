@@ -4,7 +4,9 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.Threading;
 using DirectorPrompt.Localization;
+using DirectorPrompt.Services;
 using FluentAvalonia.UI.Windowing;
 
 namespace DirectorPrompt.Views;
@@ -14,21 +16,71 @@ public partial class PromptDialog : FAAppWindow
     private bool    isInputMode;
     private bool    boolResult;
     private string? stringResult;
+    private Action<object?>? remoteCompletion;
 
-    private TextBlock Message =>
-        this.GetLogicalDescendants().OfType<TextBlock>().First(control => control.Name == "MessageText");
+    private TextBlock Message => MessageText;
 
-    private TextBox Input =>
-        this.GetLogicalDescendants().OfType<TextBox>().First(control => control.Name == "InputBox");
+    private TextBox Input => InputBox;
 
-    private Button Primary =>
-        this.GetLogicalDescendants().OfType<Button>().First(control => control.Name == "PrimaryButton");
+    private Button Primary => PrimaryButton;
 
-    private Button Secondary =>
-        this.GetLogicalDescendants().OfType<Button>().First(control => control.Name == "SecondaryButton");
+    private Button Secondary => SecondaryButton;
 
-    public PromptDialog() =>
+    public PromptDialog()
+    {
         AvaloniaXamlLoader.Load(this);
+    }
+
+    internal void SetRemoteCompletion(Action<object?>? completion) =>
+        remoteCompletion = completion;
+
+    internal Task<bool> ShowRemoteConfirmationAsync
+    (
+        string title,
+        string message,
+        string primaryText,
+        string secondaryText,
+        bool danger
+    )
+    {
+        Configure(title, message, primaryText, secondaryText, danger);
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        remoteCompletion = result => completion.TrySetResult((bool)result!);
+        return completion.Task;
+    }
+
+    internal Task<string?> ShowRemoteInputAsync
+    (
+        string title,
+        string prompt,
+        string defaultValue,
+        bool multiline
+    )
+    {
+        Configure(title, prompt, Loc.Get("Common.Save"), Loc.Get("Common.Cancel"), false);
+        isInputMode           = true;
+        Input.Text            = defaultValue;
+        Input.PlaceholderText = prompt;
+        Input.IsVisible       = true;
+        Message.IsVisible     = false;
+        Input.AcceptsReturn   = multiline;
+        Input.TextWrapping    = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap;
+        Input.MinHeight       = multiline ? 120 : 0;
+        Input.MaxHeight       = multiline ? 300 : double.PositiveInfinity;
+
+        var completion = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        remoteCompletion = result => completion.TrySetResult((string?)result);
+        Dispatcher.UIThread.Post
+        (
+            () =>
+            {
+                Input.Focus();
+                Input.SelectAll();
+            },
+            DispatcherPriority.Input
+        );
+        return completion.Task;
+    }
 
     private void OnPrimaryClick(object? sender, RoutedEventArgs e)
     {
@@ -59,6 +111,13 @@ public partial class PromptDialog : FAAppWindow
 
     private void CloseResult()
     {
+        if (remoteCompletion is { } completion)
+        {
+            remoteCompletion = null;
+            completion(isInputMode ? stringResult : boolResult);
+            return;
+        }
+
         if (Owner is not null)
             Close
             (
@@ -94,6 +153,16 @@ public partial class PromptDialog : FAAppWindow
         bool    danger = false
     )
     {
+        if (owner is IRemoteDialogOwner { RemoteDialogHost: { } remoteDialogHost })
+            return await remoteDialogHost.ShowConfirmationAsync
+            (
+                title,
+                message,
+                primaryText,
+                secondaryText,
+                danger
+            );
+
         var dialog = new PromptDialog();
         dialog.Configure(title, message, primaryText, secondaryText, danger);
 
@@ -129,6 +198,9 @@ public partial class PromptDialog : FAAppWindow
         bool    multiline
     )
     {
+        if (owner is IRemoteDialogOwner { RemoteDialogHost: { } remoteDialogHost })
+            return await remoteDialogHost.ShowInputAsync(title, prompt, defaultValue, multiline);
+
         var dialog = new PromptDialog();
         dialog.Configure(title, prompt, Loc.Get("Common.Save"), Loc.Get("Common.Cancel"), false);
         dialog.isInputMode           = true;
