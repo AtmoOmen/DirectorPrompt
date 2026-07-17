@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DirectorPrompt.Agents.MCP;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Localization;
+using DirectorPrompt.MCP;
 using Serilog;
 
 namespace DirectorPrompt.ViewModels;
@@ -15,6 +17,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ILocalizationService   localizationService;
     private readonly UserSettings           userSettings;
     private readonly IUserSettingsStore     userSettingsStore;
+    private readonly IExternalMCPToolRegistry externalMCPToolRegistry;
+    private readonly IDirectorPromptMCPStatus directorPromptMCPStatus;
 
     public bool SaveSuccess { get; private set; }
 
@@ -38,11 +42,21 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public ObservableCollection<AgentTaskSettingViewModel> AgentTasks { get; }
 
+    public ObservableCollection<MCPServerSettingViewModel> MCPServers { get; }
+
     public EmbeddingSettingViewModel Embedding { get; }
 
     public MemorySettingViewModel Memory { get; }
 
     public KnowledgeSettingViewModel Knowledge { get; }
+
+    public IReadOnlyList<MCPTransportType> AvailableMCPTransports { get; } = Enum.GetValues<MCPTransportType>();
+
+    public string InternalMCPEndpoint => directorPromptMCPStatus.Endpoint;
+
+    public string InternalMCPStatus => directorPromptMCPStatus.IsAvailable ?
+                                           "运行中" :
+                                           $"不可用: {directorPromptMCPStatus.ErrorMessage ?? "未启动"}";
 
     public IReadOnlyDictionary<string, string> AvailableLanguages =>
         localizationService.AvailableLanguages;
@@ -52,13 +66,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         UserSettings           userSettings,
         IModelConnectionTester connectionTester,
         ILocalizationService   localizationService,
-        IUserSettingsStore     userSettingsStore
+        IUserSettingsStore     userSettingsStore,
+        IExternalMCPToolRegistry externalMCPToolRegistry,
+        IDirectorPromptMCPStatus directorPromptMCPStatus
     )
     {
         this.connectionTester    = connectionTester;
         this.localizationService = localizationService;
         this.userSettings        = userSettings;
         this.userSettingsStore   = userSettingsStore;
+        this.externalMCPToolRegistry = externalMCPToolRegistry;
+        this.directorPromptMCPStatus = directorPromptMCPStatus;
 
         SelectedLanguage = userSettings.Localization.Language;
         IsLanSharingEnabled = userSettings.RemoteControl.IsLanSharingEnabled;
@@ -80,9 +98,16 @@ public sealed partial class SettingsViewModel : ObservableObject
         (
             userSettings.Orchestrator.Prompts.Select(p => new PromptSettingViewModel(p))
         );
+        MCPServers = new ObservableCollection<MCPServerSettingViewModel>
+        (
+            userSettings.MCPServers.Select(server => new MCPServerSettingViewModel(server))
+        );
         AgentTasks = new ObservableCollection<AgentTaskSettingViewModel>
         (
-            userSettings.Orchestrator.AgentTasks.Select(t => new AgentTaskSettingViewModel(t))
+            userSettings.Orchestrator.AgentTasks.Select
+            (
+                task => new AgentTaskSettingViewModel(task, userSettings.MCPServers)
+            )
         );
         Embedding = new EmbeddingSettingViewModel(userSettings.EmbeddingConfig);
         Memory    = new MemorySettingViewModel(userSettings.Orchestrator.MemoryConfig);
@@ -169,16 +194,90 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void AddMCPServer()
+    {
+        var config = new MCPServerConfig { DisplayName = "新 MCP 服务" };
+        userSettings.MCPServers.Add(config);
+        MCPServers.Add(new MCPServerSettingViewModel(config));
+
+        foreach (var task in AgentTasks)
+            task.AddMCPServer(config);
+    }
+
+    [RelayCommand]
+    private void RemoveMCPServer(MCPServerSettingViewModel? server)
+    {
+        if (server is null)
+            return;
+
+        userSettings.MCPServers.Remove(server.Config);
+        MCPServers.Remove(server);
+
+        foreach (var task in AgentTasks)
+            task.RemoveMCPServer(server.Config.ID);
+    }
+
+    [RelayCommand]
+    private async Task TestMCPServerAsync(MCPServerSettingViewModel? server)
+    {
+        if (server is null)
+            return;
+
+        server.Apply();
+        server.IsTesting = true;
+        server.InspectionMessage = "正在连接";
+
+        try
+        {
+            var inspection = await externalMCPToolRegistry.InspectAsync(server.Config, false);
+            server.InspectionMessage = inspection.IsAvailable ?
+                                           $"连接成功, 发现 {inspection.ToolNames.Count} 个工具: {string.Join(", ", inspection.ToolNames)}" :
+                                           $"连接失败: {inspection.ErrorMessage}";
+        }
+        finally
+        {
+            server.IsTesting = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshMCPServerAsync(MCPServerSettingViewModel? server)
+    {
+        if (server is null)
+            return;
+
+        server.Apply();
+        server.IsTesting = true;
+        server.InspectionMessage = "正在刷新工具";
+
+        try
+        {
+            var inspection = await externalMCPToolRegistry.InspectAsync(server.Config, true);
+            server.InspectionMessage = inspection.IsAvailable ?
+                                           $"已刷新, 发现 {inspection.ToolNames.Count} 个工具: {string.Join(", ", inspection.ToolNames)}" :
+                                           $"刷新失败: {inspection.ErrorMessage}";
+        }
+        finally
+        {
+            server.IsTesting = false;
+        }
+    }
+
+    [RelayCommand]
     private async Task SaveAsync()
     {
         IsSaving = true;
 
         try
         {
+            foreach (var server in MCPServers)
+                server.Apply();
+
             userSettings.Localization.Language = SelectedLanguage;
             userSettings.RemoteControl.IsLanSharingEnabled = IsLanSharingEnabled;
 
             await userSettingsStore.SaveAsync(userSettings);
+            await externalMCPToolRegistry.InvalidateAsync();
 
             SaveSuccess = true;
         }

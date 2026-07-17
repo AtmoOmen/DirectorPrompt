@@ -11,4 +11,6 @@ public class UserSettings
     public SessionStateConfig Session { get; set; } = new();
 
     public RemoteControlConfig RemoteControl { get; set; } = new();
+
+    public List<MCPServerConfig> MCPServers { get; set; } = [];
 }

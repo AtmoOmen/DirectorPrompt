@@ -1,6 +1,5 @@
 using System.Text;
 using DirectorPrompt.Agents.Config;
-using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Enums;
 using Microsoft.Extensions.AI;
 using Serilog;
@@ -11,7 +10,7 @@ public sealed class GenerationStage
 (
     IChatClientFactory  chatClientFactory,
     AgentConfigResolver agentConfigResolver,
-    KnowledgeTools      knowledgeTools
+    IAgentToolResolver  agentToolResolver
 )
 {
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
@@ -29,7 +28,12 @@ public sealed class GenerationStage
         );
 
         var client       = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
-        var tools        = knowledgeTools.Create(context.ToolContext);
+        var tools = await agentToolResolver.ResolveAsync
+                    (
+                        AgentTaskType.Narrator,
+                        context.ToolContext,
+                        cancellationToken
+                    );
         var systemPrompt = BuildSystemPrompt(context, resolved.SystemPrompt);
         var userMessage  = BuildNarratorInput(context);
 

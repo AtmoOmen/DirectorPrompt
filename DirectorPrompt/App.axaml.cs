@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using DirectorPrompt.Agents;
 using DirectorPrompt.Agents.Config;
+using DirectorPrompt.Agents.MCP;
 using DirectorPrompt.Agents.Pipeline;
 using DirectorPrompt.Agents.Retrieval;
 using DirectorPrompt.Agents.Tools;
@@ -17,6 +18,7 @@ using DirectorPrompt.Infrastructure.Localization;
 using DirectorPrompt.Infrastructure.Logging;
 using DirectorPrompt.Infrastructure.Repositories;
 using DirectorPrompt.Localization;
+using DirectorPrompt.MCP;
 using DirectorPrompt.Services;
 using DirectorPrompt.ViewModels;
 using DirectorPrompt.Views;
@@ -68,13 +70,13 @@ public class App : Application
                        .ConfigureServices((_, services) => ConfigureServices(services, settingsStore))
                        .Build();
 
+            var migrator = host.Services.GetRequiredService<SchemaMigrator>();
+            await migrator.MigrateAsync();
+
             await host.StartAsync();
 
             var localizationService = host.Services.GetRequiredService<ILocalizationService>();
             Loc.Instance.SetService(localizationService);
-
-            var migrator = host.Services.GetRequiredService<SchemaMigrator>();
-            await migrator.MigrateAsync();
 
 #if RELEASE
             var shouldContinue = await CheckForUpdatesAsync();
@@ -118,12 +120,37 @@ public class App : Application
     {
         if (host is not null)
         {
-            host.StopAsync().GetAwaiter().GetResult();
+            using var shutdownTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
-            if (host is IAsyncDisposable asyncDisposable)
-                asyncDisposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            else
-                host.Dispose();
+            try
+            {
+                host.StopAsync(shutdownTimeout.Token)
+                    .WaitAsync(shutdownTimeout.Token)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (OperationCanceledException) when (shutdownTimeout.IsCancellationRequested)
+            {
+                Log.Warning("应用宿主停止超时, 将继续退出应用");
+            }
+
+            try
+            {
+                if (host is IAsyncDisposable asyncDisposable)
+                {
+                    asyncDisposable.DisposeAsync()
+                                   .AsTask()
+                                   .WaitAsync(TimeSpan.FromSeconds(5))
+                                   .GetAwaiter()
+                                   .GetResult();
+                }
+                else
+                    host.Dispose();
+            }
+            catch (TimeoutException)
+            {
+                Log.Warning("应用宿主释放超时, 将继续退出应用");
+            }
         }
 
         Log.CloseAndFlush();
@@ -225,6 +252,8 @@ public class App : Application
         services.AddSingleton(userSettings.Orchestrator);
         services.AddSingleton<IUserSettingsStore>(settingsStore);
         services.AddSingleton<AgentConfigResolver>();
+        services.AddSingleton<IExternalMCPToolRegistry, ExternalMCPToolRegistry>();
+        services.AddSingleton<IAgentToolResolver, AgentToolResolver>();
         services.AddSingleton<IEmbeddingServiceFactory, EmbeddingServiceFactory>();
         services.AddSingleton<EmbeddingIndexService>();
         services.AddSingleton<KnowledgeRetrievalService>();
@@ -249,6 +278,18 @@ public class App : Application
         services.AddSingleton<SidebarQueryService>();
         services.AddSingleton<NotificationService>();
         services.AddSingleton<RemoteInteractionRouter>();
+        services.AddSingleton<IProjectContentService, ProjectContentService>();
+        services.AddSingleton<IProjectEditWindowCoordinator, ProjectEditWindowCoordinator>();
+        services.AddSingleton<MCPProjectTools>();
+        services.AddSingleton<DirectorPromptMCPHostedService>();
+        services.AddSingleton<IDirectorPromptMCPStatus>
+        (
+            serviceProvider => serviceProvider.GetRequiredService<DirectorPromptMCPHostedService>()
+        );
+        services.AddHostedService
+        (
+            serviceProvider => serviceProvider.GetRequiredService<DirectorPromptMCPHostedService>()
+        );
         services.AddSingleton<IWindowService, WindowService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<ILanSharingService, LanSharingService>();

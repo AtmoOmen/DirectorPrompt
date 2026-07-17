@@ -37,7 +37,6 @@ public sealed class AvaloniaViewConstructionTests
             null!,
             null!,
             null!,
-            null!,
             null!
         );
         var attribute = new StateAttributeEditViewModel { IsEditing = true };

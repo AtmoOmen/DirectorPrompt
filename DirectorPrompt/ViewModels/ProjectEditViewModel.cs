@@ -19,7 +19,6 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed partial class ProjectEditViewModel
 (
-    IProjectRepository    projectRepository,
     IKnowledgeRepository  knowledgeRepository,
     IStateRepository      stateRepository,
     ICharacterRepository  characterRepository,
@@ -27,11 +26,15 @@ public sealed partial class ProjectEditViewModel
     EmbeddingIndexService embeddingIndexService,
     AgentConfigResolver   agentConfigResolver,
     UserSettings          userSettings,
-    IFilePickerService    filePickerService
+    IFilePickerService    filePickerService,
+    IProjectContentService? projectContentService = null
 )
     : ObservableObject
 {
     private long projectID;
+
+    private IProjectContentService ProjectContentService =>
+        projectContentService ?? throw new InvalidOperationException("项目内容服务不可用");
 
     [ObservableProperty]
     public partial string Name { get; set; } = string.Empty;
@@ -339,7 +342,7 @@ public sealed partial class ProjectEditViewModel
                 OpeningMessage = OpeningMessage
             };
 
-            await projectRepository.UpdateAsync(project);
+            await ProjectContentService.UpdateProjectAsync(project);
             SavedProjectID = projectID;
             SaveSuccess    = true;
 
@@ -402,7 +405,13 @@ public sealed partial class ProjectEditViewModel
             Active    = true
         };
 
-        var created = await knowledgeRepository.CreateAsync(entry);
+        var created = await ProjectContentService.ManageKnowledgeEntryAsync
+        (
+            projectID,
+            ProjectContentAction.Create,
+            entry,
+            null
+        );
 
         var entryVM = new KnowledgeEntryEditViewModel
         {
@@ -438,7 +447,13 @@ public sealed partial class ProjectEditViewModel
                 Active    = entry.Active
             };
 
-            await knowledgeRepository.UpdateAsync(model);
+            await ProjectContentService.ManageKnowledgeEntryAsync
+            (
+                projectID,
+                ProjectContentAction.Update,
+                model,
+                model.ID
+            );
 
             var stored = await knowledgeRepository.GetByIDAsync(model.ID) ??
                          throw new InvalidOperationException($"知识条目 {model.ID} 不存在");
@@ -466,7 +481,13 @@ public sealed partial class ProjectEditViewModel
 
         try
         {
-            await knowledgeRepository.DeleteAsync(entry.ID);
+            await ProjectContentService.ManageKnowledgeEntryAsync
+            (
+                projectID,
+                ProjectContentAction.Delete,
+                null,
+                entry.ID
+            );
             RemoveEntryFromGroups(entry);
         }
         catch (Exception ex)
@@ -507,7 +528,13 @@ public sealed partial class ProjectEditViewModel
             Active      = true
         };
 
-        var created = await knowledgeRepository.CreateGroupAsync(group);
+        var created = await ProjectContentService.ManageKnowledgeGroupAsync
+        (
+            projectID,
+            ProjectContentAction.Create,
+            group,
+            null
+        );
 
         KnowledgeGroups.Add
         (
@@ -535,7 +562,13 @@ public sealed partial class ProjectEditViewModel
                 Active      = group.Active
             };
 
-            await knowledgeRepository.UpdateGroupAsync(model);
+            await ProjectContentService.ManageKnowledgeGroupAsync
+            (
+                projectID,
+                ProjectContentAction.Update,
+                model,
+                model.ID
+            );
             ValidationMessage = string.Empty;
         }
         catch (Exception ex)
@@ -553,7 +586,13 @@ public sealed partial class ProjectEditViewModel
 
         try
         {
-            await knowledgeRepository.DeleteGroupAsync(group.ID);
+            await ProjectContentService.ManageKnowledgeGroupAsync
+            (
+                projectID,
+                ProjectContentAction.Delete,
+                null,
+                group.ID
+            );
             KnowledgeGroups.Remove(group);
         }
         catch (Exception ex)
@@ -647,7 +686,13 @@ public sealed partial class ProjectEditViewModel
 
         try
         {
-            await stateRepository.DeleteAttributeAsync(attribute.ID);
+            await ProjectContentService.ManageStateAttributeAsync
+            (
+                projectID,
+                ProjectContentAction.Delete,
+                null,
+                attribute.ID
+            );
             StateAttributes.Remove(attribute);
             RemoveAttributeFromCategory(attribute);
         }
@@ -689,7 +734,13 @@ public sealed partial class ProjectEditViewModel
             Name      = Loc.Get("Character.Category.New")
         };
 
-        var created = await characterRepository.CreateCategoryAsync(category);
+        var created = await ProjectContentService.ManageCharacterCategoryAsync
+        (
+            projectID,
+            ProjectContentAction.Create,
+            category,
+            null
+        );
 
         var vm = new CharacterCategoryEditViewModel();
         vm.SyncFromModel(created);
@@ -725,17 +776,17 @@ public sealed partial class ProjectEditViewModel
 
         try
         {
-            await characterRepository.DeleteCategoryAsync(category.ID);
+            await ProjectContentService.ManageCharacterCategoryAsync
+            (
+                projectID,
+                ProjectContentAction.Delete,
+                null,
+                category.ID
+            );
             CharacterCategories.Remove(category);
 
             RefreshAvailableParentCategories();
-
-            var categoryAttrs = StateAttributes
-                                .Where(a => a.Scope == StateScope.Category && a.CategoryID == category.ID)
-                                .ToList();
-
-            foreach (var attr in categoryAttrs)
-                StateAttributes.Remove(attr);
+            RefreshAvailableNumericAttributes();
         }
         catch (Exception ex)
         {

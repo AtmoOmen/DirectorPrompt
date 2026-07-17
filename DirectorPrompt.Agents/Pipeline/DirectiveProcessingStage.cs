@@ -1,5 +1,4 @@
 using DirectorPrompt.Agents.Config;
-using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -14,7 +13,7 @@ public sealed class DirectiveProcessingStage
 (
     IChatClientFactory   chatClientFactory,
     AgentConfigResolver  agentConfigResolver,
-    SceneTools           sceneTools,
+    IAgentToolResolver   agentToolResolver,
     ISceneRepository     sceneRepository,
     IDirectiveRepository directiveRepository,
     ITimelineCalculator  timelineCalculator,
@@ -158,7 +157,12 @@ public sealed class DirectiveProcessingStage
         );
 
         var client = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
-        var tools  = sceneTools.Create(toolContext);
+        var tools = await agentToolResolver.ResolveAsync
+                    (
+                        AgentTaskType.Scene,
+                        toolContext,
+                        cancellationToken
+                    );
 
         var messages = BuildMessages(resolved.SystemPrompt, resolved.ModelPrompt, description);
 

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
@@ -9,11 +10,33 @@ public sealed class AgentTaskSettingViewModel : ObservableObject
 {
     public AgentTaskConfig Config { get; }
 
-    public AgentTaskSettingViewModel(AgentTaskConfig config) => Config = config;
-
     public AgentTaskType TaskType => Config.TaskType;
 
     public string TaskTypeDisplay => Loc.Get($"Agent.Task.{Config.TaskType}");
+
+    public ObservableCollection<MCPServerSelectionViewModel> MCPServers { get; } = [];
+
+    public AgentTaskSettingViewModel(AgentTaskConfig config, IEnumerable<MCPServerConfig>? mcpServers = null)
+    {
+        Config = config;
+
+        if (mcpServers is not null)
+            foreach (var server in mcpServers)
+                MCPServers.Add(new MCPServerSelectionViewModel(config, server));
+    }
+
+    public void AddMCPServer(MCPServerConfig server) =>
+        MCPServers.Add(new MCPServerSelectionViewModel(Config, server));
+
+    public void RemoveMCPServer(string serverID)
+    {
+        Config.MCPServerIDs.RemoveAll(id => id == serverID);
+
+        var item = MCPServers.FirstOrDefault(server => server.Server.ID == serverID);
+
+        if (item is not null)
+            MCPServers.Remove(item);
+    }
 
     public string ModelConfigID
     {

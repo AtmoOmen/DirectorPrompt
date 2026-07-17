@@ -95,6 +95,7 @@ public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
                 "ModelsPanel"    => tag == "models",
                 "PromptsPanel"   => tag == "prompts",
                 "TasksPanel"     => tag == "tasks",
+                "MCPPanel"       => tag == "mcp",
                 "EmbeddingPanel" => tag == "embedding",
                 "MemoryPanel"    => tag == "memory",
                 "RetrievalPanel" => tag == "retrieval",
@@ -135,6 +136,17 @@ public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
             return;
 
         viewModel.RemovePromptCommand.Execute(prompt);
+    }
+
+    private async void OnRemoveMCPServer(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { Tag: MCPServerSettingViewModel server })
+            return;
+
+        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Settings.MCP.Title"), Loc.Get("Dialog.ConfirmRemoveMCPServer", server.DisplayName), true))
+            return;
+
+        viewModel.RemoveMCPServerCommand.Execute(server);
     }
 
     private async void OnSaveClick(object sender, RoutedEventArgs e)

@@ -147,10 +147,20 @@ public sealed class LanSharingService
 
         if (transport is not null)
         {
-            transport.OnException     -= OnTransportException;
-            transport.ViewportChanged -= OnRemoteViewportChanged;
-            await transport.DisposeAsync().ConfigureAwait(false);
+            var currentTransport = transport;
             transport = null;
+            currentTransport.OnException     -= OnTransportException;
+            currentTransport.ViewportChanged -= OnRemoteViewportChanged;
+
+            try
+            {
+                await currentTransport.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                Log.Warning("局域网共享传输停止超时, 将继续关闭应用");
+            }
+
         }
 
         Log.Information("局域网共享已关闭");

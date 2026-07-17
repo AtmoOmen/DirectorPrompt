@@ -15,7 +15,8 @@ public sealed class RemoteWindowService
 (
     IServiceProvider   serviceProvider,
     UserSettings       userSettings,
-    ILanSharingService lanSharingService
+    ILanSharingService lanSharingService,
+    IProjectEditWindowCoordinator? projectEditWindowCoordinator = null
 ) : IWindowService, IRemoteDialogHost
 {
     private readonly List<Control> openWindows = [];
@@ -53,12 +54,20 @@ public sealed class RemoteWindowService
         await window.ViewModel.LoadFromProjectAsync(project);
 
         window.RemoteDialogHost = this;
-        var result = await ShowWindowAsync<bool>
-        (
-            window,
-            completion => window.SetRemoteCloseAction(completion)
-        );
-        return result;
+        projectEditWindowCoordinator?.Register(project.ID, window.CloseWithoutSaving);
+
+        try
+        {
+            return await ShowWindowAsync<bool>
+            (
+                window,
+                completion => window.SetRemoteCloseAction(completion)
+            );
+        }
+        finally
+        {
+            projectEditWindowCoordinator?.Unregister(project.ID, window.CloseWithoutSaving);
+        }
     }
 
     public async Task ShowSettingsAsync()

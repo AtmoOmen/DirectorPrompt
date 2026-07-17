@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
@@ -8,12 +9,19 @@ namespace DirectorPrompt.Infrastructure;
 
 public sealed class UserSettingsStore : IUserSettingsStore
 {
+    private readonly string userSettingsPath;
+
+    public UserSettingsStore(string? userSettingsPath = null) =>
+        this.userSettingsPath = userSettingsPath ?? AppPaths.UserSettingsPath;
+
     public UserSettings Load()
     {
-        if (!File.Exists(AppPaths.UserSettingsPath))
+        MigrateIfNeeded();
+
+        if (!File.Exists(userSettingsPath))
             return new UserSettings();
 
-        var json = File.ReadAllText(AppPaths.UserSettingsPath);
+        var json = File.ReadAllText(userSettingsPath);
 
         return JsonSerializer.Deserialize<UserSettings>(json, JsonOptions.Default) ?? new UserSettings();
     }
@@ -22,32 +30,36 @@ public sealed class UserSettingsStore : IUserSettingsStore
     {
         var json = JsonSerializer.Serialize(settings, JsonOptions.Default);
 
-        Directory.CreateDirectory(AppPaths.DataDirectory);
-        await File.WriteAllTextAsync(AppPaths.UserSettingsPath, json, cancellationToken);
+        var directory = Path.GetDirectoryName(userSettingsPath);
+
+        if (!string.IsNullOrWhiteSpace(directory))
+            Directory.CreateDirectory(directory);
+
+        await File.WriteAllTextAsync(userSettingsPath, json, cancellationToken);
     }
 
     public bool MigrateIfNeeded()
     {
-        if (!File.Exists(AppPaths.UserSettingsPath))
+        if (!File.Exists(userSettingsPath))
             return false;
 
-        var json = File.ReadAllText(AppPaths.UserSettingsPath);
+        var json = File.ReadAllText(userSettingsPath);
         var doc  = JsonDocument.Parse(json);
 
-        if (!doc.RootElement.TryGetProperty("Orchestrator", out var orch))
+        if (!doc.RootElement.TryGetProperty("Orchestrator", out var orch) &&
+            !doc.RootElement.TryGetProperty("orchestrator", out orch))
             return false;
 
-        if (orch.TryGetProperty("Providers", out _))
-            return false;
+        if (!orch.TryGetProperty("Providers", out _) &&
+            orch.TryGetProperty("Agents", out var agentsEl) &&
+            agentsEl.ValueKind == JsonValueKind.Array)
+        {
+            var settings = MigrateFromLegacy(doc.RootElement);
+            File.WriteAllText(userSettingsPath, JsonSerializer.Serialize(settings, JsonOptions.Default));
+            return true;
+        }
 
-        if (!orch.TryGetProperty("Agents", out var agentsEl) || agentsEl.ValueKind != JsonValueKind.Array)
-            return false;
-
-        var settings = MigrateFromLegacy(doc.RootElement);
-
-        File.WriteAllText(AppPaths.UserSettingsPath, JsonSerializer.Serialize(settings, JsonOptions.Default));
-
-        return true;
+        return RemoveObsoleteAgentTasks(userSettingsPath, json);
     }
 
     private static UserSettings MigrateFromLegacy(JsonElement root)
@@ -126,43 +138,19 @@ public sealed class UserSettingsStore : IUserSettingsStore
 
             var taskType = roleStr switch
             {
-                "Narrator"  => AgentTaskType.Narrator,
-                "Knowledge" => AgentTaskType.Knowledge,
-                "Memory"    => AgentTaskType.MemoryRecall,
-                "Scene"     => AgentTaskType.Scene,
-                "State"     => AgentTaskType.MemoryUpdate,
-                _           => AgentTaskType.Narrator
+                "Narrator" => AgentTaskType.Narrator,
+                "Memory" or "State" => AgentTaskType.MemoryUpdate,
+                "Scene" => AgentTaskType.Scene,
+                _ => (AgentTaskType?)null
             };
 
-            if (taskType == AgentTaskType.MemoryRecall)
+            if (taskType is { } activeTaskType)
             {
                 agentTasks.Add
                 (
                     new AgentTaskConfig
                     {
-                        TaskType      = AgentTaskType.MemoryRecall,
-                        ModelConfigID = model.ID,
-                        Enabled       = true
-                    }
-                );
-
-                agentTasks.Add
-                (
-                    new AgentTaskConfig
-                    {
-                        TaskType      = AgentTaskType.MemoryUpdate,
-                        ModelConfigID = model.ID,
-                        Enabled       = true
-                    }
-                );
-            }
-            else
-            {
-                agentTasks.Add
-                (
-                    new AgentTaskConfig
-                    {
-                        TaskType      = taskType,
+                        TaskType      = activeTaskType,
                         ModelConfigID = model.ID,
                         Enabled       = true
                     }
@@ -227,5 +215,38 @@ public sealed class UserSettingsStore : IUserSettingsStore
                           JsonSerializer.Deserialize<SessionStateConfig>(sessEl.GetRawText(), JsonOptions.Default) ?? new() :
                           new()
         };
+    }
+
+    private static bool RemoveObsoleteAgentTasks(string userSettingsPath, string json)
+    {
+        var root = JsonNode.Parse(json)?.AsObject();
+
+        if (root is null)
+            return false;
+
+        var orchestrator = root["Orchestrator"]?.AsObject() ?? root["orchestrator"]?.AsObject();
+        var tasks = orchestrator?["AgentTasks"]?.AsArray() ?? orchestrator?["agentTasks"]?.AsArray();
+
+        if (tasks is null)
+            return false;
+
+        var removed = false;
+
+        for (var index = tasks.Count - 1; index >= 0; index--)
+        {
+            var task = tasks[index]?.AsObject();
+            var taskType = task?["TaskType"]?.GetValue<string>() ?? task?["taskType"]?.GetValue<string>();
+
+            if (taskType is not ("Knowledge" or "MemoryRecall"))
+                continue;
+
+            tasks.RemoveAt(index);
+            removed = true;
+        }
+
+        if (removed)
+            File.WriteAllText(userSettingsPath, root.ToJsonString(JsonOptions.Default));
+
+        return removed;
     }
 }

@@ -12,7 +12,8 @@ public sealed class WindowService
     IServiceProvider         serviceProvider,
     UserSettings             userSettings,
     ILanSharingService       lanSharingService,
-    RemoteInteractionRouter remoteInteractionRouter
+    RemoteInteractionRouter remoteInteractionRouter,
+    IProjectEditWindowCoordinator projectEditWindowCoordinator
 ) : IWindowService
 {
     public Task<string?> InputAsync(string title, string prompt, string defaultValue)
@@ -35,7 +36,16 @@ public sealed class WindowService
         await window.ViewModel.LoadFromProjectAsync(project);
         var owner = App.GetActiveWindow();
 
-        return owner is not null && await window.ShowDialog<bool>(owner);
+        projectEditWindowCoordinator.Register(project.ID, window.CloseWithoutSaving);
+
+        try
+        {
+            return owner is not null && await window.ShowDialog<bool>(owner);
+        }
+        finally
+        {
+            projectEditWindowCoordinator.Unregister(project.ID, window.CloseWithoutSaving);
+        }
     }
 
     public async Task ShowSettingsAsync()

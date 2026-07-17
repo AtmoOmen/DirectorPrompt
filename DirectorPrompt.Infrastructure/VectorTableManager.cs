@@ -138,7 +138,7 @@ public sealed class VectorTableManager
             cancellationToken
         );
 
-    internal static async Task<bool> TableExistsAsync
+    public static async Task<bool> TableExistsAsync
     (
         SqliteConnection  connection,
         string            tableName,

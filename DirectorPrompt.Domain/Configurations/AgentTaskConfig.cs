@@ -11,4 +11,6 @@ public sealed class AgentTaskConfig
     public string? PromptID { get; set; }
 
     public bool Enabled { get; set; } = true;
+
+    public List<string> MCPServerIDs { get; set; } = [];
 }

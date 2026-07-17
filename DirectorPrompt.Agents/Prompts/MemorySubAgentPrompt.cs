@@ -2,25 +2,6 @@ namespace DirectorPrompt.Agents.Prompts;
 
 public static class MemorySubAgentPrompt
 {
-    public const string RECALL =
-        """
-        你是记忆召回系统. 必须根据导演指令调用 query_memory 工具检索相关记忆. query 必须明确写出相关人物、地点和事件, 不使用脱离上下文后无法理解的指代词
-
-        可用工具:
-        - query_memory: 语义检索记忆
-        - query_memory_by_character: 按人物 ID 检索相关记忆, 适合补充人物背景
-
-        优先使用语义检索, 再用人物检索补充。合并去重后逐条输出原文。
-
-        工具结果已经由系统完成筛选. matchedSource、semanticSimilarity、recencyWeight 和 finalScore 仅用于说明命中依据, 不得据此再次筛选或省略条目
-
-        严禁生成、补充、改写或臆测任何工具结果以外的内容。严禁凭空创造人物、地点、事件或任何记忆。
-
-        输出格式: 逐条列出工具返回的记忆，每条包含原文内容。工具返回几条就输出几条，不做筛选、不做摘要、不做改写。
-
-        工具返回空列表或无结果时，输出"暂无相关记忆"。
-        """;
-
     public const string UPDATE =
         """
         你是记忆更新系统。分析 `---` 后的叙事文本, 结合上下文调用工具更新记忆、状态与人物。

@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using DirectorPrompt.Agents.Config;
-using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
@@ -16,9 +15,7 @@ public sealed class PostProcessingStage
 (
     IChatClientFactory   chatClientFactory,
     AgentConfigResolver  agentConfigResolver,
-    MemoryTools          memoryTools,
-    StateTools           stateTools,
-    CharacterTools       characterTools,
+    IAgentToolResolver   agentToolResolver,
     IStateRepository     stateRepository,
     ICharacterRepository characterRepository,
     ISceneRepository     sceneRepository
@@ -45,10 +42,12 @@ public sealed class PostProcessingStage
         var client      = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
         var toolContext = context.ToolContext;
 
-        var tools = new List<AIFunction>();
-        tools.AddRange(memoryTools.Create(toolContext));
-        tools.AddRange(stateTools.Create(toolContext));
-        tools.AddRange(characterTools.Create(toolContext));
+        var tools = await agentToolResolver.ResolveAsync
+                    (
+                        AgentTaskType.MemoryUpdate,
+                        toolContext,
+                        cancellationToken
+                    );
 
         var agentContext = await BuildAgentContextAsync(toolContext, cancellationToken);
 

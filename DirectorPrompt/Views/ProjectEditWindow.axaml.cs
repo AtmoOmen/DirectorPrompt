@@ -60,6 +60,9 @@ public partial class ProjectEditWindow : FAAppWindow, IRemoteDialogOwner
     internal void SetRemoteCloseAction(Action<bool>? action) =>
         remoteCloseAction = action;
 
+    public void CloseWithoutSaving() =>
+        Complete(false);
+
     private void Complete(bool result)
     {
         if (remoteCloseAction is { } action)

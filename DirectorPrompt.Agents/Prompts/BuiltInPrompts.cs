@@ -7,8 +7,6 @@ public static class BuiltInPrompts
     public static string Get(AgentTaskType taskType) => taskType switch
     {
         AgentTaskType.Narrator     => NarratorPrompt.SYSTEM,
-        AgentTaskType.Knowledge    => KnowledgeAgentPrompt.SYSTEM,
-        AgentTaskType.MemoryRecall => MemorySubAgentPrompt.RECALL,
         AgentTaskType.MemoryUpdate => MemorySubAgentPrompt.UPDATE,
         AgentTaskType.Scene        => SceneAgentPrompt.SYSTEM,
         _                          => throw new ArgumentOutOfRangeException(nameof(taskType))

@@ -17,31 +17,68 @@ using Serilog;
 
 namespace DirectorPrompt.ViewModels;
 
-public sealed partial class MainViewModel
-(
-    Orchestrator         orchestrator,
-    IProjectRepository   projectRepository,
-    ISessionRepository   sessionRepository,
-    IEventRepository     eventRepository,
-    IMemoryRepository    memoryRepository,
-    DialogHistoryService dialogHistoryService,
-    SidebarQueryService  sidebarQueryService,
-    UserSettings         userSettings,
-    IProjectPortService  projectPortService,
-    NotificationService  notificationService,
-    IUserSettingsStore   userSettingsStore,
-    IWindowService       windowService,
-    IFilePickerService   filePickerService,
-    ILanSharingService   lanSharingService
-)
-    : ObservableObject
+public sealed partial class MainViewModel : ObservableObject
 {
+    private readonly Orchestrator           orchestrator;
+    private readonly IProjectRepository     projectRepository;
+    private readonly ISessionRepository     sessionRepository;
+    private readonly IEventRepository       eventRepository;
+    private readonly IMemoryRepository      memoryRepository;
+    private readonly DialogHistoryService   dialogHistoryService;
+    private readonly SidebarQueryService    sidebarQueryService;
+    private readonly UserSettings           userSettings;
+    private readonly IProjectPortService    projectPortService;
+    private readonly NotificationService    notificationService;
+    private readonly IUserSettingsStore     userSettingsStore;
+    private readonly IWindowService         windowService;
+    private readonly IFilePickerService     filePickerService;
+    private readonly ILanSharingService     lanSharingService;
+    private readonly IProjectContentService? projectContentService;
+
     private CancellationTokenSource? generationCts;
     private CancellationTokenSource? sessionLoadCts;
     private long?                    previousDialogRoundID;
 
     private DialogEntryViewModel? errorStreamingEntry;
     private DialogEntryViewModel? errorDirectorEntry;
+
+    public MainViewModel
+    (
+        Orchestrator           orchestrator,
+        IProjectRepository     projectRepository,
+        ISessionRepository     sessionRepository,
+        IEventRepository       eventRepository,
+        IMemoryRepository      memoryRepository,
+        DialogHistoryService   dialogHistoryService,
+        SidebarQueryService    sidebarQueryService,
+        UserSettings           userSettings,
+        IProjectPortService    projectPortService,
+        NotificationService    notificationService,
+        IUserSettingsStore     userSettingsStore,
+        IWindowService         windowService,
+        IFilePickerService     filePickerService,
+        ILanSharingService     lanSharingService,
+        IProjectContentService? projectContentService = null
+    )
+    {
+        this.orchestrator = orchestrator;
+        this.projectRepository = projectRepository;
+        this.sessionRepository = sessionRepository;
+        this.eventRepository = eventRepository;
+        this.memoryRepository = memoryRepository;
+        this.dialogHistoryService = dialogHistoryService;
+        this.sidebarQueryService = sidebarQueryService;
+        this.userSettings = userSettings;
+        this.projectPortService = projectPortService;
+        this.notificationService = notificationService;
+        this.userSettingsStore = userSettingsStore;
+        this.windowService = windowService;
+        this.filePickerService = filePickerService;
+        this.lanSharingService = lanSharingService;
+        this.projectContentService = projectContentService;
+        if (projectContentService is not null)
+            projectContentService.Changed += OnProjectContentChanged;
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsProjectSelected))]
@@ -106,6 +143,23 @@ public sealed partial class MainViewModel
     public ObservableCollection<Session> Sessions { get; } = [];
 
     public ObservableCollection<PipelineStageViewModel> PipelineStages { get; } = [];
+
+    private void OnProjectContentChanged(ProjectContentChange change)
+    {
+        Dispatcher.UIThread.Post
+        (
+            async () =>
+            {
+                if (change.IsDeleted && CurrentProject?.ID == change.ProjectID)
+                {
+                    CurrentProject = null;
+                    CurrentSession = null;
+                }
+
+                await LoadProjectsAsync();
+            }
+        );
+    }
 
     [RelayCommand]
     private async Task LoadProjectsAsync()
@@ -245,7 +299,10 @@ public sealed partial class MainViewModel
     {
         try
         {
-            await projectRepository.DeleteAsync(project.ID);
+            if (projectContentService is not null)
+                await projectContentService.DeleteProjectAsync(project.ID);
+            else
+                await projectRepository.DeleteAsync(project.ID);
 
             Log.Information("删除项目: ID={ProjectID}, 名称={Name}", project.ID, project.Name);
 
