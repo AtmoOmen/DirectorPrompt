@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Embedding;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
@@ -7,6 +8,7 @@ using Avalonia.VisualTree;
 using DirectorPrompt.Localization;
 using DirectorPrompt.Services;
 using DirectorPrompt.ViewModels;
+using DirectorPrompt.Views.Components;
 using FluentAvalonia.UI.Windowing;
 
 namespace DirectorPrompt.Views;
@@ -16,12 +18,19 @@ public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
     private readonly SettingsViewModel viewModel;
     private Action<bool>? remoteCloseAction;
 
+    private Grid             rootLayout        = null!;
+    private PathComboBox     remoteNavComboBox = null!;
+    private ListBox          navList           = null!;
+    private Grid              contentLayout     = null!;
+    private Border            contentPanel      = null!;
+
     public IRemoteDialogHost? RemoteDialogHost { get; set; }
 
     public SettingsWindow()
     {
         viewModel = null!;
         AvaloniaXamlLoader.Load(this);
+        InitializeRemoteLayout();
     }
 
     public SettingsWindow(SettingsViewModel viewModel)
@@ -29,6 +38,52 @@ public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
         this.viewModel = viewModel;
         DataContext    = viewModel;
         AvaloniaXamlLoader.Load(this);
+        InitializeRemoteLayout();
+    }
+
+    private void InitializeRemoteLayout()
+    {
+        rootLayout        = this.FindControl<Grid>(nameof(RootLayout))!;
+        remoteNavComboBox = this.FindControl<PathComboBox>(nameof(RemoteNavComboBox))!;
+        navList           = this.FindControl<ListBox>(nameof(NavList))!;
+        contentLayout     = this.FindControl<Grid>(nameof(ContentLayout))!;
+        contentPanel      = this.FindControl<Border>(nameof(ContentPanel))!;
+        rootLayout.AttachedToVisualTree += OnRootAttachedToVisualTree;
+    }
+
+    private void OnRootAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e) =>
+        ApplyRemoteLayout(TopLevel.GetTopLevel(rootLayout) is EmbeddableControlRoot);
+
+    private void ApplyRemoteLayout(bool remote)
+    {
+        remoteNavComboBox.IsVisible = remote;
+        navList.IsVisible           = !remote;
+
+        if (remote)
+        {
+            contentLayout.ColumnDefinitions[0].Width    = new GridLength(0);
+            contentLayout.ColumnDefinitions[0].MinWidth = 0;
+            Grid.SetColumn(contentPanel, 0);
+            Grid.SetColumnSpan(contentPanel, 2);
+            contentPanel.BorderThickness = new Thickness(0);
+            remoteNavComboBox.SelectedIndex = navList.SelectedIndex;
+            return;
+        }
+
+        contentLayout.ColumnDefinitions[0].Width    = new GridLength(220);
+        contentLayout.ColumnDefinitions[0].MinWidth = 180;
+        Grid.SetColumn(contentPanel, 1);
+        Grid.SetColumnSpan(contentPanel, 1);
+        contentPanel.BorderThickness = new Thickness(1, 0, 0, 0);
+    }
+
+    private void OnRemoteNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (navList is null || remoteNavComboBox is null)
+            return;
+
+        if (navList.SelectedIndex != remoteNavComboBox.SelectedIndex)
+            navList.SelectedIndex = remoteNavComboBox.SelectedIndex;
     }
 
     internal void SetRemoteCloseAction(Action<bool>? action) =>

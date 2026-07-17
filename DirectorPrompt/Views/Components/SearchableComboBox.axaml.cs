@@ -10,6 +10,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using DirectorPrompt.Services;
 
 namespace DirectorPrompt.Views.Components;
@@ -36,8 +37,8 @@ public sealed partial class SearchableComboBox : UserControl
 
     private readonly List<object>              allItems = [];
     private          INotifyCollectionChanged? observedCollection;
-    private          Control?                  remotePopupContent;
-    private          Popup?                    remotePopup;
+    private          Border?                  remotePopupContent;
+    private          ListBox?                 remoteResults;
     private          bool                      isUpdatingText;
 
     private TextBox SearchInput =>
@@ -281,18 +282,32 @@ public sealed partial class SearchableComboBox : UserControl
         if (remotePopupContent is not null)
             return;
 
-        remotePopup = DropDownPopup;
+        var list = new ListBox
+        {
+            ItemsSource          = FilteredItems,
+            DisplayMemberBinding = new Binding(DisplayMemberPath)
+        };
+        list.SelectionChanged += OnRemoteResultSelectionChanged;
+        list.KeyDown          += OnRemoteResultKeyDown;
 
-        if (remotePopup.Child is not Control content)
-            return;
+        var content = new Border
+        {
+            MinHeight       = 36,
+            MaxHeight       = 320,
+            Padding         = new Thickness(4),
+            Background      = new SolidColorBrush(Color.FromRgb(32, 32, 32)),
+            BorderBrush     = new SolidColorBrush(Color.FromRgb(92, 92, 92)),
+            BorderThickness = new Thickness(1),
+            Child           = list
+        };
 
-        remotePopup.Child  = null;
+        remoteResults      = list;
         remotePopupContent = content;
 
         if (!RemotePopupHost.Show(this, content, Bounds.Width, RestoreRemotePopupContent))
         {
             remotePopupContent = null;
-            remotePopup.Child  = content;
+            remoteResults      = null;
         }
     }
 
@@ -301,18 +316,37 @@ public sealed partial class SearchableComboBox : UserControl
         if (remotePopupContent is null)
             return;
 
-        var content = RemotePopupHost.Hide(this) ?? remotePopupContent;
+        RemotePopupHost.Hide(this);
         remotePopupContent = null;
+        remoteResults      = null;
+    }
 
-        if (remotePopup is not null)
-            remotePopup.Child = content;
+    private void OnRemoteResultSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (remoteResults?.SelectedItem is { } selectedItem)
+            CommitSelection(selectedItem);
+    }
+
+    private void OnRemoteResultKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            SetDropDownOpen(false);
+            SearchInput.Focus();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter)
+        {
+            if (remoteResults?.SelectedItem is { } selectedItem)
+                CommitSelection(selectedItem);
+            SearchInput.Focus();
+            e.Handled = true;
+        }
     }
 
     private void RestoreRemotePopupContent(Control content)
     {
         remotePopupContent = null;
-
-        if (remotePopup is not null)
-            remotePopup.Child = content;
+        remoteResults      = null;
     }
 }

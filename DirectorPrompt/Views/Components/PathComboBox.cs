@@ -2,8 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
-using Avalonia.Controls.Primitives;
-using Avalonia.VisualTree;
+using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Threading;
 using DirectorPrompt.Services;
 
@@ -11,8 +11,9 @@ namespace DirectorPrompt.Views.Components;
 
 public sealed class PathComboBox : ComboBox
 {
-    private Popup? popup;
-    private Control? remotePopupContent;
+    private Border? remotePopupContent;
+    private ListBox? remoteList;
+    private bool suppressDropDownClosed;
 
     protected override Type StyleKeyOverride => typeof(ComboBox);
 
@@ -80,7 +81,7 @@ public sealed class PathComboBox : ComboBox
 
     private void OnDropDownClosed(object? sender, EventArgs e)
     {
-        if (!RemotePopupHost.IsRemote(this))
+        if (!RemotePopupHost.IsRemote(this) || suppressDropDownClosed)
             return;
 
         HideRemoteDropdown();
@@ -91,18 +92,50 @@ public sealed class PathComboBox : ComboBox
         if (remotePopupContent is not null)
             return;
 
-        popup = this.GetVisualDescendants().OfType<Popup>().FirstOrDefault();
+        suppressDropDownClosed = true;
+        IsDropDownOpen        = false;
+        suppressDropDownClosed = false;
 
-        if (popup?.Child is not Control content)
-            return;
+        var list = new ListBox
+        {
+            ItemTemplate = ItemTemplate
+        };
 
-        popup.Child       = null;
-        remotePopupContent = content;
+        if (ItemsSource is not null)
+        {
+            list.ItemsSource  = ItemsSource;
+            list.SelectedItem = SelectedItem;
+        }
+        else
+        {
+            list.ItemsSource = Items
+                .Cast<object>()
+                .Select(static item => item is ComboBoxItem comboItem ? comboItem.Content : item)
+                .ToArray();
+            list.SelectedIndex = SelectedIndex;
+        }
+
+        list.SelectionChanged += OnRemoteSelectionChanged;
+        list.KeyDown          += OnRemoteListKeyDown;
+
+        var content = new Border
+        {
+            MinHeight     = 36,
+            MaxHeight     = 320,
+            Padding       = new Thickness(4),
+            Background    = new SolidColorBrush(Color.FromRgb(32, 32, 32)),
+            BorderBrush   = new SolidColorBrush(Color.FromRgb(92, 92, 92)),
+            BorderThickness = new Thickness(1),
+            Child         = list
+        };
+
+        remoteList          = list;
+        remotePopupContent  = content;
 
         if (!RemotePopupHost.Show(this, content, Bounds.Width, RestoreRemotePopupContent))
         {
             remotePopupContent = null;
-            popup.Child         = content;
+            remoteList         = null;
         }
     }
 
@@ -111,18 +144,47 @@ public sealed class PathComboBox : ComboBox
         if (remotePopupContent is null)
             return;
 
-        var content = RemotePopupHost.Hide(this) ?? remotePopupContent;
+        RemotePopupHost.Hide(this);
         remotePopupContent = null;
+        remoteList         = null;
+    }
 
-        if (popup is not null)
-            popup.Child = content;
+    private void OnRemoteSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        CommitRemoteSelection();
+    }
+
+    private void CommitRemoteSelection()
+    {
+        if (remoteList is null || remoteList.SelectedIndex < 0)
+            return;
+
+        if (ItemsSource is not null)
+            SelectedItem = remoteList?.SelectedItem;
+        else
+            SelectedIndex = remoteList?.SelectedIndex ?? -1;
+
+        HideRemoteDropdown();
     }
 
     private void RestoreRemotePopupContent(Control content)
     {
         remotePopupContent = null;
+        remoteList         = null;
+    }
 
-        if (popup is not null)
-            popup.Child = content;
+    private void OnRemoteListKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            HideRemoteDropdown();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter)
+        {
+            if (remoteList is not null)
+                CommitRemoteSelection();
+            e.Handled = true;
+        }
     }
 }

@@ -216,11 +216,20 @@ public sealed class RemoteWindowService
             Child                = content
         };
 
-        if (!double.IsNaN(window.Width) && window.Width > 0)
-            frame.MaxWidth = window.Width;
+        if (window is SettingsWindow or ProjectEditWindow)
+        {
+            frame.Margin             = new Thickness(8);
+            frame.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+            frame.VerticalAlignment   = Avalonia.Layout.VerticalAlignment.Stretch;
+        }
+        else
+        {
+            if (!double.IsNaN(window.Width) && window.Width > 0)
+                frame.MaxWidth = window.Width;
 
-        if (!double.IsNaN(window.Height) && window.Height > 0)
-            frame.MaxHeight = window.Height;
+            if (!double.IsNaN(window.Height) && window.Height > 0)
+                frame.MaxHeight = window.Height;
+        }
 
         modal.Children.Add(frame);
         return modal;

@@ -17,9 +17,26 @@
                        MinHeight="480"
                        Icon="/Assets/Images/Icon-NoBackground.ico"
                        TransparencyLevelHint="Mica">
-    <Grid RowDefinitions="*,Auto">
+    <Grid x:Name="RootLayout" RowDefinitions="Auto,*,Auto">
 
-        <Grid Grid.Row="0">
+        <components:PathComboBox x:Name="RemoteNavComboBox"
+                                 Grid.Row="0"
+                                 Margin="12,8"
+                                 HorizontalAlignment="Stretch"
+                                 IsVisible="False"
+                                 SelectionChanged="OnRemoteNavSelectionChanged"
+                                 SelectedIndex="0">
+            <ComboBoxItem Content="{Binding [Settings.Provider.Title], Source={x:Static loc:Loc.Instance}}" />
+            <ComboBoxItem Content="{Binding [Settings.Model.Title], Source={x:Static loc:Loc.Instance}}" />
+            <ComboBoxItem Content="{Binding [Settings.Prompt.Title], Source={x:Static loc:Loc.Instance}}" />
+            <ComboBoxItem Content="{Binding [Settings.Task.Title], Source={x:Static loc:Loc.Instance}}" />
+            <ComboBoxItem Content="{Binding [Settings.Embedding.Title], Source={x:Static loc:Loc.Instance}}" />
+            <ComboBoxItem Content="{Binding [Memory.Title], Source={x:Static loc:Loc.Instance}}" />
+            <ComboBoxItem Content="{Binding [Knowledge.Retrieval.Title], Source={x:Static loc:Loc.Instance}}" />
+            <ComboBoxItem Content="{Binding [Settings.Others.Title], Source={x:Static loc:Loc.Instance}}" />
+        </components:PathComboBox>
+
+        <Grid x:Name="ContentLayout" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="220" MinWidth="180" />
                 <ColumnDefinition Width="*" />
@@ -90,7 +107,8 @@
                 </ListBoxItem>
             </ListBox>
 
-            <Border Grid.Column="1"
+            <Border x:Name="ContentPanel"
+                    Grid.Column="1"
                     BorderBrush="{DynamicResource ControlElevationBorderBrush}"
                     BorderThickness="1,0,0,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
@@ -674,7 +692,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="1"
+        <Border Grid.Row="2"
                 BorderBrush="{DynamicResource ControlElevationBorderBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="24,12">
