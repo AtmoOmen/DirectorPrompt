@@ -143,6 +143,11 @@ public sealed class RemoteWindowService
         Action<Action<TResult>> setCompletion
     )
     {
+        if (window is SettingsWindow settingsWindow)
+            settingsWindow.UseRemoteLayout();
+        else if (window is ProjectEditWindow projectEditWindow)
+            projectEditWindow.UseRemoteLayout();
+
         var content = DetachContent(window);
         var completion = new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);
 

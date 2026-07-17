@@ -6,7 +6,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
@@ -65,30 +64,11 @@ public partial class MainWindow : FAAppWindow
         DataContext    = viewModel;
         AvaloniaXamlLoader.Load(this);
         RootLayout                = this.FindControl<Grid>(nameof(RootLayout))!;
-        ProjectActions            = this.FindControl<Grid>(nameof(ProjectActions))!;
-        ProjectLabel              = this.FindControl<TextBlock>(nameof(ProjectLabel))!;
-        ProjectComboBox           = this.FindControl<PathComboBox>(nameof(ProjectComboBox))!;
-        EditProjectButton         = this.FindControl<Button>(nameof(EditProjectButton))!;
-        NewProjectButton          = this.FindControl<Button>(nameof(NewProjectButton))!;
-        ImportButton              = this.FindControl<Button>(nameof(ImportButton))!;
-        LanSharingButton          = this.FindControl<Button>(nameof(LanSharingButton))!;
-        SettingsButton            = this.FindControl<Button>(nameof(SettingsButton))!;
         MobileSessionsToggle      = this.FindControl<ToggleButton>(nameof(MobileSessionsToggle))!;
         MobileDetailsToggle       = this.FindControl<ToggleButton>(nameof(MobileDetailsToggle))!;
-        MobileMoreActionsButton   = this.FindControl<Button>(nameof(MobileMoreActionsButton))!;
-        MobileMoreActionsMenu     = this.FindControl<Border>(nameof(MobileMoreActionsMenu))!;
-        MobileMoreActionsBackdrop = this.FindControl<Panel>(nameof(MobileMoreActionsBackdrop))!;
+        MobileMoreActionsButton   = this.FindControl<ToggleButton>(nameof(MobileMoreActionsButton))!;
         remoteImportMenu          = this.FindControl<Border>(nameof(RemoteImportMenu));
         remoteImportMenuBackdrop  = this.FindControl<Border>(nameof(RemoteImportMenuBackdrop));
-        WorkspaceGrid             = this.FindControl<Grid>(nameof(WorkspaceGrid))!;
-        SessionSidebar            = this.FindControl<Border>(nameof(SessionSidebar))!;
-        ConversationPanel         = this.FindControl<Grid>(nameof(ConversationPanel))!;
-        WorkspaceSplitter         = this.FindControl<GridSplitter>(nameof(WorkspaceSplitter))!;
-        DetailsPanel              = this.FindControl<TabControl>(nameof(DetailsPanel))!;
-        MessageRail               = this.FindControl<MessageRail>(nameof(MessageRail))!;
-        MobileMessageRail         = this.FindControl<MessageRail>(nameof(MobileMessageRail))!;
-        CollapseSidebarButton     = this.FindControl<Button>(nameof(CollapseSidebarButton))!;
-        ExpandSidebarButton       = this.FindControl<Button>(nameof(ExpandSidebarButton))!;
 
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         Title = $"DirectorPrompt {version}";
@@ -110,87 +90,17 @@ public partial class MainWindow : FAAppWindow
 
         var useMobileLayout = e.NewSize.Width < 720;
 
-        if (useMobileLayout != isMobileRemote)
-        {
-            isMobileRemote = useMobileLayout;
-            ApplyRemoteLayout(useMobileLayout);
-        }
+        if (useMobileLayout == isMobileRemote)
+            return;
+
+        isMobileRemote = useMobileLayout;
 
         if (useMobileLayout)
-            SessionSidebar.Width = Math.Min(320, Math.Max(280, e.NewSize.Width * 0.86));
-    }
+            RootLayout.Classes.Add("mobile");
+        else
+            RootLayout.Classes.Remove("mobile");
 
-    private void ApplyRemoteLayout(bool mobile)
-    {
-        ProjectLabel.IsVisible              = !mobile;
-        EditProjectButton.IsVisible         = !mobile;
-        NewProjectButton.IsVisible          = !mobile;
-        ImportButton.IsVisible              = !mobile;
-        LanSharingButton.IsVisible          = !mobile && viewModel.LanSharingService.IsActive;
-        SettingsButton.IsVisible            = !mobile;
-        MobileSessionsToggle.IsVisible      = mobile;
-        MobileDetailsToggle.IsVisible       = mobile;
-        MobileMoreActionsButton.IsVisible   = mobile;
-        WorkspaceSplitter.IsVisible         = !mobile;
-        CollapseSidebarButton.IsVisible     = !mobile && viewModel.IsSessionSidebarExpanded;
-        ExpandSidebarButton.IsVisible       = !mobile && !viewModel.IsSessionSidebarExpanded;
-        MessageRail.IsVisible               = !mobile;
-        MobileMessageRail.IsVisible         = false;
-        MobileMoreActionsMenu.IsVisible     = false;
-        MobileMoreActionsBackdrop.IsVisible = false;
-        remoteImportMenu!.IsVisible         = false;
-        remoteImportMenuBackdrop!.IsVisible = false;
-
-        if (mobile)
-        {
-            ProjectActions.HorizontalAlignment  = HorizontalAlignment.Stretch;
-            ProjectComboBox.Width               = double.NaN;
-            ProjectComboBox.HorizontalAlignment = HorizontalAlignment.Stretch;
-
-            WorkspaceGrid.ColumnDefinitions[0].Width    = new GridLength(0);
-            WorkspaceGrid.ColumnDefinitions[1].Width    = new GridLength(1, GridUnitType.Star);
-            WorkspaceGrid.ColumnDefinitions[1].MinWidth = 0;
-            WorkspaceGrid.ColumnDefinitions[2].Width    = new GridLength(0);
-            WorkspaceGrid.ColumnDefinitions[3].Width    = new GridLength(0);
-            WorkspaceGrid.ColumnDefinitions[3].MinWidth = 0;
-
-            Grid.SetColumn(SessionSidebar, 0);
-            Grid.SetColumnSpan(SessionSidebar, 4);
-            Grid.SetColumn(DetailsPanel, 0);
-            Grid.SetColumnSpan(DetailsPanel, 4);
-            SessionSidebar.SetValue(ZIndexProperty, 10);
-            DetailsPanel.SetValue(ZIndexProperty, 10);
-            SessionSidebar.Margin    = default;
-            ConversationPanel.Margin = default;
-            DetailsPanel.Margin      = default;
-            ShowMobileConversation();
-            return;
-        }
-
-        ProjectActions.HorizontalAlignment  = HorizontalAlignment.Left;
-        ProjectComboBox.Width               = 300;
-        ProjectComboBox.HorizontalAlignment = HorizontalAlignment.Left;
-
-        WorkspaceGrid.ColumnDefinitions[0].Width    = GridLength.Auto;
-        WorkspaceGrid.ColumnDefinitions[1].Width    = new GridLength(1, GridUnitType.Star);
-        WorkspaceGrid.ColumnDefinitions[1].MinWidth = 400;
-        WorkspaceGrid.ColumnDefinitions[2].Width    = GridLength.Auto;
-        WorkspaceGrid.ColumnDefinitions[3].Width    = new GridLength(320);
-        WorkspaceGrid.ColumnDefinitions[3].MinWidth = 260;
-
-        Grid.SetColumn(SessionSidebar, 0);
-        Grid.SetColumnSpan(SessionSidebar, 1);
-        Grid.SetColumn(DetailsPanel, 3);
-        Grid.SetColumnSpan(DetailsPanel, 1);
-        SessionSidebar.SetValue(ZIndexProperty, 0);
-        DetailsPanel.SetValue(ZIndexProperty, 0);
-        SessionSidebar.Width        = 240;
-        SessionSidebar.Margin       = default;
-        SessionSidebar.IsVisible    = viewModel.IsSessionSidebarExpanded;
-        ConversationPanel.IsVisible = true;
-        ConversationPanel.Margin    = default;
-        DetailsPanel.IsVisible      = true;
-        DetailsPanel.Margin         = new Thickness(8, 4, 8, 8);
+        ResetMobileNavigation();
     }
 
     private void OnMobileSessionsToggleClick(object? sender, RoutedEventArgs e)
@@ -198,17 +108,8 @@ public partial class MainWindow : FAAppWindow
         if (!isMobileRemote)
             return;
 
-        var isChecked = MobileSessionsToggle.IsChecked == true;
-        SessionSidebar.IsVisible = isChecked;
-
-        if (isChecked)
-        {
-            DetailsPanel.IsVisible        = false;
+        if (MobileSessionsToggle.IsChecked == true)
             MobileDetailsToggle.IsChecked = false;
-            MobileMessageRail.IsVisible   = false;
-        }
-        else
-            ShowMobileConversation();
     }
 
     private void OnMobileDetailsToggleClick(object? sender, RoutedEventArgs e)
@@ -216,71 +117,45 @@ public partial class MainWindow : FAAppWindow
         if (!isMobileRemote)
             return;
 
-        var isChecked = MobileDetailsToggle.IsChecked == true;
-        DetailsPanel.IsVisible = isChecked;
-
-        if (isChecked)
-        {
-            SessionSidebar.IsVisible       = false;
+        if (MobileDetailsToggle.IsChecked == true)
             MobileSessionsToggle.IsChecked = false;
-            MobileMessageRail.IsVisible    = false;
-        }
-        else
-            ShowMobileConversation();
-    }
-
-    private void OnMobileMoreActionsClick(object sender, RoutedEventArgs e)
-    {
-        var isVisible = MobileMoreActionsMenu.IsVisible;
-        MobileMoreActionsMenu.IsVisible     = !isVisible;
-        MobileMoreActionsBackdrop.IsVisible = !isVisible;
     }
 
     private void OnMobileBackdropPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        MobileMoreActionsMenu.IsVisible     = false;
-        MobileMoreActionsBackdrop.IsVisible = false;
+        MobileMoreActionsButton.IsChecked = false;
     }
 
     private void OnMobileMenuItemClick(object? sender, RoutedEventArgs e)
     {
-        MobileMoreActionsMenu.IsVisible     = false;
-        MobileMoreActionsBackdrop.IsVisible = false;
+        MobileMoreActionsButton.IsChecked = false;
     }
 
     private void OnMobileImportDirectorPromptClick(object? sender, RoutedEventArgs e)
     {
-        MobileMoreActionsMenu.IsVisible     = false;
-        MobileMoreActionsBackdrop.IsVisible = false;
+        MobileMoreActionsButton.IsChecked = false;
         viewModel.ImportProjectCommand.Execute(null);
     }
 
     private void OnMobileImportSillyTavernClick(object? sender, RoutedEventArgs e)
     {
-        MobileMoreActionsMenu.IsVisible     = false;
-        MobileMoreActionsBackdrop.IsVisible = false;
+        MobileMoreActionsButton.IsChecked = false;
         viewModel.ImportSillyTavernProjectCommand.Execute(null);
     }
 
     private void OnSessionSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (isMobileRemote)
-            ShowMobileConversation();
+            ResetMobileNavigation();
     }
 
-    private void ShowMobileConversation()
+    private void ResetMobileNavigation()
     {
-        if (!isMobileRemote)
-            return;
-
-        SessionSidebar.IsVisible            = false;
-        ConversationPanel.IsVisible         = true;
-        DetailsPanel.IsVisible              = false;
-        MobileMessageRail.IsVisible         = true;
-        MobileSessionsToggle.IsChecked      = false;
-        MobileDetailsToggle.IsChecked       = false;
-        MobileMoreActionsMenu.IsVisible     = false;
-        MobileMoreActionsBackdrop.IsVisible = false;
+        MobileSessionsToggle.IsChecked    = false;
+        MobileDetailsToggle.IsChecked     = false;
+        MobileMoreActionsButton.IsChecked = false;
+        remoteImportMenu!.IsVisible        = false;
+        remoteImportMenuBackdrop!.IsVisible = false;
     }
 
     private async void OnLoaded(object? sender, RoutedEventArgs e)

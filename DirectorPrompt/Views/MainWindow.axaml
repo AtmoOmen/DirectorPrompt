@@ -55,6 +55,125 @@
     </windowing:FAAppWindow.Styles>
     <Grid x:Name="RootLayout" RowDefinitions="Auto,*">
         <Grid.Styles>
+            <Style Selector="Grid#ProjectActions">
+                <Setter Property="HorizontalAlignment" Value="Left" />
+            </Style>
+            <Style Selector="ComboBox#ProjectComboBox">
+                <Setter Property="Width" Value="300" />
+            </Style>
+            <Style Selector="Button#LanSharingButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Button#LanSharingButton.lanactive">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="ToggleButton#MobileSessionsToggle">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="ToggleButton#MobileMoreActionsButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="ToggleButton#MobileDetailsToggle">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#ConversationPanel">
+                <Setter Property="Grid.Column" Value="1" />
+            </Style>
+            <Style Selector="Border#SessionSidebar">
+                <Setter Property="Width" Value="240" />
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Border#SessionSidebar.expanded">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="components|MessageRail#MobileMessageRail">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="TabControl#DetailsPanel">
+                <Setter Property="Grid.Column" Value="3" />
+                <Setter Property="Margin" Value="8,4,8,8" />
+            </Style>
+            <Style Selector="Button#CollapseSidebarButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Button#CollapseSidebarButton.expanded">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="Button#ExpandSidebarButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Button#ExpandSidebarButton.collapsed">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile TextBlock#ProjectLabel">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Button#EditProjectButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Button#NewProjectButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Button#ImportButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Button#LanSharingButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Button#SettingsButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile ToggleButton#MobileSessionsToggle">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile ToggleButton#MobileMoreActionsButton">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile ToggleButton#MobileDetailsToggle">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Grid#ProjectActions">
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile ComboBox#ProjectComboBox">
+                <Setter Property="Width" Value="NaN" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Grid#ConversationPanel">
+                <Setter Property="Grid.Column" Value="0" />
+                <Setter Property="Grid.ColumnSpan" Value="4" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Border#SessionSidebar">
+                <Setter Property="Grid.Column" Value="0" />
+                <Setter Property="Grid.ColumnSpan" Value="4" />
+                <Setter Property="Panel.ZIndex" Value="10" />
+                <Setter Property="Width" Value="320" />
+                <Setter Property="IsVisible"
+                        Value="{Binding IsChecked, ElementName=MobileSessionsToggle, Converter={StaticResource BoolToVisibility}}" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile GridSplitter#WorkspaceSplitter">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile TabControl#DetailsPanel">
+                <Setter Property="Grid.Column" Value="0" />
+                <Setter Property="Grid.ColumnSpan" Value="4" />
+                <Setter Property="Panel.ZIndex" Value="10" />
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="IsVisible"
+                        Value="{Binding IsChecked, ElementName=MobileDetailsToggle, Converter={StaticResource BoolToVisibility}}" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile components|MessageRail#MessageRail">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile components|MessageRail#MobileMessageRail">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Button#CollapseSidebarButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="Grid#RootLayout.mobile Button#ExpandSidebarButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
             <Style Selector="ToggleButton.mobile-nav-item">
                 <Setter Property="Height" Value="52" />
                 <Setter Property="MinWidth" Value="0" />
@@ -86,13 +205,12 @@
                               Height="36"
                               Padding="0"
                               Margin="0,0,8,0"
-                              IsVisible="False"
                               Click="OnMobileSessionsToggleClick"
                               ToolTip.Tip="{Binding [Navigation.Sessions], Source={x:Static loc:Loc.Instance}}">
                     <fa:FASymbolIcon Symbol="List" FontSize="18" />
                 </ToggleButton>
 
-                <Grid x:Name="ProjectActions" Grid.Column="1" HorizontalAlignment="Left"
+                <Grid x:Name="ProjectActions" Grid.Column="1"
                       ColumnDefinitions="Auto,*,Auto,Auto,Auto" VerticalAlignment="Center">
                     <TextBlock x:Name="ProjectLabel"
                                Grid.Column="0"
@@ -102,7 +220,6 @@
                     <components:PathComboBox x:Name="ProjectComboBox"
                                              Grid.Column="1"
                                              Margin="0,0,4,0"
-                                             Width="300"
                                              ItemsSource="{Binding Projects}"
                                              DisplayMemberPath="Name"
                                              SelectedItem="{Binding CurrentProject}"
@@ -156,7 +273,7 @@
                         Margin="0,0,8,0"
                         Padding="12,6"
                         Command="{Binding OpenLanSharingCommand}"
-                        IsVisible="{Binding LanSharingService.IsActive}">
+                        Classes.lanactive="{Binding LanSharingService.IsActive}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <fa:FASymbolIcon Symbol="Link" />
                         <TextBlock Text="{Binding LanSharingService.Endpoint.Authority}" />
@@ -173,17 +290,15 @@
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="MobileMoreActionsButton"
-                        Grid.Column="4"
-                        Width="36"
-                        Height="36"
-                        Padding="0"
-                        Margin="8,0,0,0"
-                        IsVisible="False"
-                        Click="OnMobileMoreActionsClick"
-                        ToolTip.Tip="{Binding [Navigation.Settings], Source={x:Static loc:Loc.Instance}}">
+                <ToggleButton x:Name="MobileMoreActionsButton"
+                              Grid.Column="4"
+                              Width="36"
+                              Height="36"
+                              Padding="0"
+                              Margin="8,0,0,0"
+                              ToolTip.Tip="{Binding [Navigation.Settings], Source={x:Static loc:Loc.Instance}}">
                     <fa:FASymbolIcon Symbol="MoreVertical" FontSize="18" />
-                </Button>
+                </ToggleButton>
 
                 <ToggleButton x:Name="MobileDetailsToggle"
                               Grid.Column="5"
@@ -191,7 +306,6 @@
                               Height="36"
                               Padding="0"
                               Margin="8,0,0,0"
-                              IsVisible="False"
                               Click="OnMobileDetailsToggleClick"
                               ToolTip.Tip="{Binding [Navigation.Details], Source={x:Static loc:Loc.Instance}}">
                     <fa:FASymbolIcon Symbol="ViewAll" FontSize="18" />
@@ -208,12 +322,10 @@
             </Grid.ColumnDefinitions>
 
             <Border x:Name="SessionSidebar"
-                    Grid.Column="0"
-                    Width="240"
                     Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
                     BorderBrush="{DynamicResource ControlElevationBorderBrush}"
                     BorderThickness="0,0,1,0"
-                    IsVisible="{Binding IsSessionSidebarExpanded, Converter={StaticResource BoolToVisibility}}">
+                    Classes.expanded="{Binding IsSessionSidebarExpanded}">
                 <Grid RowDefinitions="Auto,*">
 
                     <Button Grid.Row="0"
@@ -244,7 +356,7 @@
                 </Grid>
             </Border>
 
-            <Grid x:Name="ConversationPanel" Grid.Column="1" RowDefinitions="Auto,*,Auto">
+            <Grid x:Name="ConversationPanel" RowDefinitions="Auto,*,Auto">
 
                 <ItemsControl Grid.Row="0"
                               ItemsSource="{Binding PipelineStages}"
@@ -545,8 +657,7 @@
                                             MaxHeight="264"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Center"
-                                            Margin="0,8,4,8"
-                                            IsVisible="False" />
+                                            Margin="0,8,4,8" />
                 </Grid>
 
                 <Border Grid.Row="2"
@@ -571,10 +682,8 @@
                           VerticalAlignment="Stretch" />
 
             <TabControl x:Name="DetailsPanel"
-                        Grid.Column="3"
                         Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
-                        BorderThickness="0"
-                        Margin="8,4,8,8">
+                        BorderThickness="0">
 
                 <TabItem>
                     <TabItem.Header>
@@ -1015,7 +1124,7 @@
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     Margin="236,0,0,0"
-                    IsVisible="{Binding IsSessionSidebarExpanded, Converter={StaticResource BoolToVisibility}}"
+                    Classes.expanded="{Binding IsSessionSidebarExpanded}"
                     ToolTip.Tip="{Binding [Navigation.CollapseSidebar], Source={x:Static loc:Loc.Instance}}">
                 <fa:FASymbolIcon Symbol="ChevronLeft" FontSize="12" />
             </Button>
@@ -1029,7 +1138,7 @@
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     Margin="4,0,0,0"
-                    IsVisible="{Binding IsSessionSidebarExpanded, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"
+                    Classes.collapsed="{Binding IsSessionSidebarExpanded, Converter={StaticResource InverseBool}}"
                     ToolTip.Tip="{Binding [Navigation.ExpandSidebar], Source={x:Static loc:Loc.Instance}}">
                 <fa:FASymbolIcon Symbol="ChevronRight" FontSize="12" />
             </Button>
@@ -1040,7 +1149,7 @@
                Grid.Row="0" Grid.RowSpan="2"
                Background="Transparent"
                ZIndex="99"
-               IsVisible="False"
+               IsVisible="{Binding IsChecked, ElementName=MobileMoreActionsButton, Converter={StaticResource BoolToVisibility}}"
                PointerPressed="OnMobileBackdropPointerPressed" />
 
         <Border x:Name="MobileMoreActionsMenu"
@@ -1055,7 +1164,7 @@
                 CornerRadius="8"
                 ZIndex="100"
                 Padding="4"
-                IsVisible="False">
+                IsVisible="{Binding IsChecked, ElementName=MobileMoreActionsButton, Converter={StaticResource BoolToVisibility}}">
             <Border.Styles>
                 <Style Selector="Button.menu-item">
                     <Setter Property="Background" Value="Transparent" />

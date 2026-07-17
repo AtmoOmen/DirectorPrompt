@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Embedding;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
@@ -21,8 +20,6 @@ public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
     private Grid             rootLayout        = null!;
     private PathComboBox     remoteNavComboBox = null!;
     private ListBox          navList           = null!;
-    private Grid              contentLayout     = null!;
-    private Border            contentPanel      = null!;
 
     public IRemoteDialogHost? RemoteDialogHost { get; set; }
 
@@ -46,36 +43,9 @@ public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
         rootLayout        = this.FindControl<Grid>(nameof(RootLayout))!;
         remoteNavComboBox = this.FindControl<PathComboBox>(nameof(RemoteNavComboBox))!;
         navList           = this.FindControl<ListBox>(nameof(NavList))!;
-        contentLayout     = this.FindControl<Grid>(nameof(ContentLayout))!;
-        contentPanel      = this.FindControl<Border>(nameof(ContentPanel))!;
-        rootLayout.AttachedToVisualTree += OnRootAttachedToVisualTree;
     }
 
-    private void OnRootAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e) =>
-        ApplyRemoteLayout(TopLevel.GetTopLevel(rootLayout) is EmbeddableControlRoot);
-
-    private void ApplyRemoteLayout(bool remote)
-    {
-        remoteNavComboBox.IsVisible = remote;
-        navList.IsVisible           = !remote;
-
-        if (remote)
-        {
-            contentLayout.ColumnDefinitions[0].Width    = new GridLength(0);
-            contentLayout.ColumnDefinitions[0].MinWidth = 0;
-            Grid.SetColumn(contentPanel, 0);
-            Grid.SetColumnSpan(contentPanel, 2);
-            contentPanel.BorderThickness = new Thickness(0);
-            remoteNavComboBox.SelectedIndex = navList.SelectedIndex;
-            return;
-        }
-
-        contentLayout.ColumnDefinitions[0].Width    = new GridLength(220);
-        contentLayout.ColumnDefinitions[0].MinWidth = 180;
-        Grid.SetColumn(contentPanel, 1);
-        Grid.SetColumnSpan(contentPanel, 1);
-        contentPanel.BorderThickness = new Thickness(1, 0, 0, 0);
-    }
+    internal void UseRemoteLayout() => rootLayout.Classes.Add("remote");
 
     private void OnRemoteNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
