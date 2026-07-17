@@ -11,6 +11,7 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.Threading;
 using DirectorPrompt.Services;
 
 namespace DirectorPrompt.Views.Components;
@@ -219,9 +220,12 @@ public sealed partial class SearchableComboBox : UserControl
         SearchInput.Text     = display;
         Text                 = display;
         SelectedValue        = GetValue(selectedItem, SelectedValuePath);
-        isUpdatingText       = false;
-        Results.SelectedItem = null;
-        SetDropDownOpen(false);
+        isUpdatingText = false;
+        Dispatcher.UIThread.Post(() =>
+        {
+            Results.SelectedItem = null;
+            SetDropDownOpen(false);
+        });
     }
 
     private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
