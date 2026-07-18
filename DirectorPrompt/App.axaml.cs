@@ -127,32 +127,26 @@ public class App : Application
 
             try
             {
-                host.StopAsync(shutdownTimeout.Token)
-                    .WaitAsync(shutdownTimeout.Token)
-                    .GetAwaiter()
-                    .GetResult();
+                _ = host.StopAsync(shutdownTimeout.Token);
             }
-            catch (OperationCanceledException) when (shutdownTimeout.IsCancellationRequested)
+            catch (Exception ex)
             {
-                Log.Warning("应用宿主停止超时, 将继续退出应用");
+                Log.Warning("应用宿主停止错误: {exception}", ex);
             }
 
             try
             {
                 if (host is IAsyncDisposable asyncDisposable)
                 {
-                    asyncDisposable.DisposeAsync()
-                                   .AsTask()
-                                   .WaitAsync(TimeSpan.FromSeconds(5))
-                                   .GetAwaiter()
-                                   .GetResult();
+                    _ = asyncDisposable.DisposeAsync()
+                                       .AsTask();
                 }
                 else
                     host.Dispose();
             }
-            catch (TimeoutException)
+            catch (Exception ex)
             {
-                Log.Warning("应用宿主释放超时, 将继续退出应用");
+                Log.Warning("应用宿主释放错误: {exception}", ex);
             }
         }
 
@@ -175,7 +169,6 @@ public class App : Application
                                                      updateWindow.UpdateProgress,
                                                      async (changelog, version) =>
                                                      {
-                                                         updateWindow.Hide();
                                                          var changelogWindow = new ChangelogWindow(changelog, version);
                                                          await changelogWindow.ShowDialog(updateWindow);
                                                      }
