@@ -49,10 +49,10 @@ internal class UpdateOrchestrator
                 }
             );
 
-            var changelog = newRelease.TargetFullRelease.NotesMarkdown;
+            var changelog = newRelease.TargetFullRelease.NotesMarkdown ?? string.Empty;
             var version   = newRelease.TargetFullRelease.Version.ToString();
 
-            if (onChangelogReady is not null && !string.IsNullOrEmpty(changelog))
+            if (onChangelogReady is not null)
             {
                 onStatus?.Invoke(Loc.Get("Update.Ready"));
                 await onChangelogReady(changelog, version);

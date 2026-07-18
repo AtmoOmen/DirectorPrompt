@@ -10,7 +10,7 @@ public sealed class SessionRepository
 ) : ISessionRepository
 {
     public Task<Session?> GetByIDAsync(long id, CancellationToken cancellationToken = default) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
                 await connection.QueryFirstOrDefaultAsync<Session>
@@ -30,7 +30,7 @@ public sealed class SessionRepository
         long              projectID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<Session>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<Session>>
         (
             async (connection, token) =>
             {

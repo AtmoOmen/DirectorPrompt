@@ -41,7 +41,7 @@ public sealed class ProjectContentService
         projectRepository.GetAllAsync(cancellationToken);
 
     public Task<ProjectContentSnapshot?> GetProjectAsync(long projectID, CancellationToken cancellationToken = default) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
             {
@@ -1643,7 +1643,7 @@ public sealed class ProjectContentService
     }
 
     private Task EnsureEntityProjectAsync(string table, long id, long projectID, CancellationToken cancellationToken) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
             {

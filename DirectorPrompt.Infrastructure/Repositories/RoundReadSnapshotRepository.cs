@@ -17,7 +17,7 @@ public sealed class RoundReadSnapshotRepository
         long?             sceneID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
             {

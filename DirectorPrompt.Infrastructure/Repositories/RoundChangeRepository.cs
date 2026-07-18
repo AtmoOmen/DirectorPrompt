@@ -113,7 +113,7 @@ public sealed class RoundChangeRepository
         long              roundID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<RoundChange>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<RoundChange>>
         (
             async (connection, token) =>
             {

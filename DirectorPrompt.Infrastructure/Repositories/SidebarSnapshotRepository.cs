@@ -15,7 +15,7 @@ public sealed class SidebarSnapshotRepository
         long              sessionID,
         CancellationToken cancellationToken = default
     ) =>
-        databaseScheduler.ExecuteAsync
+        databaseScheduler.ExecuteReadAsync
         (
             async (connection, token) =>
             {

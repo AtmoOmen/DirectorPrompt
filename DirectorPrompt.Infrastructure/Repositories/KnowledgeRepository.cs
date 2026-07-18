@@ -61,7 +61,7 @@ public sealed class KnowledgeRepository
         int               limit,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<KnowledgeEntry>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<KnowledgeEntry>>
         (
             async (connection, token) =>
             {
@@ -89,7 +89,6 @@ public sealed class KnowledgeRepository
 
                 return rows.ToList();
             },
-            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -98,7 +97,7 @@ public sealed class KnowledgeRepository
         long              groupID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<KnowledgeEntry>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<KnowledgeEntry>>
         (
             async (connection, token) =>
             {
@@ -127,7 +126,7 @@ public sealed class KnowledgeRepository
         if (entryIDs.Count == 0)
             return Task.FromResult<IReadOnlyList<KnowledgeEntry>>([]);
 
-        return scheduler.ExecuteAsync<IReadOnlyList<KnowledgeEntry>>
+        return scheduler.ExecuteReadAsync<IReadOnlyList<KnowledgeEntry>>
         (
             async (connection, token) =>
             {
@@ -158,7 +157,7 @@ public sealed class KnowledgeRepository
         if (entryIDs.Count == 0)
             return Task.FromResult<IReadOnlyList<KnowledgeEntry>>([]);
 
-        return scheduler.ExecuteAsync<IReadOnlyList<KnowledgeEntry>>
+        return scheduler.ExecuteReadAsync<IReadOnlyList<KnowledgeEntry>>
         (
             async (connection, token) =>
             {
@@ -473,7 +472,7 @@ public sealed class KnowledgeRepository
         int               topK,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<VectorSearchResult>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<VectorSearchResult>>
         (
             async (connection, token) =>
             {

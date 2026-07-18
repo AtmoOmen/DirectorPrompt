@@ -12,7 +12,7 @@ public sealed class MemoryRepository
 ) : IMemoryRepository
 {
     public Task<MemoryEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
                 await connection.QueryFirstOrDefaultAsync<MemoryEntry>
@@ -34,7 +34,7 @@ public sealed class MemoryRepository
         int               limit,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<MemoryEntry>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<MemoryEntry>>
         (
             async (connection, token) =>
             {
@@ -67,7 +67,6 @@ public sealed class MemoryRepository
 
                 return rows.ToList();
             },
-            SQLiteWorkPriority.Maintenance,
             cancellationToken
         );
 
@@ -81,7 +80,7 @@ public sealed class MemoryRepository
         if (memoryIDs.Count == 0)
             return Task.FromResult<IReadOnlyList<MemoryEntry>>([]);
 
-        return scheduler.ExecuteAsync<IReadOnlyList<MemoryEntry>>
+        return scheduler.ExecuteReadAsync<IReadOnlyList<MemoryEntry>>
         (
             async (connection, token) =>
             {
@@ -108,7 +107,7 @@ public sealed class MemoryRepository
         int               limit,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<MemoryEntry>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<MemoryEntry>>
         (
             async (connection, token) =>
             {
@@ -149,7 +148,7 @@ public sealed class MemoryRepository
         MemoryPageQuery   query,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
             {
@@ -685,7 +684,7 @@ public sealed class MemoryRepository
         int               topK,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<VectorSearchResult>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<VectorSearchResult>>
         (
             async (connection, token) =>
             {

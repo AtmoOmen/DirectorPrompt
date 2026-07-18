@@ -5,8 +5,8 @@ namespace DirectorPrompt.Infrastructure;
 
 public sealed class SQLiteDatabaseScheduler : IAsyncDisposable
 {
-    private const int FOREGROUND_CAPACITY  = 256;
-    private const int MAINTENANCE_CAPACITY = 64;
+    private const int FOREGROUND_CAPACITY  = 1024;
+    private const int MAINTENANCE_CAPACITY = 256;
 
     private readonly SQLiteConnectionFactory connectionFactory;
     private readonly Channel<WorkItem>       foregroundQueue;
@@ -55,6 +55,34 @@ public sealed class SQLiteDatabaseScheduler : IAsyncDisposable
 
         await writer.WriteAsync(item, cancellationToken);
         return await item.Task;
+    }
+
+    public Task ExecuteReadAsync
+    (
+        Func<SqliteConnection, CancellationToken, Task> operation,
+        CancellationToken                               cancellationToken = default
+    ) =>
+        ExecuteReadAsync
+        (
+            async (connection, token) =>
+            {
+                await operation(connection, token);
+                return true;
+            },
+            cancellationToken
+        );
+
+    public async Task<TResult> ExecuteReadAsync<TResult>
+    (
+        Func<SqliteConnection, CancellationToken, Task<TResult>> operation,
+        CancellationToken                                        cancellationToken = default
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await using var connection = await connectionFactory.CreateAsync(true, cancellationToken);
+        await ConfigureReadConnectionAsync(connection, cancellationToken);
+        return await operation(connection, cancellationToken);
     }
 
     public async ValueTask DisposeAsync()
@@ -115,15 +143,32 @@ public sealed class SQLiteDatabaseScheduler : IAsyncDisposable
             if (foregroundQueue.Reader.TryPeek(out _) || maintenanceQueue.Reader.TryPeek(out _))
                 return true;
 
-            var foregroundWait  = foregroundQueue.Reader.WaitToReadAsync(shutdownSource.Token).AsTask();
-            var maintenanceWait = maintenanceQueue.Reader.WaitToReadAsync(shutdownSource.Token).AsTask();
-            await Task.WhenAny(foregroundWait, maintenanceWait);
-
-            if (foregroundQueue.Reader.TryPeek(out _) || maintenanceQueue.Reader.TryPeek(out _))
-                return true;
-
             if (foregroundQueue.Reader.Completion.IsCompleted && maintenanceQueue.Reader.Completion.IsCompleted)
                 return false;
+
+            if (foregroundQueue.Reader.Completion.IsCompleted)
+                return await maintenanceQueue.Reader.WaitToReadAsync(shutdownSource.Token);
+
+            if (maintenanceQueue.Reader.Completion.IsCompleted)
+                return await foregroundQueue.Reader.WaitToReadAsync(shutdownSource.Token);
+
+            using var waitCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdownSource.Token);
+            var foregroundWait  = foregroundQueue.Reader.WaitToReadAsync(waitCancellation.Token).AsTask();
+            var maintenanceWait = maintenanceQueue.Reader.WaitToReadAsync(waitCancellation.Token).AsTask();
+            var completedWait   = await Task.WhenAny(foregroundWait, maintenanceWait);
+
+            waitCancellation.Cancel();
+
+            try
+            {
+                await Task.WhenAll(foregroundWait, maintenanceWait);
+            }
+            catch (OperationCanceledException) when (waitCancellation.IsCancellationRequested)
+            {
+            }
+
+            if (await completedWait)
+                return true;
         }
     }
 
@@ -139,6 +184,13 @@ public sealed class SQLiteDatabaseScheduler : IAsyncDisposable
                               PRAGMA journal_size_limit=16777216;
                               PRAGMA temp_store=FILE;
                               """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task ConfigureReadConnectionAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA busy_timeout=5000;";
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 

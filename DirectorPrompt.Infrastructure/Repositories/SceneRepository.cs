@@ -12,7 +12,7 @@ public sealed class SceneRepository
 ) : ISceneRepository
 {
     public Task<Scene?> GetByIDAsync(long id, CancellationToken cancellationToken = default) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
                 await connection.QueryFirstOrDefaultAsync<Scene>
@@ -32,7 +32,7 @@ public sealed class SceneRepository
         long              sessionID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<Scene>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<Scene>>
         (
             async (connection, token) =>
             {
@@ -52,7 +52,7 @@ public sealed class SceneRepository
         );
 
     public Task<Scene?> GetActiveSceneAsync(long sessionID, CancellationToken cancellationToken = default) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
                 await connection.QueryFirstOrDefaultAsync<Scene>
@@ -72,7 +72,7 @@ public sealed class SceneRepository
         long              sessionID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<Scene>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<Scene>>
         (
             async (connection, token) =>
             {
@@ -320,7 +320,7 @@ public sealed class SceneRepository
         long              beforeSceneID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) => await connection.QueryFirstOrDefaultAsync<Scene>
                                          (

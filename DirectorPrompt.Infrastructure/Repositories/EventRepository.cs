@@ -82,7 +82,7 @@ public sealed class EventRepository
         long              roundID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<PlaythroughEvent>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<PlaythroughEvent>>
         (
             async (connection, token) =>
             {
@@ -106,7 +106,7 @@ public sealed class EventRepository
         DialogPageQuery   query,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
             {
@@ -200,7 +200,7 @@ public sealed class EventRepository
         int               maxRounds,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<PlaythroughEvent>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<PlaythroughEvent>>
         (
             async (connection, token) =>
             {
@@ -257,7 +257,7 @@ public sealed class EventRepository
         long              beforeRoundID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
                 await connection.QueryFirstOrDefaultAsync<PlaythroughEvent>
@@ -290,7 +290,7 @@ public sealed class EventRepository
         int               chunkSize,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<PlaythroughEvent>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<PlaythroughEvent>>
         (
             async (connection, token) =>
             {
@@ -384,7 +384,7 @@ public sealed class EventRepository
         );
 
     public Task<long> GetLatestRoundIDAsync(long sessionID, CancellationToken cancellationToken = default) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
             {

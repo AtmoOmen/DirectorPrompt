@@ -16,7 +16,7 @@ public sealed class DirectiveRepository
         long              sessionID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<ActiveDirective>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<ActiveDirective>>
         (
             async (connection, token) =>
             {
@@ -144,7 +144,7 @@ public sealed class DirectiveRepository
         long              roundID,
         CancellationToken cancellationToken = default
     ) =>
-        scheduler.ExecuteAsync<IReadOnlyList<ActiveDirective>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<ActiveDirective>>
         (
             async (connection, token) =>
             {

@@ -12,7 +12,7 @@ public sealed class ProjectRepository
 ) : IProjectRepository
 {
     public Task<Project?> GetByIDAsync(long id, CancellationToken cancellationToken = default) =>
-        scheduler.ExecuteAsync
+        scheduler.ExecuteReadAsync
         (
             async (connection, token) =>
                 await connection.QueryFirstOrDefaultAsync<Project>
@@ -28,7 +28,7 @@ public sealed class ProjectRepository
         );
 
     public Task<IReadOnlyList<Project>> GetAllAsync(CancellationToken cancellationToken = default) =>
-        scheduler.ExecuteAsync<IReadOnlyList<Project>>
+        scheduler.ExecuteReadAsync<IReadOnlyList<Project>>
         (
             async (connection, token) =>
             {
