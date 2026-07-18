@@ -156,8 +156,13 @@ public sealed record ProjectBlueprintResult
     Project                           Project,
     IReadOnlyDictionary<string, long> CategoryIDs,
     IReadOnlyDictionary<string, long> GroupIDs,
-    IReadOnlyDictionary<string, long> EntryIDs,
-    string                            IndexStatus
+    IReadOnlyDictionary<string, long> EntryIDs
+);
+
+public sealed record ProjectExportResult
+(
+    long   ProjectID,
+    string FilePath
 );
 
 public sealed record ProjectDeleteSummary

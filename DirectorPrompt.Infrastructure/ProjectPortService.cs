@@ -65,7 +65,12 @@ public sealed class ProjectPortService
             await JsonSerializer.SerializeAsync(dataStream, packageData, JsonOptions.Default, cancellationToken);
     }
 
-    public async Task<ProjectImportResult> ImportAsync(string filePath, CancellationToken cancellationToken = default)
+    public async Task<ProjectImportResult> ImportAsync
+    (
+        string            filePath,
+        bool              requireKnowledgeGroups = false,
+        CancellationToken cancellationToken      = default
+    )
     {
         using var zip = ZipFile.OpenRead(filePath);
 
@@ -97,6 +102,9 @@ public sealed class ProjectPortService
 
         if (data.Project is null)
             throw new InvalidDataException("无效的项目包: 缺少项目数据");
+
+        if (requireKnowledgeGroups)
+            ValidateKnowledgeEntryGroups(data.KnowledgeGroups ?? [], data.KnowledgeEntries ?? []);
 
         await using var connection  = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
@@ -253,6 +261,24 @@ public sealed class ProjectPortService
                    );
 
         return rows.ToList();
+    }
+
+    private static void ValidateKnowledgeEntryGroups
+    (
+        IReadOnlyCollection<KnowledgeGroup> groups,
+        IReadOnlyCollection<KnowledgeEntry> entries
+    )
+    {
+        var groupIDs = groups.Select(group => group.ID).ToHashSet();
+
+        foreach (var entry in entries)
+        {
+            if (entry.GroupID is null)
+                throw new InvalidDataException("项目包包含未归属分组的知识条目");
+
+            if (!groupIDs.Contains(entry.GroupID.Value))
+                throw new InvalidDataException($"项目包中的知识条目引用了不存在的知识分组: {entry.GroupID}");
+        }
     }
 
     private static async Task<List<KnowledgeEntityIndex>> QueryKnowledgeEntityIndexAsync

@@ -137,8 +137,7 @@ public sealed class ProjectContentService
                 new Project { Name = name.Trim(), Description = description, OpeningMessage = openingMessage },
                 new Dictionary<string, long>(),
                 new Dictionary<string, long>(),
-                new Dictionary<string, long>(),
-                "not_started"
+                new Dictionary<string, long>()
             );
         }
 
@@ -245,8 +244,7 @@ public sealed class ProjectContentService
                                      },
                                      categoryIDs,
                                      groupIDs,
-                                     entryIDs,
-                                     "pending"
+                                     entryIDs
                                  );
                              }
                              catch
