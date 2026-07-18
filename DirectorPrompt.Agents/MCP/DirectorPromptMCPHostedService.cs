@@ -47,7 +47,7 @@ public sealed class DirectorPromptMCPHostedService
                        Version = "3"
                    }
                )
-               .WithHttpTransport()
+               .WithHttpTransport(options => options.Stateless = true)
                .WithTools(projectTools)
                .WithMessageFilters
                (filters => filters.AddIncomingFilter
@@ -86,6 +86,15 @@ public sealed class DirectorPromptMCPHostedService
                );
 
         var created = builder.Build();
+        created.Use
+        (async (context, next) =>
+            {
+                if (context.Request.Path == "/mcp")
+                    context.Request.Headers.Remove("MCP-Session-Id");
+
+                await next(context);
+            }
+        );
         created.MapMcp("/mcp");
 
         try
