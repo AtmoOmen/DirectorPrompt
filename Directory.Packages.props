@@ -10,8 +10,6 @@
     <PackageVersion Include="DailyRoutines.CodeAnalysis" Version="2.6.0" />
     <PackageVersion Include="Avalonia" Version="12.1.0" />
     <PackageVersion Include="Avalonia.Desktop" Version="12.1.0" />
-    <PackageVersion Include="Avalonia.Headless" Version="12.1.0" />
-    <PackageVersion Include="Avalonia.Headless.XUnit" Version="12.1.0" />
     <PackageVersion Include="Dapper" Version="2.1.79" />
     <PackageVersion Include="FluentAvaloniaUI" Version="3.0.2" />
     <PackageVersion Include="LiveMarkdown.Avalonia" Version="2.2.1" />
