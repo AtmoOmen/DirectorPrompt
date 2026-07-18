@@ -425,12 +425,54 @@
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                        VerticalAlignment="Center"
-                                        Command="{Binding AddPromptCommand}">
+                                        VerticalAlignment="Center">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <fa:FASymbolIcon Symbol="Add" />
                                         <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
                                     </StackPanel>
+                                    <Button.Flyout>
+                                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                            <MenuItem Header="{Binding [Settings.Prompt.New], Source={x:Static loc:Loc.Instance}}"
+                                                      Command="{Binding AddPromptCommand}">
+                                                <MenuItem.Icon>
+                                                    <fa:FASymbolIcon Symbol="Document" />
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{Binding [Settings.Prompt.NewFromPreset], Source={x:Static loc:Loc.Instance}}">
+                                                <MenuItem.Icon>
+                                                    <fa:FASymbolIcon Symbol="Library" />
+                                                </MenuItem.Icon>
+                                                <MenuItem Header="{Binding [Settings.Prompt.Preset.Narrator], Source={x:Static loc:Loc.Instance}}"
+                                                          Command="{Binding AddPromptCommand}"
+                                                          CommandParameter="Narrator">
+                                                    <MenuItem.Icon>
+                                                        <fa:FASymbolIcon Symbol="Message" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="{Binding [Settings.Prompt.Preset.MemoryUpdate], Source={x:Static loc:Loc.Instance}}"
+                                                          Command="{Binding AddPromptCommand}"
+                                                          CommandParameter="MemoryUpdate">
+                                                    <MenuItem.Icon>
+                                                        <fa:FASymbolIcon Symbol="SaveLocal" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="{Binding [Settings.Prompt.Preset.Scene], Source={x:Static loc:Loc.Instance}}"
+                                                          Command="{Binding AddPromptCommand}"
+                                                          CommandParameter="Scene">
+                                                    <MenuItem.Icon>
+                                                        <fa:FASymbolIcon Symbol="Flag" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="{Binding [Settings.Prompt.Preset.SceneSummary], Source={x:Static loc:Loc.Instance}}"
+                                                          Command="{Binding AddPromptCommand}"
+                                                          CommandParameter="SceneSummary">
+                                                    <MenuItem.Icon>
+                                                        <fa:FASymbolIcon Symbol="List" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                            </MenuItem>
+                                        </MenuFlyout>
+                                    </Button.Flyout>
                                 </Button>
                             </Grid>
 

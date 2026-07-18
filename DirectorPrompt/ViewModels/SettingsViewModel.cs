@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents.MCP;
+using DirectorPrompt.Agents.Prompts;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Services;
@@ -192,9 +193,37 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void AddPrompt()
+    private void AddPrompt(object? parameter = null)
     {
-        var config = new PromptConfig { DisplayName = "新提示词" };
+        string? presetType = parameter as string;
+
+        var displayName = string.IsNullOrEmpty(presetType) ?
+                              Loc.Get("Settings.Prompt.NewPromptDefaultName") :
+                              presetType switch
+                              {
+                                  "Narrator" => Loc.Get("Settings.Prompt.Preset.Narrator"),
+                                  "MemoryUpdate" => Loc.Get("Settings.Prompt.Preset.MemoryUpdate"),
+                                  "Scene" => Loc.Get("Settings.Prompt.Preset.Scene"),
+                                  "SceneSummary" => Loc.Get("Settings.Prompt.Preset.SceneSummary"),
+                                  _ => Loc.Get("Settings.Prompt.NewPromptDefaultName")
+                              };
+
+        var content = string.IsNullOrEmpty(presetType) ?
+                          string.Empty :
+                          presetType switch
+                          {
+                              "Narrator" => NarratorPrompt.SYSTEM,
+                              "MemoryUpdate" => MemorySubAgentPrompt.UPDATE,
+                              "Scene" => SceneAgentPrompt.SYSTEM,
+                              "SceneSummary" => SceneSummaryPrompt.SYSTEM,
+                              _ => string.Empty
+                          };
+
+        var config = new PromptConfig
+        {
+            DisplayName = displayName,
+            Content     = content
+        };
         userSettings.Orchestrator.Prompts.Add(config);
         Prompts.Add(new PromptSettingViewModel(config));
     }
