@@ -5,21 +5,21 @@ namespace DirectorPrompt.Agents.MCP;
 
 public sealed class MCPEnumStateTransition
 {
-    [Description("当前枚举选项，必须存在于状态属性的选项列表中")]
+    [Description("目标枚举选项，必须存在于属性选项中")]
     public string Option { get; set; } = string.Empty;
 
-    [Description("转移方式：Random 按权重随机选择，Expression 根据表达式选择")]
+    [Description("转移方式：Random 按权重随机，Expression 按条件匹配")]
     public EnumTransitionMethod Method { get; set; } = EnumTransitionMethod.Random;
 
-    [Description("随机转移权重，仅 Method 为 Random 时使用")]
+    [Description("转移权重；多个表达式命中时优先较大值")]
     public float Weight { get; set; } = 1f;
 
-    [Description("表达式中引用的数值状态属性名称，仅 Method 为 Expression 时使用")]
+    [Description("表达式引用的数值属性标识；{val} 代表该属性当前值")]
     public string? AttributeName { get; set; }
 
-    [Description("枚举转移表达式，仅 Method 为 Expression 时使用")]
+    [Description("转移条件表达式，{val} 代表 AttributeName 对应属性值")]
     public string? Expression { get; set; }
 
-    [Description("表达式转移执行方式：Always 每次触发都执行，Once 仅执行一次")]
+    [Description("表达式转移方式：Always 每次触发，Once 仅首次命中")]
     public EnumSwitchMode SwitchMode { get; set; } = EnumSwitchMode.Always;
 }

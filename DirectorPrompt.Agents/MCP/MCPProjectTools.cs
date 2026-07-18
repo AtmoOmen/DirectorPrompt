@@ -27,7 +27,7 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("列出所有项目的基础信息，不包含知识、人物分类或状态属性的详情")]
+    [Description("列出项目")]
     public Task<IReadOnlyList<Project>> ListProjectsAsync(CancellationToken cancellationToken = default) =>
         ExecuteAsync(new { }, () => projectContentService.ListProjectsAsync(cancellationToken));
 
@@ -41,7 +41,7 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("读取项目的完整可编辑定义，包括项目信息、知识分组与条目、人物分类和状态属性")]
+    [Description("读取项目完整配置")]
     public Task<ProjectContentSnapshot> GetProjectSnapshotAsync
     (
         [Description("项目 ID")] long projectID,
@@ -59,27 +59,28 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("创建项目，可在同一请求中提供知识分组、人物分类和状态属性蓝图。dryRun 为 true 时仅验证并返回预览，不写入项目")]
+    [Description("创建项目；dryRun 时不写入")]
     public Task<ProjectBlueprintResult> CreateProjectAsync
     (
-        [Description("项目名称，不能为空")]    string            name,
-        [Description("项目描述")]         string            description,
-        [Description("项目开场消息")]       string            openingMessage,
-        [Description("可选的项目初始蓝图")]    ProjectBlueprint? blueprint         = null,
-        [Description("是否只校验并预览创建结果")] bool              dryRun            = false,
-        CancellationToken                               cancellationToken = default
+        [Description("项目名称，不能为空")] string            name,
+        [Description("项目描述")]      string            description,
+        [Description("开场消息")]      string            openingMessage,
+        [Description("初始配置蓝图")]    ProjectBlueprint? blueprint         = null,
+        [Description("仅校验并预览")]    bool              dryRun            = false,
+        CancellationToken                            cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { name, description, openingMessage, blueprint, dryRun },
-         () => projectContentService.CreateProjectAsync
-         (
-             name,
-             description,
-             openingMessage,
-             blueprint,
-             dryRun,
-             cancellationToken
-         )
+        (
+            new { name, description, openingMessage, blueprint, dryRun },
+            () => projectContentService.CreateProjectAsync
+            (
+                name,
+                description,
+                openingMessage,
+                blueprint,
+                dryRun,
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -92,28 +93,29 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("局部更新项目基础信息。至少提供 name、description、openingMessage 之一；传入空字符串可清空描述或开场消息")]
+    [Description("局部更新项目基本信息")]
     public Task<Project> UpdateProjectAsync
     (
-        [Description("项目 ID")]    long    projectID,
-        [Description("新的项目名称")]   string? name              = null,
-        [Description("新的项目描述")]   string? description       = null,
-        [Description("新的项目开场消息")] string? openingMessage    = null,
-        CancellationToken                 cancellationToken = default
+        [Description("项目 ID")]       long    projectID,
+        [Description("项目名称")]        string? name              = null,
+        [Description("项目描述；空字符串清空")] string? description       = null,
+        [Description("开场消息；空字符串清空")] string? openingMessage    = null,
+        CancellationToken                    cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, name, description, openingMessage },
-         () => projectContentService.PatchProjectAsync
-         (
-             projectID,
-             new ProjectPatch
-             {
-                 Name           = name,
-                 Description    = description,
-                 OpeningMessage = openingMessage
-             },
-             cancellationToken
-         )
+        (
+            new { projectID, name, description, openingMessage },
+            () => projectContentService.PatchProjectAsync
+            (
+                projectID,
+                new ProjectPatch
+                {
+                    Name           = name,
+                    Description    = description,
+                    OpeningMessage = openingMessage
+                },
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -126,7 +128,7 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("永久删除项目及其全部知识、人物分类、状态属性和相关配置，返回删除汇总")]
+    [Description("永久删除项目")]
     public Task<ProjectDeleteSummary> DeleteProjectAsync
     (
         [Description("项目 ID")] long projectID,
@@ -144,17 +146,18 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("从本机绝对路径导入 DirectorPrompt 项目包或 SillyTavern 角色卡，并创建新项目")]
+    [Description("从项目包或角色卡导入项目")]
     public Task<ProjectImportResult> ImportProjectAsync
     (
-        [Description("待导入文件的本机绝对路径")] string sourcePath,
+        [Description("导入文件的本机绝对路径")] string sourcePath,
         [Description("导入格式：DirectorPromptPackage 或 SillyTavernCharacterCard")]
         ProjectImportFormat format,
         CancellationToken cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { sourcePath, format },
-         async () =>
+        (
+            new { sourcePath, format },
+            async () =>
             {
                 var path = ValidateAbsolutePath(sourcePath, nameof(sourcePath));
 
@@ -185,17 +188,18 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("将项目导出为 DirectorPrompt 项目包。仅接受本机绝对路径；overwrite 为 false 时不会覆盖已有文件")]
+    [Description("导出项目包")]
     public Task<ProjectExportResult> ExportProjectAsync
     (
         [Description("项目 ID")]       long   projectID,
-        [Description("导出文件的本机绝对路径")] string destinationPath,
-        [Description("是否覆盖已有导出文件")]  bool   overwrite         = false,
+        [Description("目标文件的本机绝对路径")] string destinationPath,
+        [Description("覆盖已有文件")]      bool   overwrite         = false,
         CancellationToken                   cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, destinationPath, overwrite },
-         async () =>
+        (
+            new { projectID, destinationPath, overwrite },
+            async () =>
             {
                 var path = ValidateAbsolutePath(destinationPath, nameof(destinationPath));
 
@@ -233,30 +237,31 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("在项目中创建知识分组")]
+    [Description("创建知识分组")]
     public Task<KnowledgeGroup> CreateKnowledgeGroupAsync
     (
         [Description("项目 ID")]       long    projectID,
         [Description("知识分组名称，不能为空")] string  name,
-        [Description("知识分组描述")]      string? description       = null,
-        [Description("是否启用该知识分组")]   bool    active            = true,
+        [Description("分组描述")]        string? description       = null,
+        [Description("是否启用")]        bool    active            = true,
         CancellationToken                    cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, name, description, active },
-         () => projectContentService.ManageKnowledgeGroupAsync
-         (
-             projectID,
-             ProjectContentAction.Create,
-             new KnowledgeGroup
-             {
-                 Name        = name,
-                 Description = description,
-                 Active      = active
-             },
-             null,
-             cancellationToken
-         )
+        (
+            new { projectID, name, description, active },
+            () => projectContentService.ManageKnowledgeGroupAsync
+            (
+                projectID,
+                ProjectContentAction.Create,
+                new KnowledgeGroup
+                {
+                    Name        = name,
+                    Description = description,
+                    Active      = active
+                },
+                null,
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -269,30 +274,31 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("局部更新知识分组。未提供的字段保持不变，传入空字符串可清空描述")]
+    [Description("局部更新知识分组")]
     public Task<KnowledgeGroup> UpdateKnowledgeGroupAsync
     (
-        [Description("项目 ID")]     long    projectID,
-        [Description("知识分组 ID")]   long    groupID,
-        [Description("新的知识分组名称")]  string? name              = null,
-        [Description("新的知识分组描述")]  string? description       = null,
-        [Description("是否启用该知识分组")] bool?   active            = null,
-        CancellationToken                  cancellationToken = default
+        [Description("项目 ID")]       long    projectID,
+        [Description("知识分组 ID")]     long    groupID,
+        [Description("分组名称")]        string? name              = null,
+        [Description("分组描述；空字符串清空")] string? description       = null,
+        [Description("是否启用")]        bool?   active            = null,
+        CancellationToken                    cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, groupID, name, description, active },
-         () => projectContentService.PatchKnowledgeGroupAsync
-         (
-             projectID,
-             groupID,
-             new KnowledgeGroupPatch
-             {
-                 Name        = name,
-                 Description = description,
-                 Active      = active
-             },
-             cancellationToken
-         )
+        (
+            new { projectID, groupID, name, description, active },
+            () => projectContentService.PatchKnowledgeGroupAsync
+            (
+                projectID,
+                groupID,
+                new KnowledgeGroupPatch
+                {
+                    Name        = name,
+                    Description = description,
+                    Active      = active
+                },
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -305,7 +311,7 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("删除知识分组及其包含的全部知识条目，并清理状态属性中的相关知识引用")]
+    [Description("删除知识分组及其中条目")]
     public Task<KnowledgeGroup> DeleteKnowledgeGroupAsync
     (
         [Description("项目 ID")]   long projectID,
@@ -313,15 +319,16 @@ public sealed class MCPProjectTools
         CancellationToken             cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, groupID },
-         () => projectContentService.ManageKnowledgeGroupAsync
-         (
-             projectID,
-             ProjectContentAction.Delete,
-             null,
-             groupID,
-             cancellationToken
-         )
+        (
+            new { projectID, groupID },
+            () => projectContentService.ManageKnowledgeGroupAsync
+            (
+                projectID,
+                ProjectContentAction.Delete,
+                null,
+                groupID,
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -334,34 +341,35 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("在项目的指定知识分组中创建知识条目。知识条目必须归属于知识分组")]
+    [Description("创建知识条目")]
     public Task<KnowledgeEntry> CreateKnowledgeEntryAsync
     (
-        [Description("项目 ID")]      long      projectID,
-        [Description("知识条目备注或标题")]  string    remarks,
-        [Description("知识条目正文")]     string    content,
-        [Description("所属知识分组 ID")]  long      groupID,
-        [Description("用于匹配的关键词列表")] string[]? keywords          = null,
-        [Description("是否启用该知识条目")]  bool      active            = true,
-        CancellationToken                     cancellationToken = default
+        [Description("项目 ID")]   long      projectID,
+        [Description("条目备注")]    string    remarks,
+        [Description("条目内容")]    string    content,
+        [Description("所属分组 ID")] long      groupID,
+        [Description("匹配关键词")]   string[]? keywords          = null,
+        [Description("是否启用")]    bool      active            = true,
+        CancellationToken                  cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, remarks, content, groupID, keywords, active },
-         () => projectContentService.ManageKnowledgeEntryAsync
-         (
-             projectID,
-             ProjectContentAction.Create,
-             new KnowledgeEntry
-             {
-                 Remarks  = remarks,
-                 Content  = content,
-                 Keywords = keywords ?? [],
-                 GroupID  = groupID,
-                 Active   = active
-             },
-             null,
-             cancellationToken
-         )
+        (
+            new { projectID, remarks, content, groupID, keywords, active },
+            () => projectContentService.ManageKnowledgeEntryAsync
+            (
+                projectID,
+                ProjectContentAction.Create,
+                new KnowledgeEntry
+                {
+                    Remarks  = remarks,
+                    Content  = content,
+                    Keywords = keywords ?? [],
+                    GroupID  = groupID,
+                    Active   = active
+                },
+                null,
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -374,21 +382,22 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("局部更新知识条目。groupID 可将条目移动到另一个知识分组；MCP 不允许知识条目无分组")]
+    [Description("局部更新知识条目")]
     public Task<KnowledgeEntry> UpdateKnowledgeEntryAsync
     (
-        [Description("项目 ID")]                long      projectID,
-        [Description("知识条目 ID")]              long      entryID,
-        [Description("新的备注或标题")]              string?   remarks           = null,
-        [Description("新的正文")]                 string?   content           = null,
-        [Description("新的关键词列表；传入空数组可清空关键词")]  string[]? keywords          = null,
-        [Description("目标知识分组 ID；未提供时保留当前分组")] long?     groupID           = null,
-        [Description("是否启用该知识条目")]            bool?     active            = null,
-        CancellationToken                               cancellationToken = default
+        [Description("项目 ID")]       long      projectID,
+        [Description("知识条目 ID")]     long      entryID,
+        [Description("条目备注")]        string?   remarks           = null,
+        [Description("条目内容")]        string?   content           = null,
+        [Description("匹配关键词；空数组清空")] string[]? keywords          = null,
+        [Description("目标分组 ID")]     long?     groupID           = null,
+        [Description("是否启用")]        bool?     active            = null,
+        CancellationToken                      cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, entryID, remarks, content, keywords, groupID, active },
-         async () =>
+        (
+            new { projectID, entryID, remarks, content, keywords, groupID, active },
+            async () =>
             {
                 var entry = await GetRequiredKnowledgeEntryAsync(projectID, entryID, cancellationToken);
 
@@ -422,7 +431,7 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("删除知识条目，并清理状态属性中的相关知识引用")]
+    [Description("删除知识条目")]
     public Task<KnowledgeEntry> DeleteKnowledgeEntryAsync
     (
         [Description("项目 ID")]   long projectID,
@@ -430,15 +439,16 @@ public sealed class MCPProjectTools
         CancellationToken             cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, entryID },
-         () => projectContentService.ManageKnowledgeEntryAsync
-         (
-             projectID,
-             ProjectContentAction.Delete,
-             null,
-             entryID,
-             cancellationToken
-         )
+        (
+            new { projectID, entryID },
+            () => projectContentService.ManageKnowledgeEntryAsync
+            (
+                projectID,
+                ProjectContentAction.Delete,
+                null,
+                entryID,
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -451,30 +461,32 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("在项目中创建人物分类。parentCategoryIDs 中的分类必须属于同一项目")]
+    [Description("创建人物分类")]
     public Task<CharacterCategory> CreateCharacterCategoryAsync
     (
-        [Description("项目 ID")]     long    projectID,
-        [Description("人物分类名称")]    string  name,
-        [Description("人物分类描述")]    string? description       = null,
-        [Description("父分类 ID 列表")] long[]? parentCategoryIDs = null,
-        CancellationToken                  cancellationToken = default
+        [Description("项目 ID")] long    projectID,
+        [Description("分类名称")]  string  name,
+        [Description("分类描述")]  string? description = null,
+        [Description("状态属性继承来源的上级分类 ID；空数组取消继承")]
+        long[]? parentCategoryIDs = null,
+        CancellationToken cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, name, description, parentCategoryIDs },
-         () => projectContentService.ManageCharacterCategoryAsync
-         (
-             projectID,
-             ProjectContentAction.Create,
-             new CharacterCategory
-             {
-                 Name              = name,
-                 Description       = description,
-                 ParentCategoryIDs = parentCategoryIDs ?? []
-             },
-             null,
-             cancellationToken
-         )
+        (
+            new { projectID, name, description, parentCategoryIDs },
+            () => projectContentService.ManageCharacterCategoryAsync
+            (
+                projectID,
+                ProjectContentAction.Create,
+                new CharacterCategory
+                {
+                    Name              = name,
+                    Description       = description,
+                    ParentCategoryIDs = parentCategoryIDs ?? []
+                },
+                null,
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -487,30 +499,32 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("局部更新人物分类。parentCategoryIDs 传入空数组可移除全部父分类")]
+    [Description("局部更新人物分类")]
     public Task<CharacterCategory> UpdateCharacterCategoryAsync
     (
-        [Description("项目 ID")]       long    projectID,
-        [Description("人物分类 ID")]     long    categoryID,
-        [Description("新的分类名称")]      string? name              = null,
-        [Description("新的分类描述")]      string? description       = null,
-        [Description("新的父分类 ID 列表")] long[]? parentCategoryIDs = null,
-        CancellationToken                    cancellationToken = default
+        [Description("项目 ID")]   long    projectID,
+        [Description("人物分类 ID")] long    categoryID,
+        [Description("分类名称")]    string? name        = null,
+        [Description("分类描述")]    string? description = null,
+        [Description("状态属性继承来源的上级分类 ID；空数组取消继承")]
+        long[]? parentCategoryIDs = null,
+        CancellationToken cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, categoryID, name, description, parentCategoryIDs },
-         () => projectContentService.PatchCharacterCategoryAsync
-         (
-             projectID,
-             categoryID,
-             new CharacterCategoryPatch
-             {
-                 Name              = name,
-                 Description       = description,
-                 ParentCategoryIDs = parentCategoryIDs
-             },
-             cancellationToken
-         )
+        (
+            new { projectID, categoryID, name, description, parentCategoryIDs },
+            () => projectContentService.PatchCharacterCategoryAsync
+            (
+                projectID,
+                categoryID,
+                new CharacterCategoryPatch
+                {
+                    Name              = name,
+                    Description       = description,
+                    ParentCategoryIDs = parentCategoryIDs
+                },
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -523,7 +537,7 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("删除人物分类，并移除人物、分类状态属性和其他分类对它的引用")]
+    [Description("删除人物分类及关联配置")]
     public Task<CharacterCategory> DeleteCharacterCategoryAsync
     (
         [Description("项目 ID")]   long projectID,
@@ -531,15 +545,16 @@ public sealed class MCPProjectTools
         CancellationToken             cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, categoryID },
-         () => projectContentService.ManageCharacterCategoryAsync
-         (
-             projectID,
-             ProjectContentAction.Delete,
-             null,
-             categoryID,
-             cancellationToken
-         )
+        (
+            new { projectID, categoryID },
+            () => projectContentService.ManageCharacterCategoryAsync
+            (
+                projectID,
+                ProjectContentAction.Delete,
+                null,
+                categoryID,
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -552,7 +567,7 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("列出指定人物分类拥有的全部状态属性及其完整配置")]
+    [Description("读取人物分类状态属性")]
     public Task<IReadOnlyList<ProjectStateAttribute>> ListCharacterCategoryStateAttributesAsync
     (
         [Description("项目 ID")]   long projectID,
@@ -560,8 +575,9 @@ public sealed class MCPProjectTools
         CancellationToken             cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, categoryID },
-         async () =>
+        (
+            new { projectID, categoryID },
+            async () =>
             {
                 var snapshot = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
 
@@ -587,46 +603,46 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("创建数值状态属性。categoryID 留空时创建全局属性，提供人物分类 ID 时创建该分类专属属性")]
+    [Description("创建数值状态属性")]
     public Task<ProjectStateAttribute> CreateNumericStateAttributeAsync
     (
-        [Description("项目 ID")]              long   projectID,
-        [Description("属性内部名称，供表达式和转移规则引用")] string name,
-        [Description("属性显示名称")]             string displayName,
-        [Description("所属人物分类 ID；留空时为全局属性")] long?  categoryID = null,
-        [Description("数值属性驱动方式：Narrative 或 System")]
-        Driver driver = Driver.Narrative,
-        [Description("最小值")]    float?  min               = null,
-        [Description("最大值")]    float?  max               = null,
-        [Description("数值单位")]   string? unit              = null,
-        [Description("数值变化规则")] string? changeRules       = null,
-        CancellationToken               cancellationToken = default
+        [Description("项目 ID")]            long    projectID,
+        [Description("属性标识，供表达式引用")]      string  name,
+        [Description("显示名")]              string  displayName,
+        [Description("所属分类 ID；留空则为全局属性")] long?   categoryID        = null,
+        [Description("驱动方式")]             Driver  driver            = Driver.Narrative,
+        [Description("最小值")]              float?  min               = null,
+        [Description("最大值")]              float?  max               = null,
+        [Description("单位")]               string? unit              = null,
+        [Description("变更指引")]             string? changeRules       = null,
+        CancellationToken                         cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, name, displayName, categoryID, driver, min, max, unit, changeRules },
-         () => CreateStateAttributeAsync
-         (
-             projectID,
-             new StateAttributeDefinition
-             {
-                 Name        = name,
-                 DisplayName = displayName,
-                 Scope = categoryID is null ?
-                             StateScope.Global :
-                             StateScope.Category,
-                 CategoryID = categoryID,
-                 ValueType  = StateValueType.Numeric,
-                 Driver     = driver,
-                 Numeric = new NumericStateDefinition
-                 {
-                     Min         = min,
-                     Max         = max,
-                     Unit        = unit,
-                     ChangeRules = changeRules
-                 }
-             },
-             cancellationToken
-         )
+        (
+            new { projectID, name, displayName, categoryID, driver, min, max, unit, changeRules },
+            () => CreateStateAttributeAsync
+            (
+                projectID,
+                new StateAttributeDefinition
+                {
+                    Name        = name,
+                    DisplayName = displayName,
+                    Scope = categoryID is null ?
+                                StateScope.Global :
+                                StateScope.Category,
+                    CategoryID = categoryID,
+                    ValueType  = StateValueType.Numeric,
+                    Driver     = driver,
+                    Numeric = new NumericStateDefinition
+                    {
+                        Min         = min,
+                        Max         = max,
+                        Unit        = unit,
+                        ChangeRules = changeRules
+                    }
+                },
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -639,39 +655,40 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("创建枚举状态属性。枚举属性始终由系统驱动；categoryID 留空时为全局属性")]
+    [Description("创建枚举状态属性")]
     public Task<ProjectStateAttribute> CreateEnumStateAttributeAsync
     (
-        [Description("项目 ID")]              long          projectID,
-        [Description("属性内部名称，供表达式和转移规则引用")] string        name,
-        [Description("属性显示名称")]             string        displayName,
-        [Description("可选值列表，至少包含一项")]       string[]      options,
-        [Description("枚举变化的触发时机")]          SystemTrigger trigger,
-        [Description("所属人物分类 ID；留空时为全局属性")] long?         categoryID        = null,
-        CancellationToken                                 cancellationToken = default
+        [Description("项目 ID")]            long          projectID,
+        [Description("属性标识，供表达式引用")]      string        name,
+        [Description("显示名")]              string        displayName,
+        [Description("枚举选项，至少一项")]        string[]      options,
+        [Description("系统触发时机")]           SystemTrigger trigger,
+        [Description("所属分类 ID；留空则为全局属性")] long?         categoryID        = null,
+        CancellationToken                               cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, name, displayName, options, trigger, categoryID },
-         () => CreateStateAttributeAsync
-         (
-             projectID,
-             new StateAttributeDefinition
-             {
-                 Name        = name,
-                 DisplayName = displayName,
-                 Scope = categoryID is null ?
-                             StateScope.Global :
-                             StateScope.Category,
-                 CategoryID = categoryID,
-                 ValueType  = StateValueType.Enum,
-                 Enumeration = new EnumStateDefinition
-                 {
-                     Options = NormalizeEnumOptions(options),
-                     Trigger = trigger
-                 }
-             },
-             cancellationToken
-         )
+        (
+            new { projectID, name, displayName, options, trigger, categoryID },
+            () => CreateStateAttributeAsync
+            (
+                projectID,
+                new StateAttributeDefinition
+                {
+                    Name        = name,
+                    DisplayName = displayName,
+                    Scope = categoryID is null ?
+                                StateScope.Global :
+                                StateScope.Category,
+                    CategoryID = categoryID,
+                    ValueType  = StateValueType.Enum,
+                    Enumeration = new EnumStateDefinition
+                    {
+                        Options = NormalizeEnumOptions(options),
+                        Trigger = trigger
+                    }
+                },
+                cancellationToken
+            )
         );
 
     [McpServerTool
@@ -684,22 +701,22 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("更新状态属性的基础信息。值类型不能在更新时变更；数值规则、枚举选项、转移和阶段使用各自的配置工具")]
+    [Description("局部更新状态属性基本信息")]
     public Task<ProjectStateAttribute> UpdateStateAttributeAsync
     (
-        [Description("项目 ID")]    long        projectID,
-        [Description("状态属性 ID")]  long        attributeID,
-        [Description("新的属性内部名称")] string?     name        = null,
-        [Description("新的属性显示名称")] string?     displayName = null,
-        [Description("新的作用域")]    StateScope? scope       = null,
-        [Description("作用域为 Category 时的所属人物分类 ID")]
-        long? categoryID = null,
-        [Description("数值属性的新驱动方式；枚举属性不支持设置")] Driver? numericDriver     = null,
-        CancellationToken                             cancellationToken = default
+        [Description("项目 ID")]              long        projectID,
+        [Description("状态属性 ID")]            long        attributeID,
+        [Description("属性标识")]               string?     name              = null,
+        [Description("显示名")]                string?     displayName       = null,
+        [Description("作用域")]                StateScope? scope             = null,
+        [Description("分类作用域的所属分类 ID")]      long?       categoryID        = null,
+        [Description("数值属性的驱动方式；枚举属性不可设置")] Driver?     numericDriver     = null,
+        CancellationToken                               cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, attributeID, name, displayName, scope, categoryID, numericDriver },
-         async () =>
+        (
+            new { projectID, attributeID, name, displayName, scope, categoryID, numericDriver },
+            async () =>
             {
                 var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
 
@@ -739,20 +756,21 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("完整替换数值状态属性的数值规则。min、max、unit 和 changeRules 均可留空")]
+    [Description("替换数值状态属性配置")]
     public Task<ProjectStateAttribute> ConfigureNumericStateAttributeAsync
     (
         [Description("项目 ID")]     long    projectID,
         [Description("数值状态属性 ID")] long    attributeID,
         [Description("最小值")]       float?  min               = null,
         [Description("最大值")]       float?  max               = null,
-        [Description("数值单位")]      string? unit              = null,
-        [Description("数值变化规则")]    string? changeRules       = null,
+        [Description("单位")]        string? unit              = null,
+        [Description("变更指引")]      string? changeRules       = null,
         CancellationToken                  cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, attributeID, min, max, unit, changeRules },
-         async () =>
+        (
+            new { projectID, attributeID, min, max, unit, changeRules },
+            async () =>
             {
                 var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
                 EnsureStateValueType(attribute, StateValueType.Numeric);
@@ -786,18 +804,19 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("完整替换枚举状态属性的选项和触发时机。不再存在的选项会从转移规则中移除")]
+    [Description("替换枚举状态属性配置")]
     public Task<ProjectStateAttribute> ConfigureEnumStateAttributeAsync
     (
-        [Description("项目 ID")]        long          projectID,
-        [Description("枚举状态属性 ID")]    long          attributeID,
-        [Description("可选值列表，至少包含一项")] string[]      options,
-        [Description("枚举变化的触发时机")]    SystemTrigger trigger,
-        CancellationToken                           cancellationToken = default
+        [Description("项目 ID")]     long          projectID,
+        [Description("枚举状态属性 ID")] long          attributeID,
+        [Description("枚举选项，至少一项")] string[]      options,
+        [Description("系统触发时机")]    SystemTrigger trigger,
+        CancellationToken                        cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, attributeID, options, trigger },
-         async () =>
+        (
+            new { projectID, attributeID, options, trigger },
+            async () =>
             {
                 var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
                 EnsureStateValueType(attribute, StateValueType.Enum);
@@ -834,17 +853,18 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("完整替换枚举状态属性的转移规则。每条规则的 option 必须属于该属性当前的选项列表")]
+    [Description("替换枚举状态转移规则")]
     public Task<ProjectStateAttribute> ConfigureEnumStateTransitionsAsync
     (
-        [Description("项目 ID")]                 long                     projectID,
-        [Description("枚举状态属性 ID")]             long                     attributeID,
-        [Description("枚举状态转移规则列表；传入空数组可清空规则")] MCPEnumStateTransition[] transitions,
-        CancellationToken                                               cancellationToken = default
+        [Description("项目 ID")]      long                     projectID,
+        [Description("枚举状态属性 ID")]  long                     attributeID,
+        [Description("转移规则；空数组清空")] MCPEnumStateTransition[] transitions,
+        CancellationToken                                    cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, attributeID, transitions },
-         async () =>
+        (
+            new { projectID, attributeID, transitions },
+            async () =>
             {
                 var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
                 EnsureStateValueType(attribute, StateValueType.Enum);
@@ -881,23 +901,34 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("完整替换状态属性的阶段规则。每个阶段可引用同项目的知识条目、知识分组及进入或退出指令")]
+    [Description("替换状态属性阶段规则")]
     public Task<ProjectStateAttribute> ConfigureStateAttributePhasesAsync
     (
-        [Description("项目 ID")]             long            projectID,
-        [Description("状态属性 ID")]           long            attributeID,
-        [Description("阶段规则列表；传入空数组可清空阶段")] MCPStatePhase[] phases,
-        CancellationToken                                  cancellationToken = default
+        [Description("项目 ID")]      long            projectID,
+        [Description("状态属性 ID")]    long            attributeID,
+        [Description("阶段规则；空数组清空")] MCPStatePhase[] phases,
+        CancellationToken                           cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, attributeID, phases },
-         () => PatchStateAttributeAsync
-         (
-             projectID,
-             attributeID,
-             new StateAttributePatch { Phases = phases.Select(ToPhaseDefinition).ToList() },
-             cancellationToken
-         )
+        (
+            new { projectID, attributeID, phases },
+            async () =>
+            {
+                var snapshot = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
+
+                if (snapshot.StateAttributes.All(attribute => attribute.ID != attributeID))
+                    throw new InvalidOperationException($"状态属性不存在: ID={attributeID}");
+
+                EnsurePhaseKnowledgeIsDisabled(phases, snapshot);
+
+                return await PatchStateAttributeAsync
+                       (
+                           projectID,
+                           attributeID,
+                           new StateAttributePatch { Phases = phases.Select(ToPhaseDefinition).ToList() },
+                           cancellationToken
+                       );
+            }
         );
 
     [McpServerTool
@@ -910,7 +941,7 @@ public sealed class MCPProjectTools
         OpenWorld = false,
         UseStructuredContent = true
     )]
-    [Description("删除状态属性，并清理其他状态属性转换规则中的相关引用")]
+    [Description("删除状态属性及其引用")]
     public Task<ProjectStateAttribute> DeleteStateAttributeAsync
     (
         [Description("项目 ID")]   long projectID,
@@ -918,8 +949,9 @@ public sealed class MCPProjectTools
         CancellationToken             cancellationToken = default
     ) =>
         ExecuteAsync
-        (new { projectID, attributeID },
-         async () =>
+        (
+            new { projectID, attributeID },
+            async () =>
             {
                 var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
 
@@ -1076,6 +1108,32 @@ public sealed class MCPProjectTools
         };
     }
 
+    private static void EnsurePhaseKnowledgeIsDisabled
+    (
+        IEnumerable<MCPStatePhase> phases,
+        ProjectContentSnapshot     snapshot
+    )
+    {
+        var activeEntryIDs = snapshot.UngroupedKnowledgeEntries
+                                     .Concat(snapshot.KnowledgeGroups.SelectMany(group => group.Entries))
+                                     .Where(entry => entry.Active)
+                                     .Select(entry => entry.ID)
+                                     .ToHashSet();
+        var activeGroupIDs = snapshot.KnowledgeGroups
+                                     .Where(group => group.Group.Active)
+                                     .Select(group => group.Group.ID)
+                                     .ToHashSet();
+
+        foreach (var phase in phases)
+        {
+            if (phase.KnowledgeEntryIDs.Any(activeEntryIDs.Contains))
+                throw new ArgumentException($"阶段 {phase.Name} 只能关联已禁用的知识条目", nameof(phases));
+
+            if (phase.KnowledgeGroupIDs.Any(activeGroupIDs.Contains))
+                throw new ArgumentException($"阶段 {phase.Name} 只能关联已禁用的知识分组", nameof(phases));
+        }
+    }
+
     private static string ValidateAbsolutePath(string value, string parameterName)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -1089,8 +1147,8 @@ public sealed class MCPProjectTools
 
     private static async Task<T> ExecuteAsync<T>
     (
-        object       arguments,
-        Func<Task<T>> operation,
+        object                    arguments,
+        Func<Task<T>>             operation,
         [CallerMemberName] string toolName = ""
     )
     {

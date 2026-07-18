@@ -44,14 +44,14 @@ public sealed class DirectorPromptMCPHostedService
                (options => options.ServerInfo = new Implementation
                    {
                        Name    = "director-prompt",
-                       Version = "2"
+                       Version = "3"
                    }
                )
                .WithHttpTransport()
                .WithTools(projectTools)
                .WithMessageFilters
                (filters => filters.AddIncomingFilter
-                (next => async (context, cancellationToken) =>
+                (next => async (context, cancelToken) =>
                     {
                         if (context.JsonRpcMessage is JsonRpcRequest
                             {
@@ -59,7 +59,7 @@ public sealed class DirectorPromptMCPHostedService
                                 Params: not null
                             } request)
                         {
-                            using var lease = await toolCallLimiter.AcquireAsync(1, cancellationToken);
+                            using var lease = await toolCallLimiter.AcquireAsync(1, cancelToken);
                             var toolName  = request.Params["name"]?.GetValue<string>();
                             var arguments = request.Params["arguments"]?.ToJsonString();
 
@@ -76,11 +76,11 @@ public sealed class DirectorPromptMCPHostedService
                                 arguments
                             );
 
-                            await next(context, cancellationToken);
+                            await next(context, cancelToken);
                             return;
                         }
 
-                        await next(context, cancellationToken);
+                        await next(context, cancelToken);
                     }
                 )
                );
