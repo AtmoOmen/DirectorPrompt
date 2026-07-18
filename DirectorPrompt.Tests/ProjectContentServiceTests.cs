@@ -1,5 +1,6 @@
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Infrastructure.Repositories;
 using DirectorPrompt.Services;
 
@@ -7,6 +8,82 @@ namespace DirectorPrompt.Tests;
 
 public sealed class ProjectContentServiceTests
 {
+    [Fact]
+    public async Task ChangeBatchCoalescesNotificationsForSameProject()
+    {
+        await using var context = await DatabaseTestContext.CreateAsync();
+        var service = new ProjectContentService(context.Scheduler, new ProjectRepository(context.Scheduler));
+        var changes = new List<ProjectContentChange>();
+        service.Changed += changes.Add;
+
+        using (service.BeginChangeBatch())
+        {
+            service.NotifyProjectChanged(1);
+            service.NotifyProjectChanged(1);
+        }
+
+        Assert.Single(changes);
+        Assert.Equal(1, changes[0].ProjectID);
+        Assert.False(changes[0].IsDeleted);
+    }
+
+    [Fact]
+    public async Task UpdatingKnowledgeMetadataPreservesEmbeddingState()
+    {
+        await using var context = await DatabaseTestContext.CreateAsync();
+        var service = new ProjectContentService(context.Scheduler, new ProjectRepository(context.Scheduler));
+        var entry = await service.ManageKnowledgeEntryAsync
+        (
+            1,
+            ProjectContentAction.Create,
+            new KnowledgeEntry
+            {
+                ProjectID = 1,
+                Remarks = "原备注",
+                Content = "内容",
+                Keywords = ["关键字"],
+                Active = true
+            },
+            null
+        );
+
+        await context.Scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = """
+                                      UPDATE knowledge_entries
+                                      SET content_hash = 'indexed', embedding_fingerprint = 'fingerprint'
+                                      WHERE id = $id
+                                      """;
+                command.Parameters.AddWithValue("$id", entry.ID);
+                await command.ExecuteNonQueryAsync(token);
+            }
+        );
+
+        await service.ManageKnowledgeEntryAsync
+        (
+            1,
+            ProjectContentAction.Update,
+            entry with { Remarks = "新备注" },
+            entry.ID
+        );
+
+        var contentHash = await context.Scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = "SELECT content_hash FROM knowledge_entries WHERE id = $id";
+                command.Parameters.AddWithValue("$id", entry.ID);
+                return (string?)await command.ExecuteScalarAsync(token);
+            }
+        );
+
+        Assert.Equal("indexed", contentHash);
+    }
+
     [Fact]
     public async Task DeletingKnowledgeGroupDeletesEntriesAndPhaseReferences()
     {

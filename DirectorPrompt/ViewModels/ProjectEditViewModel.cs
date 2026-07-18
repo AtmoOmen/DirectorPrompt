@@ -32,6 +32,12 @@ public sealed partial class ProjectEditViewModel
     : ObservableObject
 {
     private long projectID;
+    private Project? savedProject;
+
+    private readonly Dictionary<long, string> savedKnowledgeGroupStates = [];
+    private readonly Dictionary<long, string> savedKnowledgeEntryStates = [];
+    private readonly Dictionary<long, string> savedStateAttributeStates = [];
+    private readonly Dictionary<long, string> savedCharacterCategoryStates = [];
 
     private IProjectContentService ProjectContentService =>
         projectContentService ?? throw new InvalidOperationException("项目内容服务不可用");
@@ -118,6 +124,7 @@ public sealed partial class ProjectEditViewModel
 
         await LoadKnowledgeAsync();
         await LoadStateSystemAsync();
+        CaptureSaveState(project);
     }
 
     private static KnowledgeEntryEditViewModel CreateEntryVM(KnowledgeEntry entry, string groupName) =>
@@ -324,66 +331,173 @@ public sealed partial class ProjectEditViewModel
         return true;
     }
 
+    private void CaptureSaveState(Project project)
+    {
+        savedProject = project;
+        savedKnowledgeGroupStates.Clear();
+        savedKnowledgeEntryStates.Clear();
+        savedStateAttributeStates.Clear();
+        savedCharacterCategoryStates.Clear();
+
+        foreach (var group in KnowledgeGroups)
+        {
+            savedKnowledgeGroupStates[group.ID] = GetKnowledgeGroupState(group);
+
+            foreach (var entry in group.Entries)
+                savedKnowledgeEntryStates[entry.ID] = GetKnowledgeEntryState(entry);
+        }
+
+        foreach (var attribute in StateAttributes)
+            savedStateAttributeStates[attribute.ID] = GetStateAttributeState(attribute);
+
+        foreach (var category in CharacterCategories)
+        {
+            savedCharacterCategoryStates[category.ID] = GetCharacterCategoryState(category);
+
+            foreach (var attribute in category.StateAttributes)
+                savedStateAttributeStates[attribute.ID] = GetStateAttributeState(attribute);
+        }
+    }
+
+    private bool HasProjectChanges() =>
+        savedProject is null ||
+        savedProject.Name != Name.Trim() ||
+        savedProject.Description != Description ||
+        savedProject.OpeningMessage != OpeningMessage;
+
+    private static string GetKnowledgeGroupState(KnowledgeGroupEditViewModel group) =>
+        JsonSerializer.Serialize
+        (
+            new { group.Name, group.Description, group.Active },
+            JsonOptions.Compact
+        );
+
+    private static string GetKnowledgeEntryState(KnowledgeEntryEditViewModel entry) =>
+        JsonSerializer.Serialize
+        (
+            new { entry.Remarks, entry.Content, entry.Keywords, entry.GroupID, entry.Active },
+            JsonOptions.Compact
+        );
+
+    private static string GetStateAttributeState(StateAttributeEditViewModel attribute) =>
+        JsonSerializer.Serialize
+        (
+            new
+            {
+                attribute.Name,
+                attribute.DisplayName,
+                attribute.Scope,
+                attribute.CategoryID,
+                attribute.ValueType,
+                Driver = attribute.ValueType == StateValueType.Enum ? Driver.System : attribute.Driver,
+                Config = attribute.BuildConfig()
+            },
+            JsonOptions.Compact
+        );
+
+    private string GetCharacterCategoryState(CharacterCategoryEditViewModel category) =>
+        JsonSerializer.Serialize(category.ToModel(projectID), JsonOptions.Compact);
+
     [RelayCommand]
     private async Task SaveAsync()
     {
         if (!Validate())
             return;
 
+        SaveSuccess = false;
         IsSaving = true;
 
         try
         {
-            var project = new Project
+            using (ProjectContentService.BeginChangeBatch())
             {
-                ID             = projectID,
-                Name           = Name.Trim(),
-                Description    = Description,
-                OpeningMessage = OpeningMessage
-            };
+                if (HasProjectChanges())
+                {
+                    var project = new Project
+                    {
+                        ID             = projectID,
+                        Name           = Name.Trim(),
+                        Description    = Description,
+                        OpeningMessage = OpeningMessage
+                    };
 
-            await ProjectContentService.UpdateProjectAsync(project);
+                    await ProjectContentService.UpdateProjectAsync(project);
+                    savedProject = project;
+                }
+
+                foreach (var group in KnowledgeGroups)
+                {
+                    var groupState = GetKnowledgeGroupState(group);
+
+                    if (!savedKnowledgeGroupStates.TryGetValue(group.ID, out var savedGroupState) || savedGroupState != groupState)
+                    {
+                        await SaveKnowledgeGroupAsync(group);
+                        savedKnowledgeGroupStates[group.ID] = groupState;
+                    }
+
+                    foreach (var entry in group.Entries)
+                    {
+                        if (entry.ID <= 0)
+                            continue;
+
+                        var entryState = GetKnowledgeEntryState(entry);
+
+                        if (savedKnowledgeEntryStates.TryGetValue(entry.ID, out var savedEntryState) && savedEntryState == entryState)
+                            continue;
+
+                        await SaveKnowledgeEntryAsync(entry);
+                        savedKnowledgeEntryStates[entry.ID] = entryState;
+                    }
+                }
+
+                foreach (var attribute in StateAttributes)
+                    await SaveStateAttributeIfChangedAsync(attribute);
+
+                foreach (var category in CharacterCategories)
+                {
+                    var categoryState = GetCharacterCategoryState(category);
+
+                    if (!savedCharacterCategoryStates.TryGetValue(category.ID, out var savedCategoryState) || savedCategoryState != categoryState)
+                    {
+                        await SaveCharacterCategoryAsync(category);
+                        savedCharacterCategoryStates[category.ID] = categoryState;
+                    }
+
+                    foreach (var attribute in category.StateAttributes)
+                        await SaveStateAttributeIfChangedAsync(attribute);
+                }
+
+                ProjectContentService.NotifyProjectChanged(projectID);
+            }
+
             SavedProjectID = projectID;
             SaveSuccess    = true;
-
-            foreach (var group in KnowledgeGroups)
-            {
-                await SaveKnowledgeGroupAsync(group);
-
-                foreach (var entry in group.Entries)
-                {
-                    if (entry.ID > 0)
-                        await SaveKnowledgeEntryAsync(entry);
-                }
-            }
-
-            foreach (var attr in StateAttributes)
-            {
-                if (attr.ID > 0)
-                    await SaveStateAttributeAsync(attr);
-            }
-
-            foreach (var category in CharacterCategories)
-            {
-                if (category.ID > 0)
-                    await SaveCharacterCategoryAsync(category);
-
-                foreach (var attr in category.StateAttributes)
-                {
-                    if (attr.ID > 0)
-                        await SaveStateAttributeAsync(attr);
-                }
-            }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "保存项目失败");
-            ValidationMessage = Loc.Get("Project.SaveFailed", ex.Message);
+
+            if (string.IsNullOrEmpty(ValidationMessage))
+                ValidationMessage = Loc.Get("Project.SaveFailed", ex.Message);
         }
         finally
         {
             IsSaving = false;
         }
+    }
+
+    private async Task SaveStateAttributeIfChangedAsync(StateAttributeEditViewModel attribute)
+    {
+        if (attribute.ID <= 0)
+            return;
+
+        var attributeState = GetStateAttributeState(attribute);
+
+        if (savedStateAttributeStates.TryGetValue(attribute.ID, out var savedAttributeState) && savedAttributeState == attributeState)
+            return;
+
+        await SaveStateAttributeAsync(attribute);
+        savedStateAttributeStates[attribute.ID] = attributeState;
     }
 
     [RelayCommand]
@@ -467,6 +581,7 @@ public sealed partial class ProjectEditViewModel
         {
             Log.Error(ex, "保存知识条目失败");
             ValidationMessage = Loc.Get("Knowledge.Entry.SaveFailed", ex.Message);
+            throw;
         }
     }
 
@@ -575,6 +690,7 @@ public sealed partial class ProjectEditViewModel
         {
             Log.Error(ex, "保存知识分组失败");
             ValidationMessage = Loc.Get("Knowledge.Group.SaveFailed", ex.Message);
+            throw;
         }
     }
 
@@ -671,6 +787,7 @@ public sealed partial class ProjectEditViewModel
         {
             Log.Error(ex, "保存状态属性失败");
             ValidationMessage = Loc.Get("State.Attribute.SaveFailed", ex.Message);
+            throw;
         }
     }
 
@@ -762,6 +879,7 @@ public sealed partial class ProjectEditViewModel
         {
             Log.Error(ex, "保存分类失败");
             ValidationMessage = Loc.Get("Character.Category.SaveFailed", ex.Message);
+            throw;
         }
     }
 

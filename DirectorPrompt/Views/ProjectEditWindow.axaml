@@ -1180,7 +1180,9 @@
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Click="OnCancelClick">
+                    <Button Margin="0,0,8,0"
+                            Click="OnCancelClick"
+                            IsEnabled="{Binding IsSaving, Converter={StaticResource InverseBool}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <fa:FASymbolIcon Symbol="Dismiss" />
                             <TextBlock Text="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}" />

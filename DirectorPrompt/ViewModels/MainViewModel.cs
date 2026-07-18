@@ -38,6 +38,7 @@ public sealed partial class MainViewModel : ObservableObject
     private CancellationTokenSource? generationCts;
     private CancellationTokenSource? sessionLoadCts;
     private long?                    previousDialogRoundID;
+    private long?                    selectedProjectID;
 
     private DialogEntryViewModel? errorStreamingEntry;
     private DialogEntryViewModel? errorDirectorEntry;
@@ -290,8 +291,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (CurrentProject is null)
             return;
 
-        if (await windowService.EditProjectAsync(CurrentProject))
-            await LoadProjectsAsync();
+        await windowService.EditProjectAsync(CurrentProject);
     }
 
     [RelayCommand]
@@ -818,6 +818,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnCurrentProjectChanged(Project? value)
     {
+        if (selectedProjectID == value?.ID)
+            return;
+
+        selectedProjectID = value?.ID;
         CancelGeneration();
         sessionLoadCts?.Cancel();
 

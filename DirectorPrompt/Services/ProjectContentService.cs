@@ -16,7 +16,20 @@ public sealed class ProjectContentService
     IProjectRepository      projectRepository
 ) : IProjectContentService
 {
+    private readonly Lock changeSync = new();
+    private readonly Dictionary<long, bool> pendingChanges = [];
+
+    private int changeBatchDepth;
+
     public event Action<ProjectContentChange>? Changed;
+
+    public IDisposable BeginChangeBatch()
+    {
+        lock (changeSync)
+            changeBatchDepth++;
+
+        return new ChangeBatch(this);
+    }
 
     public void NotifyProjectChanged(long projectID, bool isDeleted = false) =>
         NotifyChanged(projectID, isDeleted);
@@ -437,8 +450,14 @@ public sealed class ProjectContentService
                                 keywords = @keywords,
                                 group_id = @groupID,
                                 active = @active,
-                                content_hash = NULL,
-                                embedding_fingerprint = NULL,
+                                content_hash = CASE
+                                                   WHEN content IS NOT @content OR keywords IS NOT @keywords THEN NULL
+                                                   ELSE content_hash
+                                               END,
+                                embedding_fingerprint = CASE
+                                                            WHEN content IS NOT @content OR keywords IS NOT @keywords THEN NULL
+                                                            ELSE embedding_fingerprint
+                                                        END,
                                 updated_at = @updatedAt
                             WHERE id = @id
                             """,
@@ -1549,6 +1568,58 @@ public sealed class ProjectContentService
             throw new ArgumentException($"{entityName} key 必须非空且唯一");
     }
 
-    private void NotifyChanged(long projectID, bool isDeleted) =>
-        Changed?.Invoke(new ProjectContentChange(projectID, isDeleted));
+    private void NotifyChanged(long projectID, bool isDeleted)
+    {
+        ProjectContentChange? change = null;
+
+        lock (changeSync)
+        {
+            if (changeBatchDepth > 0)
+            {
+                pendingChanges[projectID] = isDeleted ||
+                                            pendingChanges.GetValueOrDefault(projectID);
+                return;
+            }
+
+            change = new ProjectContentChange(projectID, isDeleted);
+        }
+
+        Changed?.Invoke(change);
+    }
+
+    private void CompleteChangeBatch()
+    {
+        ProjectContentChange[] changes;
+
+        lock (changeSync)
+        {
+            if (changeBatchDepth == 0)
+                throw new InvalidOperationException("项目变更批次尚未开始");
+
+            changeBatchDepth--;
+
+            if (changeBatchDepth > 0)
+                return;
+
+            changes = [.. pendingChanges.Select(change => new ProjectContentChange(change.Key, change.Value))];
+            pendingChanges.Clear();
+        }
+
+        foreach (var change in changes)
+            Changed?.Invoke(change);
+    }
+
+    private sealed class ChangeBatch : IDisposable
+    {
+        private ProjectContentService? service;
+
+        public ChangeBatch(ProjectContentService service) =>
+            this.service = service;
+
+        public void Dispose()
+        {
+            var value = Interlocked.Exchange(ref service, null);
+            value?.CompleteChangeBatch();
+        }
+    }
 }

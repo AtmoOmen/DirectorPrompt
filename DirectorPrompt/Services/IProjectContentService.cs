@@ -6,6 +6,8 @@ public interface IProjectContentService
 {
     event Action<ProjectContentChange>? Changed;
 
+    IDisposable BeginChangeBatch();
+
     void NotifyProjectChanged(long projectID, bool isDeleted = false);
 
     Task<IReadOnlyList<Project>> ListProjectsAsync(CancellationToken cancellationToken = default);
