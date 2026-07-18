@@ -11,27 +11,89 @@
                        Icon="/Assets/Images/Icon-NoBackground.ico"
                        WindowStartupLocation="CenterOwner"
                        TransparencyLevelHint="Mica">
-    <Grid RowDefinitions="Auto,Auto,Auto">
-        <TextBlock x:Name="MessageText"
-                   Grid.Row="0"
-                   TextWrapping="Wrap"
-                   Margin="24,24,24,16" />
-        <TextBox x:Name="InputBox"
-                 Grid.Row="1"
-                 Margin="24,0,24,16"
-                 IsVisible="False"
-                 KeyDown="OnInputBoxKeyDown" />
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Margin="24,0,24,20"
-                    Spacing="8">
-            <Button x:Name="SecondaryButton"
-                    MinWidth="88"
-                    Click="OnSecondaryClick" />
-            <Button x:Name="PrimaryButton"
-                    MinWidth="88"
-                    Click="OnPrimaryClick" />
+    <windowing:FAAppWindow.Styles>
+        <!-- 危险操作 (Danger) 按钮样式 -->
+        <Style Selector="Button#PrimaryButton:not(.accent)">
+            <Setter Property="Background" Value="#E53935" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#D32F2F" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button#PrimaryButton:not(.accent):pointerover">
+            <Setter Property="Background" Value="#EF5350" />
+            <Setter Property="BorderBrush" Value="#E53935" />
+        </Style>
+        <Style Selector="Button#PrimaryButton:not(.accent):pressed">
+            <Setter Property="Background" Value="#C62828" />
+            <Setter Property="BorderBrush" Value="#B71C1C" />
+        </Style>
+
+        <!-- 输入框（TextBox）的高级交互样式 -->
+        <Style Selector="TextBox#InputBox">
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.2" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="TextBox#InputBox:focus">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+        </Style>
+
+        <!-- 按钮悬浮微动效 -->
+        <Style Selector="Button">
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.02)" />
+        </Style>
+        <Style Selector="Button:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.98)" />
+        </Style>
+    </windowing:FAAppWindow.Styles>
+
+    <Grid RowDefinitions="*,Auto" Margin="24">
+        <!-- 内容区域：文本信息或输入框 -->
+        <StackPanel Grid.Row="0" Spacing="16">
+            <!-- 提示文本 -->
+            <TextBlock x:Name="MessageText"
+                       TextWrapping="Wrap"
+                       LineHeight="20"
+                       FontSize="14"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+            
+            <!-- 输入框 -->
+            <TextBox x:Name="InputBox"
+                     IsVisible="False"
+                     KeyDown="OnInputBoxKeyDown" />
         </StackPanel>
+
+        <!-- 底部按钮：智能隐藏逻辑与排版 -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,20,0,0">
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="12">
+                <!-- 取消/次要按钮：没有文字时通过 converter 自动隐藏 -->
+                <Button x:Name="SecondaryButton"
+                        MinWidth="88"
+                        Click="OnSecondaryClick"
+                        IsVisible="{Binding $self.Content, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                
+                <!-- 确定/主要按钮 -->
+                <Button x:Name="PrimaryButton"
+                        MinWidth="88"
+                        Click="OnPrimaryClick" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </windowing:FAAppWindow>

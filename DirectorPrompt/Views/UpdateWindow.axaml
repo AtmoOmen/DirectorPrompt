@@ -2,22 +2,57 @@
                        xmlns="https://github.com/avaloniaui"
                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                        xmlns:windowing="using:FluentAvalonia.UI.Windowing"
-                       Width="480"
+                       xmlns:fa="using:FluentAvalonia.UI.Controls"
+                       Width="460"
                        SizeToContent="Height"
                        CanResize="False"
                        ShowAsDialog="True"
                        Icon="/Assets/Images/Icon-NoBackground.ico"
                        WindowStartupLocation="CenterScreen"
                        TransparencyLevelHint="Mica">
-    <StackPanel Margin="24" Spacing="12">
-        <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
-        <StackPanel x:Name="ProgressPanel" Spacing="8">
-            <ProgressBar x:Name="ProgressBar" IsIndeterminate="True" MinWidth="360" />
-            <TextBlock x:Name="ProgressText" HorizontalAlignment="Center" IsVisible="False" />
-        </StackPanel>
-        <StackPanel x:Name="ErrorPanel" Spacing="12" IsVisible="False">
-            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
-            <Button x:Name="CloseButton" HorizontalAlignment="Right" Click="OnCloseClick" />
-        </StackPanel>
-    </StackPanel>
+    <Grid RowDefinitions="Auto,Auto" Margin="24">
+        <!-- 头部区域：包含更新状态与精美图标 -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,20">
+            <!-- 渐变色圆形图标背景 -->
+            <Border Grid.Column="0" Width="44" Height="44" CornerRadius="22" Margin="0,0,16,0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Offset="0" Color="#6200EE" />
+                        <GradientStop Offset="1" Color="#8700FF" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <fa:FASymbolIcon Symbol="Download" FontSize="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                <TextBlock Text="软件更新" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" LetterSpacing="1" />
+                <TextBlock x:Name="StatusText" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- 内容区域：包含进度面板和错误面板 -->
+        <Grid Grid.Row="1">
+            <!-- 进度条面板 -->
+            <StackPanel x:Name="ProgressPanel" Spacing="10">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="正在下载..." FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="ProgressText" Grid.Column="1" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="False" />
+                </Grid>
+                <ProgressBar x:Name="ProgressBar" IsIndeterminate="True" Height="6" CornerRadius="3" Background="{DynamicResource ControlStrokeColorDefaultBrush}" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" MinWidth="360" />
+            </StackPanel>
+
+            <!-- 错误面板 -->
+            <StackPanel x:Name="ErrorPanel" Spacing="16" IsVisible="False">
+                <Border CornerRadius="8" Background="#15FF4545" BorderBrush="#30FF4545" BorderThickness="1" Padding="16">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <fa:FASymbolIcon Grid.Column="0" Symbol="Alert" FontSize="20" Foreground="#FF4545" VerticalAlignment="Top" Margin="0,2,12,0" />
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Text="更新失败" FontSize="14" FontWeight="SemiBold" Foreground="#FF4545" />
+                            <TextBlock x:Name="ErrorText" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Opacity="0.85" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Button x:Name="CloseButton" HorizontalAlignment="Right" Classes="accent" Click="OnCloseClick" MinWidth="80" />
+            </StackPanel>
+        </Grid>
+    </Grid>
 </windowing:FAAppWindow>
