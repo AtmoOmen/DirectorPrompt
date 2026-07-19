@@ -228,4 +228,36 @@ public partial class MessageRail : UserControl
         isPointerOver = false;
         SyncRailToTargetScroll();
     }
+
+    private void OnGoToTopClick(object? sender, RoutedEventArgs e)
+    {
+        targetScrollViewer ??= TargetListBox?.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+
+        if (targetScrollViewer is not null)
+        {
+            targetScrollViewer.Offset = targetScrollViewer.Offset.WithY(0);
+        }
+    }
+
+    private void OnGoToBottomClick(object? sender, RoutedEventArgs e)
+    {
+        if (TargetListBox is null)
+            return;
+
+        var items = TargetListBox.Items;
+        if (items.Count == 0)
+            return;
+
+        var lastEntry = items[^1];
+        if (lastEntry is DialogEntryViewModel entry)
+        {
+            var requestID = ++navigationRequestID;
+            TargetListBox.ScrollIntoView(entry);
+            Dispatcher.UIThread.Post
+            (
+                () => AlignEntryToTop(requestID, entry),
+                DispatcherPriority.Render
+            );
+        }
+    }
 }

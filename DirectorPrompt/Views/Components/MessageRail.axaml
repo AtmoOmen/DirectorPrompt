@@ -1,6 +1,8 @@
 <UserControl x:Class="DirectorPrompt.Views.Components.MessageRail"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
              ClipToBounds="False"
              PointerEntered="OnRailPointerEntered"
              PointerExited="OnRailPointerExited">
@@ -90,11 +92,8 @@
             <Setter Property="Opacity" Value="1.0" />
         </Style>
 
-        <!-- 悬浮在侧栏时，当前被鼠标悬停的对应项（PointerOver）：变长变宽，颜色高亮，提供极佳的悬停动态反馈 -->
+        <!-- 悬浮在侧栏时，当前被鼠标悬停的对应项（PointerOver）：颜色高亮，只变亮不改变尺寸 -->
         <Style Selector="ListBoxItem:pointerover Border.indicator">
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="4" />
-            <Setter Property="CornerRadius" Value="99" />
             <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
             <Setter Property="Opacity" Value="1.0" />
         </Style>
@@ -129,16 +128,58 @@
             <Setter Property="Width" Value="26" />
             <Setter Property="Height" Value="5" />
         </Style>
+
+        <!-- 图标按钮样式 -->
+        <Style Selector="Button.rail-btn">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Opacity" Value="0.4" />
+            <Setter Property="IsHitTestVisible" Value="True" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" Easing="QuadraticEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="UserControl:pointerover Button.rail-btn">
+            <Setter Property="Opacity" Value="0.7" />
+        </Style>
+        <Style Selector="Button.rail-btn:pointerover">
+            <Setter Property="Opacity" Value="1.0" />
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundThemeBrushPressed}" />
+        </Style>
+        <Style Selector="UserControl.mobile Button.rail-btn">
+            <Setter Property="Opacity" Value="0.8" />
+            <Setter Property="IsHitTestVisible" Value="True" />
+        </Style>
     </UserControl.Styles>
 
-    <Grid ClipToBounds="False" HorizontalAlignment="Right">
+    <Grid RowDefinitions="Auto,*,Auto" ClipToBounds="False" HorizontalAlignment="Right">
         <!-- 背景板：平滑宽度与毛玻璃质感过渡 -->
         <Border x:Name="RailBorder"
+                Grid.Row="1"
                 HorizontalAlignment="Center"
                 ClipToBounds="False" />
 
+        <!-- 顶部跳转按钮 -->
+        <Button x:Name="GoToTopButton"
+                Grid.Row="0"
+                Classes="rail-btn"
+                Margin="0,0,0,6"
+                Click="OnGoToTopClick"
+                ToolTip.Tip="{Binding [Dialog.GoToTop], Source={x:Static loc:Loc.Instance}}">
+            <fa:FASymbolIcon Symbol="ChevronUp" FontSize="14" />
+        </Button>
+
         <!-- 指示轨列表：保持固定宽度，居中对齐，不被任何容器裁剪 -->
         <ListBox x:Name="RailListBox"
+                 Grid.Row="1"
                  Width="40"
                  HorizontalAlignment="Center"
                  ClipToBounds="False"
@@ -147,7 +188,7 @@
                  ScrollViewer.VerticalScrollBarVisibility="Hidden"
                  Background="Transparent"
                  BorderThickness="0"
-                 Padding="0"
+                 Padding="0,4"
                  Focusable="False"
                  SelectionMode="Single">
             <ListBox.ItemTemplate>
@@ -175,5 +216,15 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+
+        <!-- 底部跳转按钮 -->
+        <Button x:Name="GoToBottomButton"
+                Grid.Row="2"
+                Classes="rail-btn"
+                Margin="0,6,0,0"
+                Click="OnGoToBottomClick"
+                ToolTip.Tip="{Binding [Dialog.GoToBottom], Source={x:Static loc:Loc.Instance}}">
+            <fa:FASymbolIcon Symbol="ChevronDown" FontSize="14" />
+        </Button>
     </Grid>
 </UserControl>
