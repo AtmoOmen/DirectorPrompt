@@ -40,7 +40,7 @@ public sealed class SystemStateTransformer
         );
 
         var attributes  = await stateRepository.GetAttributesAsync(projectID, null, cancellationToken);
-        var systemAttrs = attributes.Where(a => a.Driver == Driver.System || a.ValueType == StateValueType.Enum).ToList();
+        var systemAttrs = attributes.Where(a => a.Driver == Driver.System).ToList();
 
         if (systemAttrs.Count == 0)
         {

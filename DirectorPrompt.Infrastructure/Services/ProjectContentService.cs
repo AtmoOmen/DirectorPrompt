@@ -1137,9 +1137,7 @@ public sealed class ProjectContentService
                             definition.Scope;
             var resolvedCategoryID = categoryID ?? definition.CategoryID;
             var config             = JsonSerializer.Serialize(BuildConfig(definition, groupIDs, entryIDs), JsonOptions.Compact);
-            var driver = definition.ValueType == StateValueType.Enum ?
-                             Driver.System :
-                             definition.Driver;
+            var driver = definition.Driver;
 
             await connection.ExecuteAsync
             (
@@ -1184,9 +1182,7 @@ public sealed class ProjectContentService
             ),
             JsonOptions.Compact
         );
-        var driver = definition.ValueType == StateValueType.Enum ?
-                         Driver.System :
-                         definition.Driver;
+        var driver = definition.Driver;
 
         return await scheduler.ExecuteAsync
                (
@@ -1255,9 +1251,7 @@ public sealed class ProjectContentService
             ),
             JsonOptions.Compact
         );
-        var driver = definition.ValueType == StateValueType.Enum ?
-                         Driver.System :
-                         definition.Driver;
+        var driver = definition.Driver;
 
         return await scheduler.ExecuteAsync
                (

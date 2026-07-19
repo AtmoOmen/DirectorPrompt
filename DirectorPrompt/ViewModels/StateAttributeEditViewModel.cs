@@ -24,11 +24,15 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsDriverVisible))]
     [NotifyPropertyChangedFor(nameof(IsSystemNumericConfig))]
     [NotifyPropertyChangedFor(nameof(IsNarrativeNumericConfig))]
+    [NotifyPropertyChangedFor(nameof(IsSystemEnumConfig))]
+    [NotifyPropertyChangedFor(nameof(IsNarrativeEnumConfig))]
     public partial StateValueType ValueType { get; set; } = StateValueType.Numeric;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSystemNumericConfig))]
     [NotifyPropertyChangedFor(nameof(IsNarrativeNumericConfig))]
+    [NotifyPropertyChangedFor(nameof(IsSystemEnumConfig))]
+    [NotifyPropertyChangedFor(nameof(IsNarrativeEnumConfig))]
     public partial Driver Driver { get; set; } = Driver.Narrative;
 
     [ObservableProperty]
@@ -79,11 +83,15 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
 
     public bool IsEnumConfig => ValueType == StateValueType.Enum;
 
-    public bool IsDriverVisible => ValueType == StateValueType.Numeric;
+    public bool IsDriverVisible => ValueType is StateValueType.Numeric or StateValueType.Enum;
 
     public bool IsSystemNumericConfig => ValueType == StateValueType.Numeric && Driver == Driver.System;
 
     public bool IsNarrativeNumericConfig => ValueType == StateValueType.Numeric && Driver == Driver.Narrative;
+
+    public bool IsSystemEnumConfig => ValueType == StateValueType.Enum && Driver == Driver.System;
+
+    public bool IsNarrativeEnumConfig => ValueType == StateValueType.Enum && Driver == Driver.Narrative;
 
     partial void OnOptionsChanged(string value) =>
         SyncTransitions();
@@ -143,6 +151,7 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
         (t => new EnumTransitionConfig
             {
                 Option        = t.Option,
+                ChangeRules   = Driver == Driver.Narrative && !string.IsNullOrWhiteSpace(t.ChangeRules) ? t.ChangeRules : null,
                 Method        = t.Method,
                 Weight        = t.Weight,
                 AttributeName = t.AttributeName,
@@ -170,7 +179,7 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
             Max         = MaxValue,
             Initial     = InitialValue,
             Unit        = Unit,
-            ChangeRules = ChangeRules,
+            ChangeRules = ValueType == StateValueType.Numeric ? ChangeRules : null,
             NumericChanges = numericChanges,
             Options     = Options.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
             Trigger     = Trigger.ToString(),

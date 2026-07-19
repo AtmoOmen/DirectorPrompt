@@ -155,7 +155,7 @@ public sealed partial class ProjectEditViewModel
         vm.MaxValue    = config.Max;
         vm.InitialValue = config.Initial;
         vm.Unit        = config.Unit        ?? string.Empty;
-        vm.ChangeRules = config.ChangeRules ?? string.Empty;
+        vm.ChangeRules = vm.ValueType == StateValueType.Numeric ? config.ChangeRules ?? string.Empty : string.Empty;
 
         foreach (var change in config.NumericChanges)
         {
@@ -189,6 +189,7 @@ public sealed partial class ProjectEditViewModel
                 if (existing is not null)
                 {
                     existing.Method        = tr.Method;
+                    existing.ChangeRules   = tr.ChangeRules ?? string.Empty;
                     existing.Weight        = tr.Weight;
                     existing.AttributeName = tr.AttributeName;
                     existing.Expression    = tr.Expression;
@@ -407,9 +408,7 @@ public sealed partial class ProjectEditViewModel
                 attribute.Scope,
                 attribute.CategoryID,
                 attribute.ValueType,
-                Driver = attribute.ValueType == StateValueType.Enum ?
-                             Driver.System :
-                             attribute.Driver,
+                attribute.Driver,
                 Config = attribute.BuildConfig()
             },
             JsonOptions.Compact
@@ -818,9 +817,7 @@ public sealed partial class ProjectEditViewModel
                                  attribute.CategoryID :
                                  null,
                 ValueType = attribute.ValueType,
-                Driver = attribute.ValueType == StateValueType.Enum ?
-                             Driver.System :
-                             attribute.Driver,
+                Driver    = attribute.Driver,
                 Config = attribute.BuildConfig()
             };
 

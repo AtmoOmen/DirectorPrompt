@@ -6,6 +6,8 @@ public sealed record EnumTransitionConfig
 {
     public string Option { get; init; } = string.Empty;
 
+    public string? ChangeRules { get; init; }
+
     public EnumTransitionMethod Method { get; init; } = EnumTransitionMethod.Random;
 
     public float Weight { get; init; } = 1f;

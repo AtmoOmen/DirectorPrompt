@@ -272,14 +272,11 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var now = DateTime.UtcNow;
             var initialStateValues = (await stateRepository.GetAttributesAsync(CurrentProject.ID, StateScope.Global))
-                                     .Where(attribute => attribute.ValueType == StateValueType.Numeric)
                                      .Select
                                      (attribute => new StateValue
                                          {
                                              AttributeID = attribute.ID,
-                                             Value = string.IsNullOrWhiteSpace(attribute.Config) ?
-                                                         "0" :
-                                                         (JsonSerializer.Deserialize<StateAttributeConfig>(attribute.Config, JsonOptions.Default)?.Initial ?? 0).ToString(CultureInfo.InvariantCulture),
+                                             Value       = GetInitialStateValue(attribute),
                                              UpdatedAt = now
                                          }
                                      )
@@ -307,6 +304,20 @@ public sealed partial class MainViewModel : ObservableObject
             Log.Error(ex, "创建对话失败");
             StatusMessage = Loc.Get("Status.CreateSessionFailed", ex.Message);
         }
+    }
+
+    private static string GetInitialStateValue(StateAttribute attribute)
+    {
+        var config = string.IsNullOrWhiteSpace(attribute.Config) ?
+                         null :
+                         JsonSerializer.Deserialize<StateAttributeConfig>(attribute.Config, JsonOptions.Default);
+
+        return attribute.ValueType switch
+        {
+            StateValueType.Numeric => (config?.Initial ?? 0).ToString(CultureInfo.InvariantCulture),
+            StateValueType.Enum    => config?.Options?.FirstOrDefault() ?? string.Empty,
+            _                      => string.Empty
+        };
     }
 
     [RelayCommand]

@@ -1,4 +1,7 @@
 using System.Globalization;
+using System.Text.Json;
+using DirectorPrompt.Domain;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
@@ -161,8 +164,20 @@ public sealed class StateTools
         if (attr is null)
             return ToolResult.Error($"状态属性 {attribute} 不存在");
 
-        if (attr.Driver == Driver.System || attr.ValueType == StateValueType.Enum)
-            return ToolResult.Error($"状态属性 {attribute} 为系统驱动或枚举类型, AI 不可直接修改");
+        if (attr.Driver == Driver.System)
+            return ToolResult.Error($"状态属性 {attribute} 为系统驱动, AI 不可直接修改");
+
+        var normalizedValue = value.Trim();
+
+        if (attr.ValueType == StateValueType.Enum)
+        {
+            var config = string.IsNullOrWhiteSpace(attr.Config) ?
+                             null :
+                             JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
+
+            if (config?.Options is not { Count: > 0 } options || !options.Contains(normalizedValue, StringComparer.Ordinal))
+                return ToolResult.Error($"状态属性 {attribute} 不包含枚举值 {normalizedValue}");
+        }
 
         var oldValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
 
@@ -170,7 +185,7 @@ public sealed class StateTools
         (
             attr.ID,
             context.SessionID,
-            value,
+            normalizedValue,
             StateChangeSource.StateAgent,
             reason,
             context.SceneID ?? 0,
@@ -182,7 +197,7 @@ public sealed class StateTools
             new
             {
                 oldValue = oldValue?.Value,
-                newValue = value
+                newValue = normalizedValue
             }
         );
     }

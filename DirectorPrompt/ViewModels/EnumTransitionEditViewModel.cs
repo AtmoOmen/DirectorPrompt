@@ -8,6 +8,9 @@ public sealed partial class EnumTransitionEditViewModel : ObservableObject
     public string Option { get; set; } = string.Empty;
 
     [ObservableProperty]
+    public partial string ChangeRules { get; set; } = string.Empty;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRandom))]
     [NotifyPropertyChangedFor(nameof(IsExpression))]
     [NotifyPropertyChangedFor(nameof(IsAlways))]

@@ -94,7 +94,7 @@ public sealed class PostProcessingStage
         }
 
         var attributes = (await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Global, cancellationToken))
-                         .Where(a => a.Driver == Driver.Narrative && a.ValueType != StateValueType.Enum)
+                         .Where(a => a.Driver == Driver.Narrative)
                          .ToList();
 
         if (attributes.Count > 0)
@@ -153,7 +153,7 @@ public sealed class PostProcessingStage
         }
 
         var categoryAttrs = (await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category, cancellationToken))
-                            .Where(a => a.Driver == Driver.Narrative && a.ValueType != StateValueType.Enum)
+                            .Where(a => a.Driver == Driver.Narrative)
                             .ToList();
 
         if (categoryAttrs.Count > 0)
@@ -232,9 +232,6 @@ public sealed class PostProcessingStage
 
     private static string FormatConstraint(StateAttribute attr)
     {
-        if (attr.ValueType != StateValueType.Numeric)
-            return string.Empty;
-
         var config = string.IsNullOrWhiteSpace(attr.Config) ?
                          null :
                          JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
@@ -262,12 +259,21 @@ public sealed class PostProcessingStage
 
     private static string FormatRules(StateAttribute attr)
     {
-        if (attr.ValueType != StateValueType.Numeric)
-            return string.Empty;
-
         var config = string.IsNullOrWhiteSpace(attr.Config) ?
                          null :
                          JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
+
+        if (attr.ValueType == StateValueType.Enum)
+        {
+            return config?.Transitions is { Count: > 0 } transitions ?
+                       string.Join
+                       (
+                           "；",
+                           transitions.Where(transition => !string.IsNullOrWhiteSpace(transition.ChangeRules))
+                                      .Select(transition => $"{transition.Option}: {transition.ChangeRules}")
+                       ) :
+                       string.Empty;
+        }
 
         return string.IsNullOrWhiteSpace(config?.ChangeRules) ?
                    string.Empty :

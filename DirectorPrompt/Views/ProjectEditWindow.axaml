@@ -451,7 +451,7 @@
                                                                 HorizontalAlignment="Stretch" />
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1" Margin="4,0,0,0"
-                                                                    IsVisible="{Binding IsNumericConfig, Converter={StaticResource BoolToVisibility}}">
+                                                                    IsVisible="{Binding IsDriverVisible, Converter={StaticResource BoolToVisibility}}">
                                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                                 <TextBlock
                                                                     Text="{Binding [State.Attribute.Driver], Source={x:Static loc:Loc.Instance}}" />
@@ -570,6 +570,43 @@
                                                         <TextBox
                                                             Text="{Binding Options}"
                                                             PlaceholderText="{Binding [State.Attribute.OptionsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                        <ItemsControl ItemsSource="{Binding Transitions}"
+                                                                      Margin="0,8,0,0"
+                                                                      IsVisible="{Binding IsNarrativeEnumConfig, Converter={StaticResource BoolToVisibility}}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Border Margin="0,0,0,4" Padding="8,4"
+                                                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                                            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                                            BorderThickness="1" CornerRadius="4">
+                                                                        <StackPanel>
+                                                                            <TextBlock Text="{Binding Option}"
+                                                                                       FontWeight="SemiBold"
+                                                                                       Margin="0,0,0,4" />
+                                                                            <StackPanel Margin="0,4,0,0">
+                                                                                <StackPanel Orientation="Horizontal"
+                                                                                            Margin="0,0,0,4">
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                        Foreground="Gray" FontSize="12"
+                                                                                        VerticalAlignment="Center"
+                                                                                        Margin="8,0,0,0" />
+                                                                                </StackPanel>
+                                                                                <TextBox
+                                                                                    Text="{Binding ChangeRules}"
+                                                                                    AcceptsReturn="True"
+                                                                                    TextWrapping="Wrap"
+                                                                                    MinHeight="60"
+                                                                                    ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <StackPanel IsVisible="{Binding IsSystemEnumConfig, Converter={StaticResource BoolToVisibility}}">
                                                         <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
                                                             <TextBlock
                                                                 Text="{Binding [State.Attribute.Trigger], Source={x:Static loc:Loc.Instance}}" />
@@ -707,6 +744,7 @@
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
                                                         </ItemsControl>
+                                                        </StackPanel>
                                                     </StackPanel>
 
                                                     <components:PhaseEditControl
@@ -932,9 +970,9 @@
                                                                                     DisplayMemberPath="Display"
                                                                                     HorizontalAlignment="Stretch" />
                                                                             </StackPanel>
-                                                                            <StackPanel Grid.Column="1"
-                                                                                    Margin="4,0,0,0"
-                                                                                    IsVisible="{Binding IsNumericConfig, Converter={StaticResource BoolToVisibility}}">
+                                                                        <StackPanel Grid.Column="1"
+                                                                                Margin="4,0,0,0"
+                                                                                IsVisible="{Binding IsDriverVisible, Converter={StaticResource BoolToVisibility}}">
                                                                                 <StackPanel Orientation="Horizontal"
                                                                                     Margin="0,0,0,4">
                                                                                     <TextBlock
@@ -1058,6 +1096,43 @@
                                                                             <TextBox
                                                                                 Text="{Binding Options}"
                                                                                 PlaceholderText="{Binding [State.Attribute.OptionsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                                            <ItemsControl ItemsSource="{Binding Transitions}"
+                                                                                          Margin="0,8,0,0"
+                                                                                          IsVisible="{Binding IsNarrativeEnumConfig, Converter={StaticResource BoolToVisibility}}">
+                                                                                <ItemsControl.ItemTemplate>
+                                                                                    <DataTemplate>
+                                                                                        <Border Margin="0,0,0,4" Padding="8,4"
+                                                                                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                                                                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                                                                BorderThickness="1" CornerRadius="4">
+                                                                                            <StackPanel>
+                                                                                                <TextBlock Text="{Binding Option}"
+                                                                                                           FontWeight="SemiBold"
+                                                                                                           Margin="0,0,0,4" />
+                                                                                                <StackPanel Margin="0,4,0,0">
+                                                                                                    <StackPanel Orientation="Horizontal"
+                                                                                                                Margin="0,0,0,4">
+                                                                                                        <TextBlock
+                                                                                                            Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
+                                                                                                        <TextBlock
+                                                                                                            Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                                            Foreground="Gray" FontSize="12"
+                                                                                                            VerticalAlignment="Center"
+                                                                                                            Margin="8,0,0,0" />
+                                                                                                    </StackPanel>
+                                                                                                    <TextBox
+                                                                                                        Text="{Binding ChangeRules}"
+                                                                                                        AcceptsReturn="True"
+                                                                                                        TextWrapping="Wrap"
+                                                                                                        MinHeight="60"
+                                                                                                        ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                                                                                                </StackPanel>
+                                                                                            </StackPanel>
+                                                                                        </Border>
+                                                                                    </DataTemplate>
+                                                                                </ItemsControl.ItemTemplate>
+                                                                            </ItemsControl>
+                                                                            <StackPanel IsVisible="{Binding IsSystemEnumConfig, Converter={StaticResource BoolToVisibility}}">
                                                                             <StackPanel Orientation="Horizontal"
                                                                                     Margin="0,8,0,4">
                                                                                 <TextBlock
@@ -1213,6 +1288,7 @@
                                                                                     </DataTemplate>
                                                                                 </ItemsControl.ItemTemplate>
                                                                             </ItemsControl>
+                                                                            </StackPanel>
                                                                         </StackPanel>
 
                                                                         <components:PhaseEditControl
