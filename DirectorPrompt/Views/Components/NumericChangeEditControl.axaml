@@ -1,0 +1,152 @@
+<UserControl x:Class="DirectorPrompt.Views.Components.NumericChangeEditControl"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             x:Name="Root">
+    <StackPanel DataContext="{Binding Source, ElementName=Root}"
+                Margin="0,12,0,0">
+        <Grid Margin="0,0,0,4" ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [State.NumericChange.Title], Source={x:Static loc:Loc.Instance}}"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    Padding="8,4"
+                    Click="OnAdd">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Add" />
+                    <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+            </Button>
+        </Grid>
+        <ItemsControl ItemsSource="{Binding NumericChanges}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Expander Margin="0,0,0,6" IsExpanded="False">
+                        <Expander.Header>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Remarks}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0" />
+                                    <TextBlock Text="{Binding Expression}"
+                                               Foreground="Gray"
+                                               FontSize="12"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Margin="0,0,-16,0">
+                                    <Button Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="6"
+                                            Click="OnDelete"
+                                            Tag="{Binding}"
+                                            ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+                                        <fa:FASymbolIcon Symbol="Delete"
+                                                         Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Expander.Header>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                <TextBlock Text="{Binding [State.NumericChange.Remarks], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0" />
+                            </StackPanel>
+                            <TextBox Text="{Binding Remarks}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                <TextBlock Text="{Binding [State.NumericChange.Attribute], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0" />
+                            </StackPanel>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <components:PathComboBox
+                                    ItemsSource="{Binding DataContext.AvailableNumericAttributes, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    SelectedItem="{Binding AttributeName}"
+                                    HorizontalAlignment="Stretch" />
+                                <Button Grid.Column="1"
+                                        Margin="6,0,0,0"
+                                        Padding="6,4"
+                                        ToolTip.Tip="{Binding [Common.Clear], Source={x:Static loc:Loc.Instance}}"
+                                        Click="OnClearAttribute"
+                                        Tag="{Binding}">
+                                    <fa:FASymbolIcon Symbol="Dismiss" />
+                                </Button>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                <TextBlock Text="{Binding [State.NumericChange.Condition], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock Text="{Binding [State.NumericChange.ValueHelp], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0" />
+                                <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0" />
+                            </StackPanel>
+                            <TextBox Text="{Binding Expression}"
+                                     PlaceholderText="{Binding [State.NumericChange.ConditionPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                <TextBlock Text="{Binding [State.NumericChange.Expression], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock Text="{Binding [State.NumericChange.ValueHelp], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0" />
+                                <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0" />
+                            </StackPanel>
+                            <TextBox Text="{Binding ChangeExpression}"
+                                     PlaceholderText="{Binding [State.NumericChange.ExpressionPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                <TextBlock Text="{Binding [State.NumericChange.Trigger], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0" />
+                            </StackPanel>
+                            <components:PathComboBox
+                                ItemsSource="{Binding SystemTriggers, Source={x:Static vm:EnumOptions.Instance}}"
+                                SelectedValue="{Binding Trigger}"
+                                SelectedValuePath="Value"
+                                DisplayMemberPath="Display"
+                                HorizontalAlignment="Stretch" />
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                <TextBlock Text="{Binding [State.NumericChange.ApplyMode], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0" />
+                            </StackPanel>
+                            <components:PathComboBox
+                                ItemsSource="{Binding NumericChangeSwitchModes, Source={x:Static vm:EnumOptions.Instance}}"
+                                SelectedValue="{Binding SwitchMode}"
+                                SelectedValuePath="Value"
+                                DisplayMemberPath="Display"
+                                HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                    </Expander>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

@@ -157,6 +157,23 @@ public sealed partial class ProjectEditViewModel
         vm.Unit        = config.Unit        ?? string.Empty;
         vm.ChangeRules = config.ChangeRules ?? string.Empty;
 
+        foreach (var change in config.NumericChanges)
+        {
+            vm.NumericChanges.Add
+            (
+                new NumericStateChangeRuleEditViewModel
+                {
+                    ID               = string.IsNullOrWhiteSpace(change.ID) ? Guid.NewGuid().ToString("N") : change.ID,
+                    Remarks          = change.Remarks,
+                    AttributeName    = change.AttributeName,
+                    Expression       = change.Expression,
+                    ChangeExpression = change.ChangeExpression,
+                    Trigger          = change.Trigger,
+                    SwitchMode       = change.SwitchMode
+                }
+            );
+        }
+
         if (config.Options is not null)
             vm.Options = string.Join(", ", config.Options);
 
@@ -291,7 +308,7 @@ public sealed partial class ProjectEditViewModel
 
         foreach (var attr in StateAttributes)
         {
-            if (attr.ValueType != StateValueType.Enum)
+            if (attr.ValueType != StateValueType.Enum && attr.ValueType != StateValueType.Numeric)
                 continue;
 
             attr.AvailableNumericAttributes.Clear();
@@ -309,7 +326,7 @@ public sealed partial class ProjectEditViewModel
 
             foreach (var attr in cat.StateAttributes)
             {
-                if (attr.ValueType != StateValueType.Enum)
+                if (attr.ValueType != StateValueType.Enum && attr.ValueType != StateValueType.Numeric)
                     continue;
 
                 attr.AvailableNumericAttributes.Clear();
@@ -784,6 +801,12 @@ public sealed partial class ProjectEditViewModel
                 return false;
             }
 
+            if (attribute.NumericChanges.Any(change => string.IsNullOrWhiteSpace(change.Expression) || string.IsNullOrWhiteSpace(change.ChangeExpression)))
+            {
+                ValidationMessage = Loc.Get("State.NumericChange.Required");
+                return false;
+            }
+
             var model = new StateAttribute
             {
                 ID          = attribute.ID,
@@ -1011,6 +1034,26 @@ public sealed partial class ProjectEditViewModel
                 if (attr.Phases.Remove(phase))
                     return;
             }
+        }
+    }
+
+    [RelayCommand]
+    private void AddNumericChange(StateAttributeEditViewModel? attribute)
+    {
+        if (attribute is not null)
+            attribute.NumericChanges.Add(new NumericStateChangeRuleEditViewModel());
+    }
+
+    [RelayCommand]
+    private void DeleteNumericChange(NumericStateChangeRuleEditViewModel? change)
+    {
+        if (change is null)
+            return;
+
+        foreach (var attribute in StateAttributes.Concat(CharacterCategories.SelectMany(category => category.StateAttributes)))
+        {
+            if (attribute.NumericChanges.Remove(change))
+                return;
         }
     }
 }

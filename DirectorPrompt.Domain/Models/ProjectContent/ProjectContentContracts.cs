@@ -96,6 +96,8 @@ public sealed class NumericStateDefinition
     public string? Unit { get; set; }
 
     public string? ChangeRules { get; set; }
+
+    public List<NumericStateChangeRuleConfig> Changes { get; set; } = [];
 }
 
 public sealed class EnumStateDefinition

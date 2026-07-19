@@ -770,7 +770,8 @@ public sealed class ProjectContentService
                     Max         = config.Max,
                     Initial     = config.Initial,
                     Unit        = config.Unit,
-                    ChangeRules = config.ChangeRules
+                    ChangeRules = config.ChangeRules,
+                    Changes     = config.NumericChanges
                 },
                 Enumeration = patch.Enumeration ?? new EnumStateDefinition
                 {
@@ -1590,6 +1591,7 @@ public sealed class ProjectContentService
             Initial     = numeric?.Initial,
             Unit        = numeric?.Unit,
             ChangeRules = numeric?.ChangeRules,
+            NumericChanges = numeric?.Changes ?? [],
             Options     = enumeration?.Options,
             Trigger     = enumeration?.Trigger.ToString(),
             Transitions = enumeration?.Transitions,
@@ -1716,6 +1718,9 @@ public sealed class ProjectContentService
                 ((numeric.Min is not null && numeric.Initial < numeric.Min) ||
                  (numeric.Max is not null && numeric.Initial > numeric.Max)))
                 throw new ArgumentException("状态属性初始值必须位于最小值和最大值之间", nameof(definition));
+
+            if (numeric.Changes.Any(change => string.IsNullOrWhiteSpace(change.Expression) || string.IsNullOrWhiteSpace(change.ChangeExpression)))
+                throw new ArgumentException("数值变更条件必须指定条件和数值变更式", nameof(definition));
         }
 
         foreach (var phase in definition.Phases)

@@ -616,11 +616,12 @@ public sealed class MCPProjectTools
         [Description("初始值")]              float?  initial           = null,
         [Description("单位")]               string? unit              = null,
         [Description("变更指引")]             string? changeRules       = null,
+        [Description("系统驱动时的数值变更条件")] MCPNumericStateChange[]? changes = null,
         CancellationToken                         cancellationToken = default
     ) =>
         ExecuteAsync
         (
-            new { projectID, name, displayName, categoryID, driver, min, max, initial, unit, changeRules },
+            new { projectID, name, displayName, categoryID, driver, min, max, initial, unit, changeRules, changes },
             () => CreateStateAttributeAsync
             (
                 projectID,
@@ -640,7 +641,8 @@ public sealed class MCPProjectTools
                         Max         = max,
                         Initial     = initial,
                         Unit        = unit,
-                        ChangeRules = changeRules
+                        ChangeRules = changeRules,
+                        Changes     = changes?.Select(ToNumericStateChange).ToList() ?? []
                     }
                 },
                 cancellationToken
@@ -768,11 +770,12 @@ public sealed class MCPProjectTools
         [Description("初始值")]       float?  initial           = null,
         [Description("单位")]        string? unit              = null,
         [Description("变更指引")]      string? changeRules       = null,
+        [Description("系统驱动时的数值变更条件")] MCPNumericStateChange[]? changes = null,
         CancellationToken                  cancellationToken = default
     ) =>
         ExecuteAsync
         (
-            new { projectID, attributeID, min, max, initial, unit, changeRules },
+            new { projectID, attributeID, min, max, initial, unit, changeRules, changes },
             async () =>
             {
                 var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
@@ -790,7 +793,8 @@ public sealed class MCPProjectTools
                                    Max         = max,
                                    Initial     = initial,
                                    Unit        = unit,
-                                   ChangeRules = changeRules
+                                   ChangeRules = changeRules,
+                                   Changes     = changes?.Select(ToNumericStateChange).ToList() ?? []
                                }
                            },
                            cancellationToken
@@ -1093,6 +1097,23 @@ public sealed class MCPProjectTools
             AttributeName = transition.AttributeName,
             Expression    = transition.Expression,
             SwitchMode    = transition.SwitchMode
+        };
+    }
+
+    private static NumericStateChangeRuleConfig ToNumericStateChange(MCPNumericStateChange change)
+    {
+        if (string.IsNullOrWhiteSpace(change.Expression) || string.IsNullOrWhiteSpace(change.ChangeExpression))
+            throw new ArgumentException("数值变更条件必须指定 expression 和 changeExpression", nameof(change));
+
+        return new NumericStateChangeRuleConfig
+        {
+            ID               = Guid.NewGuid().ToString("N"),
+            Remarks          = change.Remarks,
+            AttributeName    = change.AttributeName,
+            Expression       = change.Expression,
+            ChangeExpression = change.ChangeExpression,
+            Trigger          = change.Trigger,
+            SwitchMode       = change.SwitchMode
         };
     }
 

@@ -13,7 +13,7 @@ public sealed class PhaseEvaluator
 (
     IStateRepository     stateRepository,
     IKnowledgeRepository knowledgeRepository,
-    IConditionEngine     conditionEngine
+    IExpressionEngine    expressionEngine
 ) : ITransitionSource
 {
     public string SourceName => "Phase";
@@ -150,7 +150,7 @@ public sealed class PhaseEvaluator
 
         try
         {
-            return conditionEngine.Evaluate(expression, currentValue);
+            return expressionEngine.Evaluate(expression, currentValue);
         }
         catch (Exception ex)
         {

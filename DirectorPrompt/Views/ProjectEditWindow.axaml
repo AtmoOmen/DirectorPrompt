@@ -505,6 +505,12 @@
                                                         <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
                                                             <TextBlock
                                                                 Text="{Binding [State.Attribute.InitialValue], Source={x:Static loc:Loc.Instance}}" />
+                                                            <TextBlock
+                                                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                Foreground="Gray"
+                                                                FontSize="12"
+                                                                VerticalAlignment="Center"
+                                                                Margin="8,0,0,0" />
                                                         </StackPanel>
                                                         <fa:FANumberBox
                                                             Value="{Binding InitialValue, Converter={StaticResource NumberBoxValue}}"
@@ -523,22 +529,29 @@
                                                         <TextBox
                                                             Text="{Binding Unit}"
                                                             PlaceholderText="{Binding [State.Attribute.UnitPlaceholder], Source={x:Static loc:Loc.Instance}}" />
-                                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                                                            <TextBlock
-                                                                Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
-                                                            <TextBlock
-                                                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                                                Foreground="Gray"
-                                                                FontSize="12"
-                                                                VerticalAlignment="Center"
-                                                                Margin="8,0,0,0" />
+                                                        <StackPanel IsVisible="{Binding IsNarrativeNumericConfig, Converter={StaticResource BoolToVisibility}}">
+                                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                <TextBlock
+                                                                    Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
+                                                                <TextBlock
+                                                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                    Foreground="Gray"
+                                                                    FontSize="12"
+                                                                    VerticalAlignment="Center"
+                                                                    Margin="8,0,0,0" />
+                                                            </StackPanel>
+                                                            <TextBox
+                                                                Text="{Binding ChangeRules}"
+                                                                AcceptsReturn="True"
+                                                                TextWrapping="Wrap"
+                                                                MinHeight="60"
+                                                                ScrollViewer.VerticalScrollBarVisibility="Auto" />
                                                         </StackPanel>
-                                                        <TextBox
-                                                            Text="{Binding ChangeRules}"
-                                                            AcceptsReturn="True"
-                                                            TextWrapping="Wrap"
-                                                            MinHeight="60"
-                                                            ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                                                        <components:NumericChangeEditControl
+                                                            Source="{Binding}"
+                                                            IsVisible="{Binding IsSystemNumericConfig, Converter={StaticResource BoolToVisibility}}"
+                                                            AddNumericChangeCommand="{Binding DataContext.AddNumericChangeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            DeleteNumericChangeCommand="{Binding DataContext.DeleteNumericChangeCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                                                     </StackPanel>
 
                                                     <!-- enum + system -->
@@ -978,6 +991,12 @@
                                                                                     Margin="0,8,0,4">
                                                                                 <TextBlock
                                                                                     Text="{Binding [State.Attribute.InitialValue], Source={x:Static loc:Loc.Instance}}" />
+                                                                                <TextBlock
+                                                                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                    Foreground="Gray"
+                                                                                    FontSize="12"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Margin="8,0,0,0" />
                                                                             </StackPanel>
                                                                             <fa:FANumberBox
                                                                                 Value="{Binding InitialValue, Converter={StaticResource NumberBoxValue}}"
@@ -997,23 +1016,30 @@
                                                                             <TextBox
                                                                                 Text="{Binding Unit}"
                                                                                 PlaceholderText="{Binding [State.Attribute.UnitPlaceholder], Source={x:Static loc:Loc.Instance}}" />
-                                                                            <StackPanel Orientation="Horizontal"
-                                                                                    Margin="0,8,0,4">
-                                                                                <TextBlock
-                                                                                    Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
-                                                                                <TextBlock
-                                                                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                                                                    Foreground="Gray"
-                                                                                    FontSize="12"
-                                                                                    VerticalAlignment="Center"
-                                                                                    Margin="8,0,0,0" />
+                                                                            <StackPanel IsVisible="{Binding IsNarrativeNumericConfig, Converter={StaticResource BoolToVisibility}}">
+                                                                                <StackPanel Orientation="Horizontal"
+                                                                                        Margin="0,8,0,4">
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                        Foreground="Gray"
+                                                                                        FontSize="12"
+                                                                                        VerticalAlignment="Center"
+                                                                                        Margin="8,0,0,0" />
+                                                                                </StackPanel>
+                                                                                <TextBox
+                                                                                    Text="{Binding ChangeRules}"
+                                                                                    AcceptsReturn="True"
+                                                                                    TextWrapping="Wrap"
+                                                                                    MinHeight="60"
+                                                                                    ScrollViewer.VerticalScrollBarVisibility="Auto" />
                                                                             </StackPanel>
-                                                                            <TextBox
-                                                                                Text="{Binding ChangeRules}"
-                                                                                AcceptsReturn="True"
-                                                                                TextWrapping="Wrap"
-                                                                                MinHeight="60"
-                                                                                ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                                                                            <components:NumericChangeEditControl
+                                                                                Source="{Binding}"
+                                                                                IsVisible="{Binding IsSystemNumericConfig, Converter={StaticResource BoolToVisibility}}"
+                                                                                AddNumericChangeCommand="{Binding DataContext.AddNumericChangeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                DeleteNumericChangeCommand="{Binding DataContext.DeleteNumericChangeCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                                                                         </StackPanel>
 
                                                                         <StackPanel Margin="0,8,0,0"

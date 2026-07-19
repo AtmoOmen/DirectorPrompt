@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Globalization;
 using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
@@ -14,10 +15,11 @@ public sealed class SystemStateTransformer
 (
     IStateRepository     stateRepository,
     ICharacterRepository characterRepository,
-    IConditionEngine     conditionEngine
+    IExpressionEngine    expressionEngine
 ) : ISystemStateTransformer
 {
     private readonly ConcurrentDictionary<(long SessionID, long AttributeID, long? CharacterID, string Option), bool> onceTriggered = new();
+    private readonly ConcurrentDictionary<(long SessionID, long AttributeID, long? CharacterID, string RuleID), bool> numericOnceTriggered = new();
 
     public async Task ExecuteAsync
     (
@@ -83,11 +85,28 @@ public sealed class SystemStateTransformer
         CancellationToken          cancellationToken
     )
     {
+        var value        = await stateRepository.GetStateValueAsync(attr.ID, sessionID, cancellationToken);
+        var currentValue = value?.Value ?? "0";
+
+        if (attr.ValueType == StateValueType.Numeric)
+        {
+            await TransformNumericAttributeAsync
+            (
+                attr,
+                sessionID,
+                sceneID,
+                roundID,
+                trigger,
+                currentValue,
+                globalStateValues,
+                null,
+                cancellationToken
+            );
+            return;
+        }
+
         if (attr.ValueType != StateValueType.Enum)
             return;
-
-        var value        = await stateRepository.GetStateValueAsync(attr.ID, sessionID, cancellationToken);
-        var currentValue = value?.Value ?? string.Empty;
 
         await TransformEnumAttributeAsync
         (
@@ -116,7 +135,7 @@ public sealed class SystemStateTransformer
         CancellationToken          cancellationToken
     )
     {
-        if (attr.ValueType != StateValueType.Enum)
+        if (attr.ValueType is not (StateValueType.Enum or StateValueType.Numeric))
             return;
 
         if (characters.Count == 0)
@@ -141,20 +160,161 @@ public sealed class SystemStateTransformer
                 v => v.Value
             );
 
-            var currentValue = charValues.FirstOrDefault(v => v.AttributeID == attr.ID)?.Value ?? string.Empty;
+            var currentValue = charValues.FirstOrDefault(v => v.AttributeID == attr.ID)?.Value ?? "0";
 
-            await TransformEnumAttributeAsync
+            if (attr.ValueType == StateValueType.Numeric)
+            {
+                await TransformNumericAttributeAsync
+                (
+                    attr,
+                    sessionID,
+                    sceneID,
+                    roundID,
+                    trigger,
+                    currentValue,
+                    charContext,
+                    character.ID,
+                    cancellationToken
+                );
+            }
+            else
+            {
+                await TransformEnumAttributeAsync
+                (
+                    attr,
+                    sessionID,
+                    sceneID,
+                    roundID,
+                    trigger,
+                    currentValue,
+                    charContext,
+                    character.ID,
+                    cancellationToken
+                );
+            }
+        }
+    }
+
+    private async Task TransformNumericAttributeAsync
+    (
+        StateAttribute             attr,
+        long                       sessionID,
+        long?                      sceneID,
+        long                       roundID,
+        SystemTrigger              trigger,
+        string                     currentValue,
+        Dictionary<string, string> stateValues,
+        long?                      characterID,
+        CancellationToken          cancellationToken
+    )
+    {
+        var config = string.IsNullOrWhiteSpace(attr.Config) ?
+                         null :
+                         JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
+
+        if (config?.NumericChanges.Count is not > 0 ||
+            !float.TryParse(currentValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var initialValue) ||
+            !float.IsFinite(initialValue))
+            return;
+
+        var newValue = initialValue;
+
+        for (var index = 0; index < config.NumericChanges.Count; index++)
+        {
+            var change = config.NumericChanges[index];
+
+            if (!IsTriggerMatch(change.Trigger, trigger))
+                continue;
+
+            var ruleID = string.IsNullOrWhiteSpace(change.ID) ?
+                             index.ToString(CultureInfo.InvariantCulture) :
+                             change.ID;
+            var key = (sessionID, attr.ID, characterID, ruleID);
+            var isMet = EvaluateNumericChangeCondition(change, stateValues, newValue);
+
+            if (!isMet)
+            {
+                numericOnceTriggered[key] = false;
+                continue;
+            }
+
+            if (change.SwitchMode == EnumSwitchMode.Once &&
+                numericOnceTriggered.TryGetValue(key, out var triggered) && triggered)
+                continue;
+
+            try
+            {
+                newValue = expressionEngine.EvaluateNumeric
+                           (
+                               change.ChangeExpression,
+                               newValue.ToString(CultureInfo.InvariantCulture)
+                           );
+                newValue = ClampNumericValue(newValue, config);
+                numericOnceTriggered[key] = change.SwitchMode == EnumSwitchMode.Once;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "数值变更式求值失败: {Expression}", change.ChangeExpression);
+            }
+        }
+
+        var formattedValue = newValue.ToString(CultureInfo.InvariantCulture);
+
+        if (formattedValue == currentValue)
+            return;
+
+        if (characterID is not null)
+            await characterRepository.SetCharacterStateValueAsync(characterID.Value, attr.ID, formattedValue, sessionID, roundID, cancellationToken);
+        else
+        {
+            await stateRepository.SetStateValueAsync
             (
-                attr,
+                attr.ID,
                 sessionID,
-                sceneID,
+                formattedValue,
+                StateChangeSource.System,
+                $"system 数值变更: {currentValue} → {formattedValue}",
+                sceneID ?? 0,
                 roundID,
-                trigger,
-                currentValue,
-                charContext,
-                character.ID,
                 cancellationToken
             );
+        }
+
+        stateValues[attr.Name] = formattedValue;
+    }
+
+    private static float ClampNumericValue(float value, StateAttributeConfig config)
+    {
+        if (config.Min is not null && value < config.Min)
+            value = config.Min.Value;
+
+        if (config.Max is not null && value > config.Max)
+            value = config.Max.Value;
+
+        return value;
+    }
+
+    private bool EvaluateNumericChangeCondition
+    (
+        NumericStateChangeRuleConfig change,
+        Dictionary<string, string>    stateValues,
+        float                          currentValue
+    )
+    {
+        var value = currentValue.ToString(CultureInfo.InvariantCulture);
+
+        if (!string.IsNullOrWhiteSpace(change.AttributeName) &&
+            !stateValues.TryGetValue(change.AttributeName, out value))
+            return false;
+
+        try
+        {
+            return expressionEngine.Evaluate(change.Expression, value);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "数值变更条件求值失败: {Expression}", change.Expression);
+            return false;
         }
     }
 
@@ -318,7 +478,7 @@ public sealed class SystemStateTransformer
 
         try
         {
-            return conditionEngine.Evaluate(transition.Expression, value);
+            return expressionEngine.Evaluate(transition.Expression, value);
         }
         catch (Exception ex)
         {

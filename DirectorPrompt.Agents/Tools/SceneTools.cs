@@ -10,7 +10,8 @@ namespace DirectorPrompt.Agents.Tools;
 public sealed class SceneTools
 (
     ISceneRepository    sceneRepository,
-    ITimelineCalculator timelineCalculator
+    ITimelineCalculator timelineCalculator,
+    ISystemStateTransformer systemStateTransformer
 )
 {
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -90,6 +91,15 @@ public sealed class SceneTools
         };
 
         var created = await sceneRepository.CreateAsync(scene, context.SessionID, context.RoundID);
+
+        await systemStateTransformer.ExecuteAsync
+        (
+            context.ProjectID,
+            context.SessionID,
+            created.ID,
+            context.RoundID,
+            SystemTrigger.SceneChange
+        );
 
         Log.Information("工具调用完成: create_scene, sceneID={ID}, timelinePosition={Position}", created.ID, position);
 

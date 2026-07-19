@@ -14,6 +14,8 @@ public sealed record StateAttributeConfig
 
     public string? ChangeRules { get; init; }
 
+    public List<NumericStateChangeRuleConfig> NumericChanges { get; init; } = [];
+
     public List<string>? Options { get; init; }
 
     public string? Trigger { get; init; }

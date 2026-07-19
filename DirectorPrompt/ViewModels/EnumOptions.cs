@@ -41,6 +41,12 @@ public sealed class EnumOptions : INotifyPropertyChanged
         new(EnumSwitchMode.Once, Loc.Get("State.SwitchMode.Once"))
     ];
 
+    public IReadOnlyList<EnumOption<EnumSwitchMode>> NumericChangeSwitchModes =>
+    [
+        new(EnumSwitchMode.Always, Loc.Get("State.NumericChange.Always")),
+        new(EnumSwitchMode.Once, Loc.Get("State.NumericChange.Once"))
+    ];
+
     private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
 

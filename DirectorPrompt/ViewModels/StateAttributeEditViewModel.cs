@@ -22,9 +22,13 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsNumericConfig))]
     [NotifyPropertyChangedFor(nameof(IsEnumConfig))]
     [NotifyPropertyChangedFor(nameof(IsDriverVisible))]
+    [NotifyPropertyChangedFor(nameof(IsSystemNumericConfig))]
+    [NotifyPropertyChangedFor(nameof(IsNarrativeNumericConfig))]
     public partial StateValueType ValueType { get; set; } = StateValueType.Numeric;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSystemNumericConfig))]
+    [NotifyPropertyChangedFor(nameof(IsNarrativeNumericConfig))]
     public partial Driver Driver { get; set; } = Driver.Narrative;
 
     [ObservableProperty]
@@ -67,6 +71,8 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
 
     public ObservableCollection<EnumTransitionEditViewModel> Transitions { get; } = [];
 
+    public ObservableCollection<NumericStateChangeRuleEditViewModel> NumericChanges { get; } = [];
+
     public ObservableCollection<string> AvailableNumericAttributes { get; } = [];
 
     public bool IsNumericConfig => ValueType == StateValueType.Numeric;
@@ -74,6 +80,10 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     public bool IsEnumConfig => ValueType == StateValueType.Enum;
 
     public bool IsDriverVisible => ValueType == StateValueType.Numeric;
+
+    public bool IsSystemNumericConfig => ValueType == StateValueType.Numeric && Driver == Driver.System;
+
+    public bool IsNarrativeNumericConfig => ValueType == StateValueType.Numeric && Driver == Driver.Narrative;
 
     partial void OnOptionsChanged(string value) =>
         SyncTransitions();
@@ -141,6 +151,19 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
             }
         ).ToList();
 
+        var numericChanges = NumericChanges.Select
+        (change => new NumericStateChangeRuleConfig
+            {
+                ID               = change.ID,
+                Remarks          = change.Remarks,
+                AttributeName    = change.AttributeName,
+                Expression       = change.Expression,
+                ChangeExpression = change.ChangeExpression,
+                Trigger          = change.Trigger,
+                SwitchMode       = change.SwitchMode
+            }
+        ).ToList();
+
         var dto = new StateAttributeConfig
         {
             Min         = MinValue,
@@ -148,6 +171,7 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
             Initial     = InitialValue,
             Unit        = Unit,
             ChangeRules = ChangeRules,
+            NumericChanges = numericChanges,
             Options     = Options.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
             Trigger     = Trigger.ToString(),
             Transitions = transitions,
