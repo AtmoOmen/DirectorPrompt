@@ -24,6 +24,7 @@
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
     <PackageVersion Include="ModelContextProtocol" Version="1.4.1" />
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.1" />
+    <PackageVersion Include="NCalc" Version="6.4.0" />
     <PackageVersion Include="OpenAI" Version="2.12.0" />
     <PackageVersion Include="Polly" Version="8.7.0" />
     <PackageVersion Include="Serilog" Version="4.4.0" />

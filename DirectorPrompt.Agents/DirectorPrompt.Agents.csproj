@@ -21,6 +21,7 @@
         <PackageReference Include="Microsoft.Extensions.AI"/>
         <PackageReference Include="ModelContextProtocol"/>
         <PackageReference Include="ModelContextProtocol.AspNetCore"/>
+        <PackageReference Include="NCalc"/>
         <PackageReference Include="Serilog"/>
     </ItemGroup>
 

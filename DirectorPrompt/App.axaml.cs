@@ -237,7 +237,7 @@ public class App : Application
 
         services.AddSingleton<IProjectPortService, ProjectPortService>();
         services.AddSingleton<ITimelineCalculator, TimelineCalculator>();
-        services.AddSingleton<IConditionEngine, ConditionEngine>();
+        services.AddSingleton<IExpressionEngine, ExpressionEngine>();
         services.AddSingleton<ICharacterCategoryResolver, CharacterCategoryResolver>();
         services.AddSingleton<ISystemStateTransformer, SystemStateTransformer>();
         services.AddSingleton<IChatClientFactory, ChatClientFactory>();
