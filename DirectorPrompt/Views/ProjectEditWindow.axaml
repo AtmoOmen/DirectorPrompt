@@ -194,12 +194,14 @@
                                                     <StackPanel Grid.Column="1"
                                                                 Margin="0, 0, -16, 0"
                                                                 Orientation="Horizontal">
-                                                        <Button Padding="6,4" Click="OnDeleteKnowledgeGroup"
-                                                                Tag="{Binding}">
-                                                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                <fa:FASymbolIcon Symbol="Delete" />
-                                                                <TextBlock Text="删除" />
-                                                            </StackPanel>
+                                                        <Button Click="OnDeleteKnowledgeGroup"
+                                                                Tag="{Binding}"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                Padding="6"
+                                                                ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+                                                            <fa:FASymbolIcon Symbol="Delete"
+                                                                             Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
                                                         </Button>
                                                     </StackPanel>
                                                 </Grid>
@@ -270,11 +272,16 @@
                                                                                 FontWeight="SemiBold"
                                                                                 VerticalAlignment="Center" />
                                                                         <Button Grid.Column="1"
-                                                                                Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
-                                                                                Padding="6,4"
+                                                                                Background="Transparent"
+                                                                                BorderThickness="0"
+                                                                                Padding="6"
                                                                                 Margin="0,0,-16,0"
                                                                                 Click="OnDeleteKnowledgeEntry"
-                                                                                Tag="{Binding}" />
+                                                                                Tag="{Binding}"
+                                                                                ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+                                                                            <fa:FASymbolIcon Symbol="Delete"
+                                                                                             Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                                        </Button>
                                                                     </Grid>
                                                                 </Expander.Header>
                                                                 <StackPanel>
@@ -379,9 +386,15 @@
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                                 Margin="0,0,-16,0">
                                                         <Button
-                                                            Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Padding="6"
                                                             Click="OnDeleteStateAttribute"
-                                                            Tag="{Binding}" />
+                                                            Tag="{Binding}"
+                                                            ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+                                                            <fa:FASymbolIcon Symbol="Delete"
+                                                                             Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                        </Button>
                                                     </StackPanel>
                                                 </Grid>
                                             </Expander.Header>
@@ -724,10 +737,15 @@
                                                                 Orientation="Horizontal"
                                                                 Margin="0, 0, -16, 0">
                                                         <Button
-                                                            Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
-                                                            Padding="6,4"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Padding="6"
                                                             Click="OnDeleteCharacterCategory"
-                                                            Tag="{Binding}" />
+                                                            Tag="{Binding}"
+                                                            ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+                                                            <fa:FASymbolIcon Symbol="Delete"
+                                                                             Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                        </Button>
                                                     </StackPanel>
                                                 </Grid>
                                             </Expander.Header>
@@ -825,10 +843,15 @@
                                                                                 Orientation="Horizontal"
                                                                                 Margin="0,0,-16,0">
                                                                             <Button
-                                                                                Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
-                                                                                Padding="6,4"
+                                                                                Background="Transparent"
+                                                                                BorderThickness="0"
+                                                                                Padding="6"
                                                                                 Click="OnDeleteStateAttribute"
-                                                                                Tag="{Binding}" />
+                                                                                Tag="{Binding}"
+                                                                                ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+                                                                                <fa:FASymbolIcon Symbol="Delete"
+                                                                                                 Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                                            </Button>
                                                                         </StackPanel>
                                                                     </Grid>
                                                                 </Expander.Header>
