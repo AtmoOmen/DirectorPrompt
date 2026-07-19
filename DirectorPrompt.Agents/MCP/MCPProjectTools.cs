@@ -666,7 +666,7 @@ public sealed class MCPProjectTools
         [Description("属性标识，供表达式引用")]      string        name,
         [Description("显示名")]              string        displayName,
         [Description("枚举选项，至少一项")]        string[]      options,
-        [Description("系统触发时机")]           SystemTrigger trigger,
+        [Description("系统驱动时的触发时机")]       SystemTrigger trigger           = SystemTrigger.SceneChange,
         [Description("所属分类 ID；留空则为全局属性")] long?         categoryID        = null,
         [Description("驱动方式")]             Driver        driver            = Driver.System,
         [Description("各枚举选项的配置；叙事驱动时填写 option 和 changeRules")]
@@ -676,23 +676,40 @@ public sealed class MCPProjectTools
         ExecuteAsync
         (
             new { projectID, name, displayName, options, trigger, categoryID, driver, transitions },
-            () =>
+            async () =>
             {
+                EnsureDriver(driver);
+                EnsureSystemTrigger(trigger);
+
                 var values = NormalizeEnumOptions(options);
+                var scope = categoryID is null ?
+                                StateScope.Global :
+                                StateScope.Category;
+                var enumTransitions = ToEnumTransitions(values, transitions, driver);
 
-                if (transitions is not null && transitions.Any(transition => !values.Contains(transition.Option)))
-                    throw new ArgumentException("转移规则引用了不存在的枚举选项", nameof(transitions));
+                if (driver == Driver.System && transitions is null)
+                    enumTransitions = EnsureSystemEnumTransitions(values, enumTransitions);
 
-                return CreateStateAttributeAsync
+                var snapshot = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
+
+                ValidateEnumTransitionAttributes
+                (
+                    enumTransitions,
+                    snapshot.StateAttributes,
+                    name,
+                    scope,
+                    categoryID,
+                    null
+                );
+
+                return await CreateStateAttributeAsync
                 (
                     projectID,
                     new StateAttributeDefinition
                     {
                         Name        = name,
                         DisplayName = displayName,
-                        Scope = categoryID is null ?
-                                    StateScope.Global :
-                                    StateScope.Category,
+                        Scope       = scope,
                         CategoryID = categoryID,
                         ValueType  = StateValueType.Enum,
                         Driver     = driver,
@@ -700,7 +717,7 @@ public sealed class MCPProjectTools
                         {
                             Options     = values,
                             Trigger     = trigger,
-                            Transitions = transitions?.Select(transition => ToEnumTransition(transition, driver)).ToList() ?? []
+                            Transitions = enumTransitions
                         }
                     },
                     cancellationToken
@@ -828,7 +845,7 @@ public sealed class MCPProjectTools
         [Description("项目 ID")]     long          projectID,
         [Description("枚举状态属性 ID")] long          attributeID,
         [Description("枚举选项，至少一项")] string[]      options,
-        [Description("系统触发时机")]    SystemTrigger trigger,
+        [Description("系统驱动时的触发时机；留空时保持不变")] SystemTrigger? trigger           = null,
         [Description("驱动方式；留空时保持不变")] Driver?        driver            = null,
         [Description("各枚举选项的配置；叙事驱动时填写 option 和 changeRules")]
         MCPEnumStateTransition[]? transitions       = null,
@@ -839,13 +856,34 @@ public sealed class MCPProjectTools
             new { projectID, attributeID, options, trigger, driver, transitions },
             async () =>
             {
-                var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
+                var snapshot = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
+                var attribute = GetRequiredProjectStateAttribute(snapshot, attributeID);
                 EnsureStateValueType(attribute, StateValueType.Enum);
                 var values = NormalizeEnumOptions(options);
                 var resolvedDriver = driver ?? attribute.Driver;
+                var resolvedTrigger = trigger ?? GetSystemTrigger(attribute);
+                var enumTransitions = transitions is null ?
+                                          attribute.Configuration.Transitions?
+                                                   .Where(transition => values.Contains(transition.Option))
+                                                   .ToList() ??
+                                          [] :
+                                          ToEnumTransitions(values, transitions, resolvedDriver);
 
-                if (transitions is not null && transitions.Any(transition => !values.Contains(transition.Option)))
-                    throw new ArgumentException("转移规则引用了不存在的枚举选项", nameof(transitions));
+                EnsureDriver(resolvedDriver);
+                EnsureSystemTrigger(resolvedTrigger);
+
+                if (resolvedDriver == Driver.System && transitions is null)
+                    enumTransitions = EnsureSystemEnumTransitions(values, enumTransitions);
+
+                ValidateEnumTransitionAttributes
+                (
+                    enumTransitions,
+                    snapshot.StateAttributes,
+                    attribute.Name,
+                    attribute.Scope,
+                    attribute.CategoryID,
+                    attribute.ID
+                );
 
                 return await PatchStateAttributeAsync
                        (
@@ -857,11 +895,8 @@ public sealed class MCPProjectTools
                                Enumeration = new EnumStateDefinition
                                {
                                    Options     = values,
-                                   Trigger     = trigger,
-                                   Transitions = transitions?.Select(transition => ToEnumTransition(transition, resolvedDriver)).ToList() ??
-                                                 attribute.Configuration.Transitions?
-                                                          .Where(transition => values.Contains(transition.Option))
-                                                          .ToList() ?? []
+                                   Trigger     = resolvedTrigger,
+                                   Transitions = enumTransitions
                                }
                            },
                            cancellationToken
@@ -892,13 +927,22 @@ public sealed class MCPProjectTools
             new { projectID, attributeID, transitions },
             async () =>
             {
-                var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
+                var snapshot = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
+                var attribute = GetRequiredProjectStateAttribute(snapshot, attributeID);
                 EnsureStateValueType(attribute, StateValueType.Enum);
 
                 var options = attribute.Configuration.Options ?? [];
+                var enumTransitions = ToEnumTransitions(options, transitions, attribute.Driver);
 
-                if (transitions.Any(transition => !options.Contains(transition.Option)))
-                    throw new ArgumentException("转移规则引用了不存在的枚举选项", nameof(transitions));
+                ValidateEnumTransitionAttributes
+                (
+                    enumTransitions,
+                    snapshot.StateAttributes,
+                    attribute.Name,
+                    attribute.Scope,
+                    attribute.CategoryID,
+                    attribute.ID
+                );
 
                 return await PatchStateAttributeAsync
                        (
@@ -910,7 +954,7 @@ public sealed class MCPProjectTools
                                {
                                    Options     = [.. options],
                                    Trigger     = GetSystemTrigger(attribute),
-                                   Transitions = transitions.Select(transition => ToEnumTransition(transition, attribute.Driver)).ToList()
+                                   Transitions = enumTransitions
                                }
                            },
                            cancellationToken
@@ -1050,9 +1094,16 @@ public sealed class MCPProjectTools
     {
         var snapshot = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
 
-        return snapshot.StateAttributes.FirstOrDefault(attribute => attribute.ID == attributeID) ??
-               throw new InvalidOperationException($"状态属性不存在: ID={attributeID}");
+        return GetRequiredProjectStateAttribute(snapshot, attributeID);
     }
+
+    private static ProjectStateAttribute GetRequiredProjectStateAttribute
+    (
+        ProjectContentSnapshot snapshot,
+        long                   attributeID
+    ) =>
+        snapshot.StateAttributes.FirstOrDefault(attribute => attribute.ID == attributeID) ??
+               throw new InvalidOperationException($"状态属性不存在: ID={attributeID}");
 
     private async Task<KnowledgeEntry> GetRequiredKnowledgeEntryAsync
     (
@@ -1091,27 +1142,122 @@ public sealed class MCPProjectTools
         return values;
     }
 
+    private static void EnsureDriver(Driver driver)
+    {
+        if (!Enum.IsDefined(driver))
+            throw new ArgumentOutOfRangeException(nameof(driver));
+    }
+
+    private static void EnsureSystemTrigger(SystemTrigger trigger)
+    {
+        if (!Enum.IsDefined(trigger))
+            throw new ArgumentOutOfRangeException(nameof(trigger));
+    }
+
     private static SystemTrigger GetSystemTrigger(ProjectStateAttribute attribute) =>
-        Enum.TryParse<SystemTrigger>(attribute.Configuration.Trigger, true, out var trigger) ?
+        Enum.TryParse<SystemTrigger>(attribute.Configuration.Trigger, true, out var trigger) && Enum.IsDefined(trigger) ?
             trigger :
             SystemTrigger.SceneChange;
 
+    private static List<EnumTransitionConfig> ToEnumTransitions
+    (
+        IReadOnlyCollection<string>        options,
+        IEnumerable<MCPEnumStateTransition>? transitions,
+        Driver                              driver
+    )
+    {
+        EnsureDriver(driver);
+
+        if (transitions is null)
+            return [];
+
+        var optionSet = options.ToHashSet(StringComparer.Ordinal);
+        var values    = transitions.Select(transition => ToEnumTransition(transition, driver)).ToList();
+
+        if (values.Any(transition => !optionSet.Contains(transition.Option)))
+            throw new ArgumentException("转移规则引用了不存在的枚举选项", nameof(transitions));
+
+        if (values.Select(transition => transition.Option).Distinct(StringComparer.Ordinal).Count() != values.Count)
+            throw new ArgumentException("每个枚举选项只能配置一条规则", nameof(transitions));
+
+        return values;
+    }
+
+    private static List<EnumTransitionConfig> EnsureSystemEnumTransitions
+    (
+        IReadOnlyCollection<string>        options,
+        IReadOnlyList<EnumTransitionConfig> transitions
+    )
+    {
+        var values = transitions.ToList();
+        var configuredOptions = values.Select(transition => transition.Option).ToHashSet(StringComparer.Ordinal);
+
+        foreach (var option in options)
+        {
+            if (!configuredOptions.Add(option))
+                continue;
+
+            values.Add(new EnumTransitionConfig { Option = option });
+        }
+
+        return values;
+    }
+
+    private static void ValidateEnumTransitionAttributes
+    (
+        IEnumerable<EnumTransitionConfig>    transitions,
+        IReadOnlyList<ProjectStateAttribute> attributes,
+        string                                attributeName,
+        StateScope                            scope,
+        long?                                 categoryID,
+        long?                                 attributeID
+    )
+    {
+        foreach (var transition in transitions.Where(transition => transition.Method == EnumTransitionMethod.Expression))
+        {
+            var referencedAttribute = attributes.FirstOrDefault
+            (
+                candidate =>
+                    candidate.ID != attributeID &&
+                    candidate.Name == transition.AttributeName &&
+                    candidate.Name != attributeName &&
+                    candidate.ValueType == StateValueType.Numeric &&
+                    candidate.Scope == scope &&
+                    candidate.CategoryID == categoryID
+            );
+
+            if (referencedAttribute is null)
+                throw new ArgumentException
+                (
+                    $"表达式转移关联属性 {transition.AttributeName} 不存在或不属于同一作用域",
+                    nameof(transitions)
+                );
+        }
+    }
+
     private static EnumTransitionConfig ToEnumTransition(MCPEnumStateTransition transition, Driver driver)
     {
+        ArgumentNullException.ThrowIfNull(transition);
+
         if (string.IsNullOrWhiteSpace(transition.Option))
             throw new ArgumentException("枚举转移规则必须指定 option", nameof(transition));
+
+        var option = transition.Option.Trim();
 
         if (driver == Driver.Narrative)
         {
             return new EnumTransitionConfig
             {
-                Option      = transition.Option,
+                Option      = option,
                 ChangeRules = string.IsNullOrWhiteSpace(transition.ChangeRules) ? null : transition.ChangeRules
             };
         }
 
-        if (transition is { Method: EnumTransitionMethod.Random, Weight: <= 0 })
-            throw new ArgumentException("随机枚举转移规则的 weight 必须大于 0", nameof(transition));
+        if (!Enum.IsDefined(transition.Method) || !Enum.IsDefined(transition.SwitchMode))
+            throw new ArgumentOutOfRangeException(nameof(transition));
+
+        if (!float.IsFinite(transition.Weight) || transition.Weight < 0)
+            throw new ArgumentException("枚举转移规则的 weight 必须为大于或等于 0 的有限数", nameof(transition));
 
         if (transition.Method == EnumTransitionMethod.Expression &&
             (string.IsNullOrWhiteSpace(transition.AttributeName) || string.IsNullOrWhiteSpace(transition.Expression)))
@@ -1119,11 +1265,11 @@ public sealed class MCPProjectTools
 
         return new EnumTransitionConfig
         {
-            Option        = transition.Option,
+            Option        = option,
             Method        = transition.Method,
             Weight        = transition.Weight,
-            AttributeName = transition.AttributeName,
-            Expression    = transition.Expression,
+            AttributeName = transition.AttributeName?.Trim(),
+            Expression    = transition.Expression?.Trim(),
             SwitchMode    = transition.SwitchMode
         };
     }

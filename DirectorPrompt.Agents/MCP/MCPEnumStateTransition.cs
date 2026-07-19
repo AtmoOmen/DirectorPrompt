@@ -14,7 +14,7 @@ public sealed class MCPEnumStateTransition
     [Description("系统驱动时的转移方式：Random 按权重随机，Expression 按条件匹配")]
     public EnumTransitionMethod Method { get; set; } = EnumTransitionMethod.Random;
 
-    [Description("系统驱动时的转移权重；多个表达式命中时优先较大值")]
+    [Description("系统驱动时的转移权重；必须为大于或等于 0 的有限数，多个表达式命中时优先较大值")]
     public float Weight { get; set; } = 1f;
 
     [Description("系统驱动表达式引用的数值属性标识；{val} 代表该属性当前值")]
