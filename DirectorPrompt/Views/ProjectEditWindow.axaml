@@ -184,7 +184,7 @@
                             <ItemsControl ItemsSource="{Binding KnowledgeGroups}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Expander Margin="0,0,0,8" IsExpanded="True">
+                                        <Expander Margin="0,0,0,8" IsExpanded="False">
                                             <Expander.Header>
                                                 <Grid ColumnDefinitions="*,Auto">
                                                     <TextBlock Grid.Column="0"
