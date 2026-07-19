@@ -49,6 +49,9 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     public partial float? MaxValue { get; set; }
 
     [ObservableProperty]
+    public partial float? InitialValue { get; set; }
+
+    [ObservableProperty]
     public partial string Unit { get; set; } = string.Empty;
 
     [ObservableProperty]
@@ -142,6 +145,7 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
         {
             Min         = MinValue,
             Max         = MaxValue,
+            Initial     = InitialValue,
             Unit        = Unit,
             ChangeRules = ChangeRules,
             Options     = Options.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),

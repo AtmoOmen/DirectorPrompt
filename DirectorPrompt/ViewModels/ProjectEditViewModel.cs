@@ -153,6 +153,7 @@ public sealed partial class ProjectEditViewModel
 
         vm.MinValue    = config.Min;
         vm.MaxValue    = config.Max;
+        vm.InitialValue = config.Initial;
         vm.Unit        = config.Unit        ?? string.Empty;
         vm.ChangeRules = config.ChangeRules ?? string.Empty;
 
@@ -453,7 +454,8 @@ public sealed partial class ProjectEditViewModel
                 }
 
                 foreach (var attribute in StateAttributes)
-                    await SaveStateAttributeIfChangedAsync(attribute);
+                    if (!await SaveStateAttributeIfChangedAsync(attribute))
+                        return;
 
                 foreach (var category in CharacterCategories)
                 {
@@ -466,7 +468,8 @@ public sealed partial class ProjectEditViewModel
                     }
 
                     foreach (var attribute in category.StateAttributes)
-                        await SaveStateAttributeIfChangedAsync(attribute);
+                        if (!await SaveStateAttributeIfChangedAsync(attribute))
+                            return;
                 }
 
                 ProjectContentService.NotifyProjectChanged(projectID);
@@ -488,18 +491,21 @@ public sealed partial class ProjectEditViewModel
         }
     }
 
-    private async Task SaveStateAttributeIfChangedAsync(StateAttributeEditViewModel attribute)
+    private async Task<bool> SaveStateAttributeIfChangedAsync(StateAttributeEditViewModel attribute)
     {
         if (attribute.ID <= 0)
-            return;
+            return true;
 
         var attributeState = GetStateAttributeState(attribute);
 
         if (savedStateAttributeStates.TryGetValue(attribute.ID, out var savedAttributeState) && savedAttributeState == attributeState)
-            return;
+            return true;
 
-        await SaveStateAttributeAsync(attribute);
+        if (!await SaveStateAttributeAsync(attribute))
+            return false;
+
         savedStateAttributeStates[attribute.ID] = attributeState;
+        return true;
     }
 
     [RelayCommand]
@@ -760,11 +766,24 @@ public sealed partial class ProjectEditViewModel
         RefreshAvailableNumericAttributes();
     }
 
-    [RelayCommand]
-    private async Task SaveStateAttributeAsync(StateAttributeEditViewModel attribute)
+    private async Task<bool> SaveStateAttributeAsync(StateAttributeEditViewModel attribute)
     {
         try
         {
+            if (attribute.MinValue is not null && attribute.MaxValue is not null && attribute.MinValue > attribute.MaxValue)
+            {
+                ValidationMessage = Loc.Get("State.Attribute.InvalidRange");
+                return false;
+            }
+
+            if (attribute.InitialValue is not null &&
+                ((attribute.MinValue is not null && attribute.InitialValue < attribute.MinValue) ||
+                 (attribute.MaxValue is not null && attribute.InitialValue > attribute.MaxValue)))
+            {
+                ValidationMessage = Loc.Get("State.Attribute.InitialValueOutOfRange");
+                return false;
+            }
+
             var model = new StateAttribute
             {
                 ID          = attribute.ID,
@@ -784,12 +803,13 @@ public sealed partial class ProjectEditViewModel
 
             await stateRepository.UpdateAttributeAsync(model);
             ValidationMessage = string.Empty;
+            return true;
         }
         catch (Exception ex)
         {
             Log.Error(ex, "保存状态属性失败");
             ValidationMessage = Loc.Get("State.Attribute.SaveFailed", ex.Message);
-            throw;
+            return false;
         }
     }
 

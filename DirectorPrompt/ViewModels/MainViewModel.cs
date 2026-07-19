@@ -1,11 +1,14 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Agents;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -23,6 +26,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly Orchestrator            orchestrator;
     private readonly IProjectRepository      projectRepository;
     private readonly ISessionRepository      sessionRepository;
+    private readonly IStateRepository        stateRepository;
     private readonly IEventRepository        eventRepository;
     private readonly IMemoryRepository       memoryRepository;
     private readonly DialogHistoryService    dialogHistoryService;
@@ -53,6 +57,7 @@ public sealed partial class MainViewModel : ObservableObject
         Orchestrator            orchestrator,
         IProjectRepository      projectRepository,
         ISessionRepository      sessionRepository,
+        IStateRepository        stateRepository,
         IEventRepository        eventRepository,
         IMemoryRepository       memoryRepository,
         DialogHistoryService    dialogHistoryService,
@@ -70,6 +75,7 @@ public sealed partial class MainViewModel : ObservableObject
         this.orchestrator          = orchestrator;
         this.projectRepository     = projectRepository;
         this.sessionRepository     = sessionRepository;
+        this.stateRepository       = stateRepository;
         this.eventRepository       = eventRepository;
         this.memoryRepository      = memoryRepository;
         this.dialogHistoryService  = dialogHistoryService;
@@ -265,6 +271,19 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var now = DateTime.UtcNow;
+            var initialStateValues = (await stateRepository.GetAttributesAsync(CurrentProject.ID, StateScope.Global))
+                                     .Where(attribute => attribute.ValueType == StateValueType.Numeric)
+                                     .Select
+                                     (attribute => new StateValue
+                                         {
+                                             AttributeID = attribute.ID,
+                                             Value = string.IsNullOrWhiteSpace(attribute.Config) ?
+                                                         "0" :
+                                                         (JsonSerializer.Deserialize<StateAttributeConfig>(attribute.Config, JsonOptions.Default)?.Initial ?? 0).ToString(CultureInfo.InvariantCulture),
+                                             UpdatedAt = now
+                                         }
+                                     )
+                                     .ToList();
 
             var session = await sessionRepository.CreateAsync
                           (
@@ -274,7 +293,8 @@ public sealed partial class MainViewModel : ObservableObject
                                   Title     = $"对话 {DateTime.Now:MM-dd HH:mm}",
                                   CreatedAt = now,
                                   UpdatedAt = now
-                              }
+                              },
+                              initialStateValues
                           );
 
             Log.Information("创建对话: ID={SessionID}, 项目={ProjectID}", session.ID, CurrentProject.ID);

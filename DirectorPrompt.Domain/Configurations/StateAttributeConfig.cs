@@ -8,6 +8,8 @@ public sealed record StateAttributeConfig
 
     public float? Max { get; init; }
 
+    public float? Initial { get; init; }
+
     public string? Unit { get; init; }
 
     public string? ChangeRules { get; init; }

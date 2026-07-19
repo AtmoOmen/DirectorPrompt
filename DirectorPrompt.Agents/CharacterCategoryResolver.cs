@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
@@ -165,17 +166,17 @@ public sealed class CharacterCategoryResolver
 
     private static string GetDefaultValue(StateAttribute attr)
     {
+        var config = string.IsNullOrWhiteSpace(attr.Config) ?
+                         null :
+                         JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
+
         if (attr.ValueType == StateValueType.Numeric)
-            return "0";
+            return (config?.Initial ?? 0).ToString(CultureInfo.InvariantCulture);
 
         if (attr.ValueType == StateValueType.Enum)
         {
-            var config = string.IsNullOrWhiteSpace(attr.Config) ?
-                             null :
-                             JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
-
-            if (config is not null && config.Options.Count > 0)
-                return config.Options[0];
+            if (config?.Options is { Count: > 0 } options)
+                return options[0];
         }
 
         return string.Empty;

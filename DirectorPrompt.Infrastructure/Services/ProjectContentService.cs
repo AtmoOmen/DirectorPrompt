@@ -768,6 +768,7 @@ public sealed class ProjectContentService
                 {
                     Min         = config.Min,
                     Max         = config.Max,
+                    Initial     = config.Initial,
                     Unit        = config.Unit,
                     ChangeRules = config.ChangeRules
                 },
@@ -1586,6 +1587,7 @@ public sealed class ProjectContentService
         {
             Min         = numeric?.Min,
             Max         = numeric?.Max,
+            Initial     = numeric?.Initial,
             Unit        = numeric?.Unit,
             ChangeRules = numeric?.ChangeRules,
             Options     = enumeration?.Options,
@@ -1703,6 +1705,17 @@ public sealed class ProjectContentService
                 throw new ArgumentException("分类状态属性必须指定分类 ID", nameof(definition));
 
             await EnsureEntityProjectAsync("character_categories", definition.CategoryID.Value, projectID, cancellationToken);
+        }
+
+        if (definition.ValueType == StateValueType.Numeric && definition.Numeric is { } numeric)
+        {
+            if (numeric.Min is not null && numeric.Max is not null && numeric.Min > numeric.Max)
+                throw new ArgumentException("状态属性最小值不能大于最大值", nameof(definition));
+
+            if (numeric.Initial is not null &&
+                ((numeric.Min is not null && numeric.Initial < numeric.Min) ||
+                 (numeric.Max is not null && numeric.Initial > numeric.Max)))
+                throw new ArgumentException("状态属性初始值必须位于最小值和最大值之间", nameof(definition));
         }
 
         foreach (var phase in definition.Phases)

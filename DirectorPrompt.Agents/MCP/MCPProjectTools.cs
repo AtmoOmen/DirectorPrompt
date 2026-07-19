@@ -613,13 +613,14 @@ public sealed class MCPProjectTools
         [Description("驱动方式")]             Driver  driver            = Driver.Narrative,
         [Description("最小值")]              float?  min               = null,
         [Description("最大值")]              float?  max               = null,
+        [Description("初始值")]              float?  initial           = null,
         [Description("单位")]               string? unit              = null,
         [Description("变更指引")]             string? changeRules       = null,
         CancellationToken                         cancellationToken = default
     ) =>
         ExecuteAsync
         (
-            new { projectID, name, displayName, categoryID, driver, min, max, unit, changeRules },
+            new { projectID, name, displayName, categoryID, driver, min, max, initial, unit, changeRules },
             () => CreateStateAttributeAsync
             (
                 projectID,
@@ -637,6 +638,7 @@ public sealed class MCPProjectTools
                     {
                         Min         = min,
                         Max         = max,
+                        Initial     = initial,
                         Unit        = unit,
                         ChangeRules = changeRules
                     }
@@ -763,13 +765,14 @@ public sealed class MCPProjectTools
         [Description("数值状态属性 ID")] long    attributeID,
         [Description("最小值")]       float?  min               = null,
         [Description("最大值")]       float?  max               = null,
+        [Description("初始值")]       float?  initial           = null,
         [Description("单位")]        string? unit              = null,
         [Description("变更指引")]      string? changeRules       = null,
         CancellationToken                  cancellationToken = default
     ) =>
         ExecuteAsync
         (
-            new { projectID, attributeID, min, max, unit, changeRules },
+            new { projectID, attributeID, min, max, initial, unit, changeRules },
             async () =>
             {
                 var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
@@ -785,6 +788,7 @@ public sealed class MCPProjectTools
                                {
                                    Min         = min,
                                    Max         = max,
+                                   Initial     = initial,
                                    Unit        = unit,
                                    ChangeRules = changeRules
                                }
@@ -1074,7 +1078,7 @@ public sealed class MCPProjectTools
         if (string.IsNullOrWhiteSpace(transition.Option))
             throw new ArgumentException("枚举转移规则必须指定 option", nameof(transition));
 
-        if (transition.Method == EnumTransitionMethod.Random && transition.Weight <= 0)
+        if (transition is { Method: EnumTransitionMethod.Random, Weight: <= 0 })
             throw new ArgumentException("随机枚举转移规则的 weight 必须大于 0", nameof(transition));
 
         if (transition.Method == EnumTransitionMethod.Expression &&

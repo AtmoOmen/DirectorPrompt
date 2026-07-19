@@ -49,11 +49,17 @@ public sealed class SessionRepository
             cancellationToken: cancellationToken
         );
 
-    public Task<Session> CreateAsync(Session session, CancellationToken cancellationToken = default) =>
+    public Task<Session> CreateAsync
+    (
+        Session                   session,
+        IReadOnlyList<StateValue>? initialStateValues = null,
+        CancellationToken         cancellationToken = default
+    ) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
             {
+                await using var transaction = await connection.BeginTransactionAsync(token);
                 var now = DateTime.UtcNow;
                 var id = await connection.ExecuteScalarAsync<long>
                          (
@@ -71,9 +77,35 @@ public sealed class SessionRepository
                                      createdAt = now,
                                      updatedAt = now
                                  },
+                                 transaction,
                                  cancellationToken: token
                              )
                          );
+
+                foreach (var stateValue in initialStateValues ?? [])
+                {
+                    await connection.ExecuteAsync
+                    (
+                        new CommandDefinition
+                        (
+                            """
+                            INSERT INTO state_values (attribute_id, session_id, value, updated_at)
+                            VALUES (@attributeID, @sessionID, @value, @updatedAt)
+                            """,
+                            new
+                            {
+                                attributeID = stateValue.AttributeID,
+                                sessionID   = id,
+                                value       = stateValue.Value,
+                                updatedAt   = now
+                            },
+                            transaction,
+                            cancellationToken: token
+                        )
+                    );
+                }
+
+                await transaction.CommitAsync(token);
 
                 return session with { ID = id, CreatedAt = now, UpdatedAt = now };
             },

@@ -91,6 +91,8 @@ public sealed class NumericStateDefinition
 
     public float? Max { get; set; }
 
+    public float? Initial { get; set; }
+
     public string? Unit { get; set; }
 
     public string? ChangeRules { get; set; }
