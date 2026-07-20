@@ -58,7 +58,7 @@
                 <Setter Property="HorizontalAlignment" Value="Left" />
             </Style>
             <Style Selector="ComboBox#ProjectComboBox">
-                <Setter Property="Width" Value="300" />
+                <Setter Property="MinWidth" Value="200" />
             </Style>
             <Style Selector="Button#LanSharingButton">
                 <Setter Property="IsVisible" Value="False" />
