@@ -48,6 +48,8 @@ public sealed partial class MainViewModel : ObservableObject
     private CancellationTokenSource? sessionLoadCts;
     private long?                    previousDialogRoundID;
     private long?                    selectedProjectID;
+    private bool                     isInitialLoad            = true;
+    private bool                     isSwitchingProject;
 
     private DialogEntryViewModel? errorStreamingEntry;
     private DialogEntryViewModel? errorDirectorEntry;
@@ -232,7 +234,7 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task LoadSessionsAsync()
+    private async Task LoadSessionsAsync(bool selectNewestIfNoMatch = false)
     {
         if (CurrentProject is null)
             return;
@@ -250,8 +252,32 @@ public sealed partial class MainViewModel : ObservableObject
             foreach (var session in sessions)
                 Sessions.Add(session);
 
+            Session? matchedSession = null;
             if (previousID.HasValue)
-                CurrentSession = Sessions.FirstOrDefault(s => s.ID == previousID.Value);
+                matchedSession = Sessions.FirstOrDefault(s => s.ID == previousID.Value);
+
+            if (matchedSession is not null)
+            {
+                CurrentSession = matchedSession;
+            }
+            else if (selectNewestIfNoMatch && !isInitialLoad)
+            {
+                CurrentSession = Sessions.FirstOrDefault();
+                if (CurrentSession is null)
+                {
+                    _ = SaveSessionStateAsync();
+                }
+            }
+            else
+            {
+                CurrentSession = null;
+                if (!isInitialLoad)
+                {
+                    _ = SaveSessionStateAsync();
+                }
+            }
+
+            isInitialLoad = false;
 
             Log.Information("对话列表加载完成: 数量={Count}", Sessions.Count);
         }
@@ -900,19 +926,21 @@ public sealed partial class MainViewModel : ObservableObject
         CancelGeneration();
         sessionLoadCts?.Cancel();
 
+        isSwitchingProject = true;
         var sessionChanged = CurrentSession is not null;
         CurrentSession = null;
         Sessions.Clear();
         Dialog.Clear();
         ClearErrorState();
+        isSwitchingProject = false;
 
         if (value is not null)
         {
             Log.Information("切换项目: ID={ProjectID}, 名称={Name}", value.ID, value.Name);
-            _ = LoadSessionsAsync();
+            _ = LoadSessionsAsync(true);
         }
 
-        if (!sessionChanged)
+        if (!sessionChanged && !isInitialLoad)
         {
             _ = SaveSessionStateAsync();
         }
@@ -933,7 +961,10 @@ public sealed partial class MainViewModel : ObservableObject
         DirectiveInput.Clear();
         ResetPipelineStages();
         ClearErrorState();
-        _ = SaveSessionStateAsync();
+        if (!isSwitchingProject)
+        {
+            _ = SaveSessionStateAsync();
+        }
 
         if (value is null)
         {
