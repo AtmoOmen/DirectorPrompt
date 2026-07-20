@@ -282,15 +282,6 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         dialogScrollViewer?.ScrollToEnd();
     }
 
-    private void OnRollbackRound(object sender, RoutedEventArgs e)
-    {
-        if (sender is Control { Tag: DialogEntryViewModel entry })
-        {
-            entry.IsMenuOpen = false;
-            _                = viewModel.RollbackLastRoundCommand.ExecuteAsync(null);
-        }
-    }
-
     private async void OnLoadEarlierDialog(object? sender, RoutedEventArgs e)
     {
         if (dialogScrollViewer is null)
@@ -322,41 +313,6 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         var offset      = Math.Clamp(previousOffset.Y                  + addedHeight, 0, maximum);
 
         dialogScrollViewer.Offset = dialogScrollViewer.Offset.WithY(offset);
-    }
-
-    private async void OnCopyEntry(object sender, RoutedEventArgs e)
-    {
-        if (sender is Control { Tag: DialogEntryViewModel entry } element)
-        {
-            var clipboard = GetTopLevel(element)?.Clipboard;
-
-            if (clipboard is not null)
-            {
-                var transfer = new DataTransfer();
-                transfer.Add(DataTransferItem.CreateText(entry.Content));
-                await clipboard.SetDataAsync(transfer);
-            }
-
-            entry.IsMenuOpen = false;
-        }
-    }
-
-    private void OnEditEntry(object sender, RoutedEventArgs e)
-    {
-        if (sender is Control { Tag: DialogEntryViewModel entry })
-        {
-            entry.StartEdit();
-            entry.IsMenuOpen = false;
-        }
-    }
-
-    private void OnMoreButtonClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is Control { Tag: DialogEntryViewModel entry })
-        {
-            entry.IsMenuOpen = !entry.IsMenuOpen;
-            e.Handled        = true;
-        }
     }
 
     private void OnImportButtonClick(object sender, RoutedEventArgs e)
@@ -540,22 +496,5 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
 
         if (await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), message, true))
             _ = viewModel.DeleteSessionCommand.ExecuteAsync(session);
-    }
-
-    private void OnEditMemory(object sender, RoutedEventArgs e)
-    {
-        if (sender is Control { Tag: MemoryPanelItemViewModel item })
-            item.StartEdit();
-    }
-
-    private async void OnDeleteMemory(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Control { Tag: MemoryPanelItemViewModel item })
-            return;
-
-        var message = Loc.Get("Dialog.ConfirmDeleteMemory");
-
-        if (await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), message, true))
-            _ = viewModel.DeleteMemoryCommand.ExecuteAsync(item);
     }
 }

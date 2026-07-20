@@ -7,6 +7,7 @@
                        xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
                        xmlns:loc="clr-namespace:DirectorPrompt.Localization"
                        xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+                       xmlns:views="using:DirectorPrompt.Views"
                        xmlns:windowing="using:FluentAvalonia.UI.Windowing"
                        mc:Ignorable="d"
                        d:DataContext="{d:DesignInstance Type=vm:ProjectEditViewModel}"
@@ -743,7 +744,7 @@
                                                         </StackPanel>
                                                     </StackPanel>
 
-                                                    <components:PhaseEditControl
+                                                    <views:PhaseEditControl
                                                         PhaseSource="{Binding}"
                                                         AddPhaseCommand="{Binding DataContext.AddPhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         DeletePhaseCommand="{Binding DataContext.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
@@ -1319,7 +1320,7 @@
                                                                             </StackPanel>
                                                                         </StackPanel>
 
-                                                                        <components:PhaseEditControl
+                                                                        <views:PhaseEditControl
                                                                             PhaseSource="{Binding}"
                                                                             AddPhaseCommand="{Binding DataContext.AddPhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                             DeletePhaseCommand="{Binding DataContext.DeletePhaseCommand, RelativeSource={RelativeSource AncestorType=Window}}" />

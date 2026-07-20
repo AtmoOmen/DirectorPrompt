@@ -17,7 +17,7 @@ public partial class ChangelogWindow : FAAppWindow
         AvaloniaXamlLoader.Load(this);
         Title = $"{Loc.Get("Changelog.Title")} {version}";
         this.GetLogicalDescendants()
-            .OfType<LiveMarkdownView>()
+            .OfType<MarkdownViewer>()
             .First(control => control.Name == "ChangelogViewer")
             .Markdown = changelog;
     }

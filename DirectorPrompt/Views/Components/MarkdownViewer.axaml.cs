@@ -7,16 +7,16 @@ using Markdig.Syntax;
 
 namespace DirectorPrompt.Views.Components;
 
-public sealed partial class LiveMarkdownView : UserControl
+public sealed partial class MarkdownViewer : UserControl
 {
     public static readonly StyledProperty<string> MarkdownProperty =
-        AvaloniaProperty.Register<LiveMarkdownView, string>(nameof(Markdown), string.Empty);
+        AvaloniaProperty.Register<MarkdownViewer, string>(nameof(Markdown), string.Empty);
 
     public static readonly StyledProperty<bool> IsStreamingProperty =
-        AvaloniaProperty.Register<LiveMarkdownView, bool>(nameof(IsStreaming));
+        AvaloniaProperty.Register<MarkdownViewer, bool>(nameof(IsStreaming));
 
     public static readonly StyledProperty<MarkdownDocument?> MarkdownDocumentProperty =
-        AvaloniaProperty.Register<LiveMarkdownView, MarkdownDocument?>(nameof(MarkdownDocument));
+        AvaloniaProperty.Register<MarkdownViewer, MarkdownDocument?>(nameof(MarkdownDocument));
 
     private          string           renderedMarkdown = string.Empty;
     private          string           queuedMarkdown   = string.Empty;
@@ -48,14 +48,14 @@ public sealed partial class LiveMarkdownView : UserControl
     internal bool IsRenderCurrent =>
         string.Equals(Markdown ?? string.Empty, renderedMarkdown, StringComparison.Ordinal);
 
-    static LiveMarkdownView()
+    static MarkdownViewer()
     {
-        MarkdownProperty.Changed.AddClassHandler<LiveMarkdownView>(static (view,         _) => view.RefreshMarkdown());
-        IsStreamingProperty.Changed.AddClassHandler<LiveMarkdownView>(static (view,      _) => view.RefreshMarkdown());
-        MarkdownDocumentProperty.Changed.AddClassHandler<LiveMarkdownView>(static (view, _) => view.RefreshMarkdown());
+        MarkdownProperty.Changed.AddClassHandler<MarkdownViewer>(static (view,         _) => view.RefreshMarkdown());
+        IsStreamingProperty.Changed.AddClassHandler<MarkdownViewer>(static (view,      _) => view.RefreshMarkdown());
+        MarkdownDocumentProperty.Changed.AddClassHandler<MarkdownViewer>(static (view, _) => view.RefreshMarkdown());
     }
 
-    public LiveMarkdownView()
+    public MarkdownViewer()
     {
         AvaloniaXamlLoader.Load(this);
         fallbackText             =  this.FindControl<TextBlock>(nameof(FallbackText));

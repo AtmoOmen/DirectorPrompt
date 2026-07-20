@@ -6,7 +6,7 @@ using Avalonia.Markup.Xaml;
 using DirectorPrompt.Localization;
 using DirectorPrompt.ViewModels;
 
-namespace DirectorPrompt.Views.Components;
+namespace DirectorPrompt.Views;
 
 public partial class PhaseEditControl : UserControl
 {

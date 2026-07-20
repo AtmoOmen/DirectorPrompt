@@ -37,7 +37,7 @@
                 Padding="16"
                 BoxShadow="0 4 16 0 #15000000">
             <ScrollViewer>
-                <components:LiveMarkdownView x:Name="ChangelogViewer" />
+                <components:MarkdownViewer x:Name="ChangelogViewer" />
             </ScrollViewer>
         </Border>
 

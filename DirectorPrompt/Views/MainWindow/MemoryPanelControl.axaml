@@ -1,0 +1,202 @@
+<UserControl x:Class="DirectorPrompt.Views.MemoryPanelControl"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
+    <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,*">
+
+        <TextBox Grid.Row="0"
+                 Text="{Binding MemoryPanel.SearchText}"
+                 PlaceholderText="{Binding [Memory.Panel.SearchPlaceholder], Source={x:Static loc:Loc.Instance}}"
+                 Margin="0,0,0,6">
+            <TextBox.InnerLeftContent>
+                <fa:FASymbolIcon Symbol="Find" FontSize="14" Margin="8,0,0,0" Foreground="Gray"
+                                 VerticalAlignment="Center" />
+            </TextBox.InnerLeftContent>
+        </TextBox>
+
+        <Grid Grid.Row="1" Margin="0,0,0,8" ColumnDefinitions="*,8,*">
+            <components:PathComboBox Grid.Column="0"
+                                     ItemsSource="{Binding MemoryPanel.AvailableScenes}"
+                                     SelectedItem="{Binding MemoryPanel.SelectedScene, Mode=TwoWay}"
+                                     MinWidth="0"
+                                     HorizontalAlignment="Stretch" />
+            <components:PathComboBox Grid.Column="2"
+                                     ItemsSource="{Binding MemoryPanel.AvailableTags}"
+                                     SelectedItem="{Binding MemoryPanel.SelectedTag, Mode=TwoWay}"
+                                     MinWidth="0"
+                                     HorizontalAlignment="Stretch" />
+        </Grid>
+
+        <ScrollViewer Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding MemoryPanel.Groups}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,4"
+                                Padding="0"
+                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6">
+                            <StackPanel>
+                                <!-- 分组标题栏 -->
+                                <ToggleButton IsChecked="{Binding IsExpanded}"
+                                              Cursor="Hand"
+                                              Padding="14,10"
+                                              HorizontalAlignment="Stretch"
+                                              HorizontalContentAlignment="Stretch">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="HeaderBg"
+                                                    Background="Transparent"
+                                                    CornerRadius="6,6,0,0"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                                    <fa:FASymbolIcon Grid.Column="0"
+                                                                     Symbol="ChevronRight"
+                                                                     FontSize="12"
+                                                                     Margin="0,0,8,0"
+                                                                     VerticalAlignment="Center"
+                                                                     Classes.expanded="{TemplateBinding IsChecked}" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding SceneLabel}"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="13"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <Border Grid.Column="2"
+                                                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                            CornerRadius="8"
+                                                            Padding="6,1"
+                                                            VerticalAlignment="Center"
+                                                            Margin="8,0,0,0">
+                                                        <TextBlock Text="{Binding ItemCount}"
+                                                                   FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="White" />
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                    <ToggleButton.Styles>
+                                        <Style Selector="fa|FASymbolIcon.expanded">
+                                            <Setter Property="Symbol" Value="ChevronDown" />
+                                        </Style>
+                                    </ToggleButton.Styles>
+                                </ToggleButton>
+
+                                <!-- 记忆条目列表 -->
+                                <ItemsControl ItemsSource="{Binding Items}"
+                                              Margin="10,0,10,10"
+                                              IsVisible="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,3"
+                                                    Padding="12,10"
+                                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4">
+                                                <StackPanel>
+                                                    <!-- 非编辑模式 -->
+                                                    <StackPanel
+                                                        IsVisible="{Binding IsEditing, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                                                        <DockPanel>
+                                                            <TextBlock
+                                                                Text="{Binding UpdatedAtDisplay}"
+                                                                FontSize="10"
+                                                                Foreground="Gray"
+                                                                VerticalAlignment="Center"
+                                                                DockPanel.Dock="Left" />
+                                                            <StackPanel Orientation="Horizontal"
+                                                                        HorizontalAlignment="Right"
+                                                                        DockPanel.Dock="Right">
+                                                                <Button
+                                                                    Padding="6,4"
+                                                                    Background="Transparent"
+                                                                    BorderThickness="0"
+                                                                    Margin="4,0,0,0"
+                                                                    Click="OnEditMemory"
+                                                                    Tag="{Binding}"
+                                                                    ToolTip.Tip="{Binding [Common.Edit], Source={x:Static loc:Loc.Instance}}">
+                                                                    <fa:FASymbolIcon Symbol="Edit"
+                                                                            FontSize="12" />
+                                                                </Button>
+                                                                <components:RemoveButton
+                                                                    Padding="6,4"
+                                                                    Margin="4,0,0,0"
+                                                                    Click="OnDeleteMemory"
+                                                                    Tag="{Binding}" />
+                                                            </StackPanel>
+                                                        </DockPanel>
+                                                        <TextBlock Text="{Binding Content}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,4,0,0" />
+                                                        <TextBlock Text="{Binding TagsDisplay}"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,4,0,0"
+                                                                   IsVisible="{Binding HasTags, Converter={StaticResource BoolToVisibility}}" />
+                                                        <TextBlock Text="{Binding RelatedCharacters}"
+                                                                   FontSize="11"
+                                                                   Foreground="Gray"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,4,0,0"
+                                                                   IsVisible="{Binding HasRelatedCharacters, Converter={StaticResource BoolToVisibility}}" />
+                                                    </StackPanel>
+
+                                                    <!-- 编辑模式 -->
+                                                    <StackPanel
+                                                        IsVisible="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                        <TextBox
+                                                            Text="{Binding EditingContent}"
+                                                            AcceptsReturn="True"
+                                                            TextWrapping="Wrap"
+                                                            MinHeight="80" />
+                                                        <TextBox
+                                                            Text="{Binding EditingTags}"
+                                                            Margin="0,4,0,0"
+                                                            PlaceholderText="{Binding [Memory.Panel.TagsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                        <StackPanel Orientation="Horizontal"
+                                                                    HorizontalAlignment="Right"
+                                                                    Margin="0,4,0,0">
+                                                            <Button
+                                                                Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
+                                                                Padding="12,6"
+                                                                Margin="0,0,4,0"
+                                                                Command="{Binding $parent[Window].DataContext.SaveMemoryEditCommand}"
+                                                                CommandParameter="{Binding}" />
+                                                            <Button
+                                                                Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
+                                                                Padding="12,6"
+                                                                Command="{Binding $parent[Window].DataContext.CancelMemoryEditCommand}"
+                                                                CommandParameter="{Binding}" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

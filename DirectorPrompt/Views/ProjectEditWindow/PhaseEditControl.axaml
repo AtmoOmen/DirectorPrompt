@@ -1,9 +1,10 @@
-<UserControl x:Class="DirectorPrompt.Views.Components.PhaseEditControl"
+<UserControl x:Class="DirectorPrompt.Views.PhaseEditControl"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:fa="using:FluentAvalonia.UI.Controls"
              xmlns:loc="clr-namespace:DirectorPrompt.Localization"
-             xmlns:components="clr-namespace:DirectorPrompt.Views.Components">
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             xmlns:views="using:DirectorPrompt.Views">
     <StackPanel x:Name="RootPanel">
         <Grid Margin="0,12,0,4" ColumnDefinitions="*,Auto">
             <TextBlock Grid.Column="0"
@@ -24,7 +25,7 @@
                    Foreground="Gray"
                    Margin="0,0,0,8" />
         <ItemsControl x:Name="PhaseItems"
-                      ItemsSource="{Binding PhaseSource.Phases, RelativeSource={RelativeSource AncestorType=components:PhaseEditControl}}">
+                      ItemsSource="{Binding PhaseSource.Phases, RelativeSource={RelativeSource AncestorType=views:PhaseEditControl}}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border Margin="0,0,0,6"

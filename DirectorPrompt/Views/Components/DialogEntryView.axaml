@@ -1,0 +1,169 @@
+<UserControl x:Class="DirectorPrompt.Views.Components.DialogEntryView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:DialogEntryViewModel}">
+    <Border Classes="message"
+            Classes.director="{Binding IsDirector}"
+            Classes.error="{Binding HasError}"
+            Margin="0,6"
+            Padding="14,10"
+            CornerRadius="8"
+            MaxWidth="720"
+            HorizontalAlignment="Left"
+            Background="{DynamicResource ControlFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+            BorderThickness="1">
+        <StackPanel>
+            <Grid ColumnDefinitions="Auto,*,Auto">
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Role}"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center" />
+
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Spacing="4"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding IsNarrative}">
+                    <StackPanel Classes="message-actions"
+                                Orientation="Horizontal"
+                                Spacing="6"
+                                IsVisible="{Binding IsMenuOpen}">
+                        <Button Tag="{Binding}"
+                                Click="OnCopyEntry"
+                                ToolTip.Tip="{Binding [Common.Copy], Source={x:Static loc:Loc.Instance}}">
+                            <fa:FASymbolIcon Symbol="Copy" />
+                        </Button>
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="6"
+                                    IsVisible="{Binding IsLast}">
+                            <Button Tag="{Binding}"
+                                    Click="OnEditEntry"
+                                    ToolTip.Tip="{Binding [Dialog.Edit], Source={x:Static loc:Loc.Instance}}">
+                                <fa:FASymbolIcon Symbol="Edit" />
+                            </Button>
+                            <Button Tag="{Binding}"
+                                    Click="OnRollbackRound"
+                                    ToolTip.Tip="{Binding [Dialog.Rollback], Source={x:Static loc:Loc.Instance}}">
+                                <fa:FASymbolIcon Symbol="Undo" />
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button x:Name="MessageMenuButton"
+                            Classes="message-menu"
+                            Classes.open="{Binding IsMenuOpen}"
+                            Click="OnMoreButtonClick"
+                            Tag="{Binding}"
+                            VerticalAlignment="Center"
+                            IsEnabled="{Binding $parent[Window].DataContext.IsNotProcessing}">
+                        <fa:FASymbolIcon Symbol="MoreVertical" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <Expander
+                Header="{Binding [Dialog.ThinkingProcess], Source={x:Static loc:Loc.Instance}}"
+                IsVisible="{Binding HasThinking}"
+                Margin="0,4,0,0"
+                FontSize="12"
+                Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                <TextBlock Text="{Binding Thinking}"
+                           TextWrapping="Wrap"
+                           FontSize="12"
+                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                           Margin="0,4,0,0" />
+            </Expander>
+
+            <!-- 内容区域: 四种状态重叠, 同一时刻只显示一个 -->
+            <Grid Margin="0,4,0,0">
+                <!-- 错误状态: 显示错误信息 -->
+                <StackPanel
+                    IsVisible="{Binding HasError, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                   VerticalAlignment="Top" />
+                    </StackPanel>
+                </StackPanel>
+                <!-- 导演指令: 按指令分块渲染 Markdown -->
+                <ItemsControl ItemsSource="{Binding DirectorBlocks}"
+                              IsVisible="{Binding ShowDirectorContent}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,4"
+                                    Padding="8,6"
+                                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding TypeDisplay}"
+                                               FontWeight="SemiBold"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               Margin="0,0,0,2" />
+                                    <components:MarkdownViewer
+                                        Markdown="{Binding Content}"
+                                        MarkdownDocument="{Binding MarkdownDocument}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 叙事输出: 已渲染 Markdown 与尚未渲染的流式文本尾部同时显示 -->
+                <StackPanel IsVisible="{Binding ShowNarrativeContent}">
+                    <components:MarkdownViewer Markdown="{Binding Content}"
+                                               IsStreaming="{Binding IsStreaming}"
+                                               MarkdownDocument="{Binding MarkdownDocument}" />
+                </StackPanel>
+
+                <!-- 编辑模式: TextBox 替换正文 -->
+                <StackPanel
+                    IsVisible="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                    <TextBox
+                        Text="{Binding EditingContent}"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        MinHeight="100"
+                        Margin="0,0,0,4" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button
+                            Padding="12,6"
+                            Margin="0,0,4,0"
+                            Command="{Binding $parent[Window].DataContext.SaveEditCommand}"
+                            CommandParameter="{Binding}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <fa:FASymbolIcon Symbol="Save" />
+                                <TextBlock
+                                    Text="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            Padding="12,6"
+                            Command="{Binding $parent[Window].DataContext.CancelEditCommand}"
+                            CommandParameter="{Binding}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <fa:FASymbolIcon Symbol="Dismiss" />
+                                <TextBlock
+                                    Text="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

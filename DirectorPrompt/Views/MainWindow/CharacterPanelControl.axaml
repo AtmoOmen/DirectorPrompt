@@ -1,0 +1,209 @@
+<UserControl x:Class="DirectorPrompt.Views.CharacterPanelControl"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
+    <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,*">
+
+        <TextBox Grid.Row="0"
+                 Text="{Binding CharacterPanel.SearchText}"
+                 PlaceholderText="{Binding [Character.Panel.SearchPlaceholder], Source={x:Static loc:Loc.Instance}}"
+                 Margin="0,0,0,6">
+            <TextBox.InnerLeftContent>
+                <fa:FASymbolIcon Symbol="Find" FontSize="14" Margin="8,0,0,0" Foreground="Gray"
+                                 VerticalAlignment="Center" />
+            </TextBox.InnerLeftContent>
+        </TextBox>
+
+        <components:PathComboBox Grid.Row="1"
+                                 ItemsSource="{Binding CharacterPanel.AvailableCategories}"
+                                 SelectedItem="{Binding CharacterPanel.SelectedCategory, Mode=TwoWay}"
+                                 HorizontalAlignment="Stretch"
+                                 Margin="0,0,0,8" />
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding CharacterPanel.Groups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,4"
+                                Padding="0"
+                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6">
+                            <StackPanel>
+                                <!-- 分组标题栏 -->
+                                <ToggleButton IsChecked="{Binding IsExpanded}"
+                                              Cursor="Hand"
+                                              Padding="14,10"
+                                              HorizontalAlignment="Stretch"
+                                              HorizontalContentAlignment="Stretch">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="HeaderBg"
+                                                    Background="Transparent"
+                                                    CornerRadius="6,6,0,0"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                                    <fa:FASymbolIcon Grid.Column="0"
+                                                                     Symbol="ChevronRight"
+                                                                     FontSize="12"
+                                                                     Margin="0,0,8,0"
+                                                                     VerticalAlignment="Center"
+                                                                     Classes.expanded="{TemplateBinding IsChecked}" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding CategoryName}"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="13"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <Border Grid.Column="2"
+                                                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                            CornerRadius="8"
+                                                            Padding="6,1"
+                                                            VerticalAlignment="Center"
+                                                            Margin="8,0,0,0">
+                                                        <TextBlock Text="{Binding ItemCount}"
+                                                                   FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="White" />
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                    <ToggleButton.Styles>
+                                        <Style Selector="fa|FASymbolIcon.expanded">
+                                            <Setter Property="Symbol" Value="ChevronDown" />
+                                        </Style>
+                                    </ToggleButton.Styles>
+                                </ToggleButton>
+
+                                <!-- 人物条目列表 -->
+                                <ItemsControl ItemsSource="{Binding Items}"
+                                              Margin="10,0,10,10"
+                                              IsVisible="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,3, 0, 3"
+                                                    Padding="12, 10, 12, 10"
+                                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                    BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4">
+                                                <StackPanel>
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <StackPanel Grid.Column="0"
+                                                                    Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Name}"
+                                                                       FontWeight="SemiBold"
+                                                                       Margin="0,0,8,0" />
+                                                        </StackPanel>
+                                                        <ToggleButton Grid.Column="1"
+                                                                      IsChecked="{Binding IsExpanded}"
+                                                                      Padding="4"
+                                                                      Background="Transparent"
+                                                                      BorderThickness="0"
+                                                                      Cursor="Hand"
+                                                                      VerticalAlignment="Center">
+                                                            <ToggleButton.Template>
+                                                                <ControlTemplate
+                                                                    TargetType="ToggleButton">
+                                                                    <fa:FASymbolIcon
+                                                                        Symbol="ChevronRight"
+                                                                        FontSize="12"
+                                                                        Classes.expanded="{TemplateBinding IsChecked}" />
+                                                                </ControlTemplate>
+                                                            </ToggleButton.Template>
+                                                            <ToggleButton.Styles>
+                                                                <Style
+                                                                    Selector="fa|FASymbolIcon.expanded">
+                                                                    <Setter Property="Symbol"
+                                                                            Value="ChevronDown" />
+                                                                </Style>
+                                                            </ToggleButton.Styles>
+                                                        </ToggleButton>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Description}"
+                                                               TextWrapping="Wrap"
+                                                               FontSize="12"
+                                                               Foreground="Gray"
+                                                               Margin="0,4,0,0" />
+                                                    <TextBlock IsVisible="False"
+                                                               Text="{Binding Categories}"
+                                                               TextWrapping="Wrap"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                               Margin="0,4,0,0" />
+
+                                                    <StackPanel
+                                                        IsVisible="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}"
+                                                        Margin="0,8,0,0">
+                                                        <TextBlock
+                                                            Text="{Binding [Character.Panel.StateHeader], Source={x:Static loc:Loc.Instance}}"
+                                                            FontSize="11"
+                                                            FontWeight="SemiBold"
+                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                            Margin="0,0,0,4"
+                                                            IsVisible="{Binding HasStateValues, Converter={StaticResource BoolToVisibility}}" />
+                                                        <ItemsControl
+                                                            ItemsSource="{Binding StateValues}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Grid Margin="0,2"
+                                                                          ColumnDefinitions="*,Auto">
+                                                                        <TextBlock Grid.Column="0"
+                                                                                Text="{Binding Name}"
+                                                                                FontSize="11"
+                                                                                TextTrimming="CharacterEllipsis" />
+                                                                        <TextBlock Grid.Column="1"
+                                                                                Text="{Binding Value}"
+                                                                                FontSize="11"
+                                                                                FontWeight="SemiBold"
+                                                                                Margin="8,0,0,0" />
+                                                                    </Grid>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+
+                                                        <TextBlock
+                                                            Text="{Binding [Character.Panel.RelationsHeader], Source={x:Static loc:Loc.Instance}}"
+                                                            FontSize="11"
+                                                            FontWeight="SemiBold"
+                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                            Margin="0,8,0,4"
+                                                            IsVisible="{Binding HasRelations, Converter={StaticResource BoolToVisibility}}" />
+                                                        <ItemsControl ItemsSource="{Binding Relations}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock FontSize="11"
+                                                                               TextWrapping="Wrap">
+                                                                        <Run Text="{Binding Direction}" />
+                                                                        <Run Text="{Binding Target}"
+                                                                             FontWeight="SemiBold" />
+                                                                        <Run Text=": " />
+                                                                        <Run Text="{Binding Type}" />
+                                                                    </TextBlock>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
