@@ -1,0 +1,12 @@
+<Button xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="using:FluentAvalonia.UI.Controls"
+        xmlns:loc="using:DirectorPrompt.Localization"
+        x:Class="DirectorPrompt.Views.Components.RemoveButton"
+        Background="Transparent"
+        BorderThickness="0"
+        Padding="6"
+        ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
+    <fa:FASymbolIcon Symbol="Delete"
+                     Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+</Button>

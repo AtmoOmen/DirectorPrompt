@@ -41,15 +41,8 @@
                                 <StackPanel Grid.Column="1"
                                             Orientation="Horizontal"
                                             Margin="0,0,-16,0">
-                                    <Button Background="Transparent"
-                                            BorderThickness="0"
-                                            Padding="6"
-                                            Click="OnDelete"
-                                            Tag="{Binding}"
-                                            ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
-                                        <fa:FASymbolIcon Symbol="Delete"
-                                                         Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
-                                    </Button>
+                                    <components:RemoveButton Click="OnDelete"
+                                                             Tag="{Binding}" />
                                 </StackPanel>
                             </Grid>
                         </Expander.Header>

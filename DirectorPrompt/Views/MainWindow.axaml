@@ -259,7 +259,7 @@
                                                       Header="{Binding [Navigation.ExportProject], Source={x:Static loc:Loc.Instance}}"
                                                       Click="OnExportProjectItem" />
                                             <MenuItem Tag="{Binding}"
-                                                      Header="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                                      Header="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                                       Click="OnDeleteProjectItem" />
                                         </MenuFlyout>
                                     </Border.ContextFlyout>
@@ -405,7 +405,7 @@
                                                       Header="{Binding [Navigation.RenameSession], Source={x:Static loc:Loc.Instance}}"
                                                       Click="OnRenameSessionItem" />
                                             <MenuItem Tag="{Binding}"
-                                                      Header="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                                                      Header="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                                       Click="OnDeleteSessionItem" />
                                         </MenuFlyout>
                                     </Border.ContextFlyout>
@@ -1182,17 +1182,11 @@
                                                                                     <fa:FASymbolIcon Symbol="Edit"
                                                                                         FontSize="12" />
                                                                                 </Button>
-                                                                                <Button
-                                                                                    Padding="6,4"
-                                                                                    Background="Transparent"
-                                                                                    BorderThickness="0"
-                                                                                    Margin="4,0,0,0"
-                                                                                    Click="OnDeleteMemory"
-                                                                                    Tag="{Binding}"
-                                                                                    ToolTip.Tip="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}">
-                                                                                    <fa:FASymbolIcon Symbol="Delete"
-                                                                                        FontSize="12" />
-                                                                                </Button>
+                                                                                <components:RemoveButton
+                                                                                     Padding="6,4"
+                                                                                     Margin="4,0,0,0"
+                                                                                     Click="OnDeleteMemory"
+                                                                                     Tag="{Binding}" />
                                                                             </StackPanel>
                                                                         </DockPanel>
                                                                         <TextBlock Text="{Binding Content}"
@@ -1417,7 +1411,7 @@
                             Click="OnDeleteProjectItem">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <fa:FASymbolIcon Symbol="Delete" FontSize="16" />
-                            <TextBlock Text="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                            <TextBlock Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -1446,7 +1440,7 @@
                             Click="OnDeleteSessionItem">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <fa:FASymbolIcon Symbol="Delete" FontSize="16" />
-                            <TextBlock Text="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
+                            <TextBlock Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>

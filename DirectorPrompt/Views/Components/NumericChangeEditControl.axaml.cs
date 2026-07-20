@@ -55,7 +55,7 @@ public partial class NumericChangeEditControl : UserControl
         var confirmed = await PromptDialog.ConfirmAsync
                         (
                             owner,
-                            Loc.Get("Common.Delete"),
+                            Loc.Get("Common.Remove"),
                             Loc.Get("Dialog.ConfirmDeleteNumericChange", change.Remarks),
                             true
                         );

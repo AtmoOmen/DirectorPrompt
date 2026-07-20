@@ -32,7 +32,6 @@
     "Common.Clear": "清除",
     "Common.Close": "关闭",
     "Common.Copy": "复制",
-    "Common.Delete": "删除",
     "Common.DeleteFailed": "删除失败: {0}",
     "Common.Edit": "编辑",
     "Common.NotParticipatesInRetrieval": "不参与生成/检索",

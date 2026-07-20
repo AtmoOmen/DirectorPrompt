@@ -508,7 +508,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         CloseRemoteMenu();
         var message = Loc.Get("Dialog.ConfirmDeleteProject", project.Name);
 
-        if (await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Delete"), message, true))
+        if (await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), message, true))
             _ = viewModel.DeleteProjectCommand.ExecuteAsync(project);
     }
 
@@ -538,7 +538,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         CloseRemoteMenu();
         var message = Loc.Get("Dialog.ConfirmDeleteSession", session.Title);
 
-        if (await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Delete"), message, true))
+        if (await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), message, true))
             _ = viewModel.DeleteSessionCommand.ExecuteAsync(session);
     }
 
@@ -555,7 +555,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
 
         var message = Loc.Get("Dialog.ConfirmDeleteMemory");
 
-        if (await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Delete"), message, true))
+        if (await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), message, true))
             _ = viewModel.DeleteMemoryCommand.ExecuteAsync(item);
     }
 }

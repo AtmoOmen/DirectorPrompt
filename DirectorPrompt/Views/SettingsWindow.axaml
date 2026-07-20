@@ -167,17 +167,10 @@
                                                                    Foreground="#569CD6"
                                                                    VerticalAlignment="Center" />
                                                     </StackPanel>
-                                                    <Button Grid.Column="1"
-                                                            Padding="6,4"
-                                                            Margin="0,0,-16,0"
-                                                            Click="OnRemoveProvider"
-                                                            Tag="{Binding}">
-                                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                                            <fa:FASymbolIcon Symbol="Delete" />
-                                                            <TextBlock
-                                                                Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
-                                                        </StackPanel>
-                                                    </Button>
+                                                    <components:RemoveButton Grid.Column="1"
+                                                                             Margin="0,0,-16,0"
+                                                                             Click="OnRemoveProvider"
+                                                                             Tag="{Binding}" />
                                                 </Grid>
                                             </Expander.Header>
 
@@ -271,17 +264,10 @@
                                                                    Foreground="#569CD6"
                                                                    VerticalAlignment="Center" />
                                                     </StackPanel>
-                                                    <Button Grid.Column="1"
-                                                            Padding="6,4"
-                                                            Margin="0,0,-16,0"
-                                                            Click="OnRemoveModel"
-                                                            Tag="{Binding}">
-                                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                                            <fa:FASymbolIcon Symbol="Delete" />
-                                                            <TextBlock
-                                                                Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
-                                                        </StackPanel>
-                                                    </Button>
+                                                    <components:RemoveButton Grid.Column="1"
+                                                                             Margin="0,0,-16,0"
+                                                                             Click="OnRemoveModel"
+                                                                             Tag="{Binding}" />
                                                 </Grid>
                                             </Expander.Header>
 
@@ -494,17 +480,10 @@
                                                                Text="{Binding DisplayName}"
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
-                                                    <Button Grid.Column="1"
-                                                            Padding="6,4"
-                                                            Margin="0,0,-16,0"
-                                                            Click="OnRemovePrompt"
-                                                            Tag="{Binding}">
-                                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                                            <fa:FASymbolIcon Symbol="Delete" />
-                                                            <TextBlock
-                                                                Text="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
-                                                        </StackPanel>
-                                                    </Button>
+                                                    <components:RemoveButton Grid.Column="1"
+                                                                             Margin="0,0,-16,0"
+                                                                             Click="OnRemovePrompt"
+                                                                             Tag="{Binding}" />
                                                 </Grid>
                                             </Expander.Header>
 
@@ -771,16 +750,10 @@
                                                             <fa:FASymbolIcon Symbol="Refresh" />
                                                         </Button>
 
-                                                        <Button Click="OnRemoveMCPServer"
-                                                                Tag="{Binding}"
-                                                                Background="Transparent"
-                                                                BorderThickness="0"
-                                                                Padding="6"
-                                                                Margin="0,0,-16,0"
-                                                                ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
-                                                            <fa:FASymbolIcon Symbol="Delete"
-                                                                             Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
-                                                        </Button>
+                                                        <components:RemoveButton Click="OnRemoveMCPServer"
+                                                                                 Tag="{Binding}"
+                                                                                 Margin="0,0,-16,0"
+                                                                                 ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}" />
                                                     </StackPanel>
                                                 </Grid>
                                             </Expander.Header>
@@ -838,13 +811,8 @@
                                                                              PlaceholderText="键 (例如 PATH)" />
                                                                     <TextBox Grid.Column="1" Text="{Binding Value}"
                                                                              Margin="8,0" PlaceholderText="值" />
-                                                                    <Button Grid.Column="2"
-                                                                            Command="{Binding RemoveCommand}"
-                                                                            Padding="6,4"
-                                                                            ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
-                                                                        <fa:FASymbolIcon Symbol="Delete"
-                                                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
-                                                                    </Button>
+                                                                    <components:RemoveButton Grid.Column="2"
+                                                                                             Command="{Binding RemoveCommand}" />
                                                                 </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
@@ -879,13 +847,8 @@
                                                                     <TextBox Grid.Column="1" Text="{Binding Value}"
                                                                              Margin="8,0"
                                                                              PlaceholderText="值或 Bearer Token" />
-                                                                    <Button Grid.Column="2"
-                                                                            Command="{Binding RemoveCommand}"
-                                                                            Padding="6,4"
-                                                                            ToolTip.Tip="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}">
-                                                                        <fa:FASymbolIcon Symbol="Delete"
-                                                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
-                                                                    </Button>
+                                                                    <components:RemoveButton Grid.Column="2"
+                                                                                             Command="{Binding RemoveCommand}" />
                                                                 </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>

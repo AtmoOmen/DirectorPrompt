@@ -108,7 +108,7 @@ public partial class ProjectEditWindow : FAAppWindow, IRemoteDialogOwner
         if (sender is not Control { Tag: KnowledgeGroupEditViewModel group })
             return;
 
-        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteKnowledgeGroup", group.Name), true))
+        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmDeleteKnowledgeGroup", group.Name), true))
             return;
 
         ViewModel.DeleteKnowledgeGroupCommand.Execute(group);
@@ -125,7 +125,7 @@ public partial class ProjectEditWindow : FAAppWindow, IRemoteDialogOwner
         if (sender is not Control { Tag: KnowledgeEntryEditViewModel entry })
             return;
 
-        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteKnowledgeEntry", entry.Remarks), true))
+        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmDeleteKnowledgeEntry", entry.Remarks), true))
             return;
 
         ViewModel.DeleteKnowledgeEntryCommand.Execute(entry);
@@ -142,7 +142,7 @@ public partial class ProjectEditWindow : FAAppWindow, IRemoteDialogOwner
         if (sender is not Control { Tag: StateAttributeEditViewModel attr })
             return;
 
-        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteStateAttribute", attr.DisplayName), true))
+        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmDeleteStateAttribute", attr.DisplayName), true))
             return;
 
         ViewModel.DeleteStateAttributeCommand.Execute(attr);
@@ -166,7 +166,7 @@ public partial class ProjectEditWindow : FAAppWindow, IRemoteDialogOwner
         if (sender is not Control { Tag: CharacterCategoryEditViewModel category })
             return;
 
-        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Delete"), Loc.Get("Dialog.ConfirmDeleteCharacterCategory", category.Name), true))
+        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmDeleteCharacterCategory", category.Name), true))
             return;
 
         ViewModel.DeleteCharacterCategoryCommand.Execute(category);

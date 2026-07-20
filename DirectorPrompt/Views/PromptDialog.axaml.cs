@@ -157,7 +157,7 @@ public partial class PromptDialog : FAAppWindow
     }
 
     public static Task<bool> ConfirmAsync(Window? owner, string title, string message, bool danger = false) =>
-        ConfirmAsync(owner, title, message, Loc.Get("Common.Delete"), Loc.Get("Common.Cancel"), danger);
+        ConfirmAsync(owner, title, message, Loc.Get("Common.Remove"), Loc.Get("Common.Cancel"), danger);
 
     public static async Task<bool> ConfirmAsync
     (

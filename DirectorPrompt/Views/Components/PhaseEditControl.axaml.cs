@@ -55,7 +55,7 @@ public partial class PhaseEditControl : UserControl
         var confirmed = await PromptDialog.ConfirmAsync
                         (
                             owner,
-                            Loc.Get("Common.Delete"),
+                            Loc.Get("Common.Remove"),
                             Loc.Get("Dialog.ConfirmDeletePhase", phase.Name),
                             true
                         );

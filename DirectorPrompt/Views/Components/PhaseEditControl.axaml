@@ -51,10 +51,8 @@
                                             Margin="0,0,4,0"
                                             Click="OnEditPhase"
                                             Tag="{Binding}" />
-                                    <Button Content="{Binding [Common.Delete], Source={x:Static loc:Loc.Instance}}"
-                                            Padding="6,4"
-                                            Click="OnDeletePhase"
-                                            Tag="{Binding}" />
+                                    <components:RemoveButton Click="OnDeletePhase"
+                                                             Tag="{Binding}" />
                                 </StackPanel>
                             </Grid>
                             <StackPanel IsVisible="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}"
