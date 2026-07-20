@@ -1,16 +1,18 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Localization;
 using Markdig.Syntax;
 
 namespace DirectorPrompt.ViewModels;
 
-public sealed class DirectorContentBlockViewModel
+public sealed partial class DirectorContentBlockViewModel : ObservableObject
 {
     public DirectiveType Type { get; init; }
 
     public string Content { get; init; } = string.Empty;
 
-    public MarkdownDocument? MarkdownDocument { get; set; }
+    [ObservableProperty]
+    private MarkdownDocument? markdownDocument;
 
     public string TypeDisplay => Type switch
     {

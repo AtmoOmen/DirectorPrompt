@@ -319,7 +319,7 @@
 
     // ===== 状态 =====
     let socket = null;
-    let frame = null;
+    let pendingFrame = null;
     let renderedFrame = null;
     let buttons = 0;
     let touch = null;
@@ -342,10 +342,13 @@
     // ===== 连接管理 =====
     function connect() {
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        socket = new WebSocket(`${protocol}//${location.host}/remote`);
-        socket.binaryType = 'arraybuffer';
+        const connection = new WebSocket(`${protocol}//${location.host}/remote`);
+        socket = connection;
+        pendingFrame = null;
+        connection.binaryType = 'arraybuffer';
 
-        socket.onopen = () => {
+        connection.onopen = () => {
+            if (socket !== connection) return;
             const wasReconnected = hasConnected;
             hasConnected = true;
             reconnectAttempts = 0;
@@ -354,8 +357,10 @@
             resize();
         };
 
-        socket.onclose = () => {
+        connection.onclose = () => {
+            if (socket !== connection) return;
             socket = null;
+            pendingFrame = null;
             clearTimeout(reconnectTimer);
             if (hasConnected) {
                 reconnectAttempts++;
@@ -366,9 +371,9 @@
             reconnectTimer = setTimeout(connect, RECONNECT_DELAY);
         };
 
-        socket.onerror = () => {};
+        connection.onerror = () => {};
 
-        socket.onmessage = onMessage;
+        connection.onmessage = (event) => onMessage(connection, event);
     }
 
     function send(message) {
@@ -378,11 +383,13 @@
     }
 
     // ===== 帧渲染 =====
-    async function onMessage(event) {
+    async function onMessage(connection, event) {
+        if (connection !== socket) return;
+
         if (typeof event.data === 'string') {
             const parts = event.data.split(':');
             if (parts[0] === 'frame') {
-                frame = {
+                pendingFrame = {
                     sequence: parts[1],
                     width: +parts[2],
                     height: +parts[3],
@@ -395,15 +402,17 @@
             return;
         }
 
-        if (!frame) return;
+        if (!pendingFrame) return;
 
-        const currentFrame = frame;
-        frame = null;
+        const currentFrame = pendingFrame;
+        pendingFrame = null;
         renderedFrame = currentFrame;
 
         try {
             const bytes = await decodeFrame(event.data, currentFrame.compression);
             const pixels = toPixels(bytes, currentFrame);
+
+            if (connection !== socket) return;
 
             if (canvasWidth !== currentFrame.width || canvasHeight !== currentFrame.height) {
                 canvas.width = currentFrame.width;
@@ -413,7 +422,9 @@
             }
 
             context.putImageData(new ImageData(pixels, currentFrame.width, currentFrame.height), 0, 0);
-            send(`frame-received:${currentFrame.sequence}`);
+            if (connection.readyState === WebSocket.OPEN) {
+                connection.send(`frame-received:${currentFrame.sequence}`);
+            }
         } catch (error) {
             console.error('帧渲染失败:', error);
         }
@@ -654,7 +665,7 @@
     // ===== 可见性 =====
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
-            if (!socket || socket.readyState !== WebSocket.OPEN) {
+            if (!socket || socket.readyState === WebSocket.CLOSED) {
                 clearTimeout(reconnectTimer);
                 connect();
             }

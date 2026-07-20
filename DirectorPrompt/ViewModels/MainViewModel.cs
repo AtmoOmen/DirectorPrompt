@@ -17,6 +17,7 @@ using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Localization;
 using DirectorPrompt.Services;
 using LiveMarkdown.Avalonia;
+using Markdig.Syntax;
 using Serilog;
 
 namespace DirectorPrompt.ViewModels;
@@ -1226,26 +1227,60 @@ public sealed partial class MainViewModel : ObservableObject
         );
     }
 
-    private static Task PrepareMarkdownDocumentsAsync(IReadOnlyList<DialogEntryViewModel> entries, CancellationToken token) =>
-        Parallel.ForEachAsync
+    private static async Task PrepareMarkdownDocumentsAsync(IReadOnlyList<DialogEntryViewModel> entries, CancellationToken token)
+    {
+        var narrativeDocuments    = new MarkdownDocument?[entries.Count];
+        var directorBlockDocuments = new MarkdownDocument?[entries.Count][];
+
+        await Parallel.ForEachAsync
         (
-            entries,
+            Enumerable.Range(0, entries.Count),
             new ParallelOptions
             {
                 CancellationToken      = token,
                 MaxDegreeOfParallelism = 2
             },
-            static (entry, _) =>
+            (index, _) =>
             {
-                if (entry.IsNarrative)
-                    entry.MarkdownDocument = MarkdownRenderer.ParseDocument(entry.Content);
+                var entry = entries[index];
 
-                foreach (var block in entry.DirectorBlocks)
-                    block.MarkdownDocument = MarkdownRenderer.ParseDocument(block.Content);
+                if (entry.IsNarrative)
+                    narrativeDocuments[index] = MarkdownRenderer.ParseDocument(entry.Content);
+
+                var blockDocuments = new MarkdownDocument?[entry.DirectorBlocks.Count];
+
+                for (var blockIndex = 0; blockIndex < entry.DirectorBlocks.Count; blockIndex++)
+                    blockDocuments[blockIndex] = MarkdownRenderer.ParseDocument(entry.DirectorBlocks[blockIndex].Content);
+
+                directorBlockDocuments[index] = blockDocuments;
 
                 return ValueTask.CompletedTask;
             }
         );
+
+        token.ThrowIfCancellationRequested();
+
+        await Dispatcher.UIThread.InvokeAsync
+        (
+            () =>
+            {
+                token.ThrowIfCancellationRequested();
+
+                for (var index = 0; index < entries.Count; index++)
+                {
+                    var entry = entries[index];
+                    entry.MarkdownDocument = narrativeDocuments[index];
+
+                    var blockDocuments = directorBlockDocuments[index];
+
+                    for (var blockIndex = 0; blockIndex < blockDocuments.Length; blockIndex++)
+                        entry.DirectorBlocks[blockIndex].MarkdownDocument = blockDocuments[blockIndex];
+                }
+            },
+            DispatcherPriority.Render,
+            token
+        );
+    }
 
     private async Task RefreshSidebarAsync(CancellationToken token = default)
     {

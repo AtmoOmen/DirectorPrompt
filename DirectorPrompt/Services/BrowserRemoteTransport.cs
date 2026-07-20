@@ -95,7 +95,6 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
             this,
             new ClientSupportedPixelFormatsMessage { Formats = [PixelFormat.Rgba8888] }
         );
-        Resize(1280, 800);
     }
 
     public async Task Send(object data)
