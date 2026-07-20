@@ -900,6 +900,7 @@ public sealed partial class MainViewModel : ObservableObject
         CancelGeneration();
         sessionLoadCts?.Cancel();
 
+        var sessionChanged = CurrentSession is not null;
         CurrentSession = null;
         Sessions.Clear();
         Dialog.Clear();
@@ -909,6 +910,11 @@ public sealed partial class MainViewModel : ObservableObject
         {
             Log.Information("切换项目: ID={ProjectID}, 名称={Name}", value.ID, value.Name);
             _ = LoadSessionsAsync();
+        }
+
+        if (!sessionChanged)
+        {
+            _ = SaveSessionStateAsync();
         }
     }
 
