@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="DirectorPrompt.Views.Settings.MemorySettingsView"
+             d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
+    <StackPanel>
+        <TextBlock Text="{Binding [Memory.Title], Source={x:Static loc:Loc.Instance}}"
+                   FontSize="20"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,12" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <TextBlock Text="{Binding [Memory.RecallTopK], Source={x:Static loc:Loc.Instance}}"
+                       FontWeight="SemiBold" />
+        </StackPanel>
+        <fa:FANumberBox
+            Value="{Binding Memory.RecallTopK, Converter={StaticResource NumberBoxValue}}"
+            Minimum="1"
+            Maximum="100"
+            Margin="0,0,0,12"
+            HorizontalAlignment="Stretch" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <TextBlock Text="{Binding [Memory.TokenBudget], Source={x:Static loc:Loc.Instance}}"
+                       FontWeight="SemiBold" />
+        </StackPanel>
+        <fa:FANumberBox
+            Value="{Binding Memory.TokenBudget, Converter={StaticResource NumberBoxValue}}"
+            Minimum="100"
+            Maximum="10000"
+            Margin="0,0,0,12"
+            HorizontalAlignment="Stretch" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <TextBlock Text="{Binding [Memory.MinRelevance], Source={x:Static loc:Loc.Instance}}"
+                       FontWeight="SemiBold" />
+        </StackPanel>
+        <fa:FANumberBox
+            Value="{Binding Memory.MinRelevance, Converter={StaticResource NumberBoxValue}}"
+            SimpleNumberFormat="F2"
+            Minimum="0"
+            Maximum="1"
+            Margin="0,0,0,12"
+            HorizontalAlignment="Stretch" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <TextBlock
+                Text="{Binding [Memory.TimeDecayLambda], Source={x:Static loc:Loc.Instance}}"
+                FontWeight="SemiBold" />
+        </StackPanel>
+        <fa:FANumberBox
+            Value="{Binding Memory.TimeDecayLambda, Converter={StaticResource NumberBoxValue}}"
+            SimpleNumberFormat="F2"
+            Minimum="0"
+            Maximum="1"
+            HorizontalAlignment="Stretch" />
+    </StackPanel>
+</UserControl>

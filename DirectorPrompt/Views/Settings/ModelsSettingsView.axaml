@@ -1,0 +1,183 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="DirectorPrompt.Views.Settings.ModelsSettingsView"
+             d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
+    <StackPanel>
+        <Grid Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [Settings.Model.Title], Source={x:Static loc:Loc.Instance}}"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Command="{Binding AddModelCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Add" />
+                    <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <ItemsControl ItemsSource="{Binding Models}" Margin="0,8,0,0">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Expander Margin="0,0,0,8" IsExpanded="True">
+                        <Expander.Header>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayName}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0" />
+                                    <TextBlock Text="{Binding ModelName}"
+                                               Foreground="#569CD6"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <components:RemoveButton Grid.Column="1"
+                                                         Margin="0,0,-16,0"
+                                                         Click="OnRemoveModel"
+                                                         Tag="{Binding}" />
+                            </Grid>
+                        </Expander.Header>
+
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Model.DisplayName], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding DisplayName}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Model.Provider], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <components:SearchableComboBox Grid.Column="1"
+                                                               ItemsSource="{Binding DataContext.Providers, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               DisplayMemberPath="DisplayName"
+                                                               SelectedValuePath="ID"
+                                                               SelectedValue="{Binding ProviderID}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Agent.ModelName], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <components:SearchableComboBox Grid.Column="1"
+                                                               ItemsSource="{Binding AvailableModels}"
+                                                               Text="{Binding ModelName}" />
+                                <Button Grid.Column="2"
+                                        Padding="6,4"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding DataContext.FetchModelsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"
+                                        IsEnabled="{Binding IsFetchingModels, Converter={StaticResource InverseBool}}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Download" />
+                                        <TextBlock
+                                            Text="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <TextBlock Text="{Binding ModelFetchMessage}"
+                                       Margin="100,0,0,8"
+                                       TextWrapping="Wrap"
+                                       Foreground="Gray"
+                                       FontSize="12" />
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Agent.Temperature], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <fa:FANumberBox Grid.Column="1"
+                                                Value="{Binding Temperature, Converter={StaticResource NumberBoxValue}}"
+                                                SimpleNumberFormat="F2"
+                                                Minimum="0"
+                                                Maximum="2"
+                                                SmallChange="0.1"
+                                                LargeChange="0.5"
+                                                SpinButtonPlacementMode="Compact"
+                                                HorizontalAlignment="Stretch" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Model.ReasoningEffort], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding ReasoningEffort}"
+                                         PlaceholderText="high" />
+                            </Grid>
+
+                            <StackPanel Margin="0, 8">
+                                <TextBlock
+                                    Text="{Binding [Settings.Model.ExtraParameters], Source={x:Static loc:Loc.Instance}}"
+                                    Margin="0,0,0,6" />
+                                <TextBox
+                                    Text="{Binding ExtraParameters}"
+                                    AcceptsReturn="True"
+                                    TextWrapping="Wrap"
+                                    MinHeight="120"
+                                    MaxHeight="300"
+                                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                    Margin="0,0,0,8"
+                                    PlaceholderText='{}{"top_p": 0.9}' />
+                            </StackPanel>
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Model.Prompt], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <components:SearchableComboBox Grid.Column="1"
+                                                               ItemsSource="{Binding DataContext.Prompts, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               DisplayMemberPath="DisplayName"
+                                                               SelectedValuePath="ID"
+                                                               SelectedValue="{Binding PromptID}" />
+                                <Button Grid.Column="2"
+                                        Content="{Binding [Common.Clear], Source={x:Static loc:Loc.Instance}}"
+                                        Padding="6,4"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding DataContext.ClearModelPromptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+
+
+                            <StackPanel Margin="0, 8"
+                                        Orientation="Horizontal">
+
+                                <Button
+                                    Padding="8,4"
+                                    Command="{Binding DataContext.TestModelConnectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}"
+                                    IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBool}}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Link" />
+                                        <TextBlock
+                                            Text="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
+
+                                <TextBlock Text="{Binding ConnectionMessage}"
+                                           Margin="8,0,0,0"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"
+                                           FontSize="12" />
+
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

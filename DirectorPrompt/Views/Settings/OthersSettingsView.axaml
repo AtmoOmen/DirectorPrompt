@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="DirectorPrompt.Views.Settings.OthersSettingsView"
+             d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
+    <StackPanel>
+        <TextBlock Text="{Binding [Settings.Others.Title], Source={x:Static loc:Loc.Instance}}"
+                   FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <TextBlock
+                Text="{Binding [Settings.Language.Title], Source={x:Static loc:Loc.Instance}}"
+                FontWeight="SemiBold" />
+        </StackPanel>
+        <components:SearchableComboBox ItemsSource="{Binding AvailableLanguages}"
+                                       DisplayMemberPath="Value"
+                                       SelectedValuePath="Key"
+                                       SelectedValue="{Binding SelectedLanguage}"
+                                       HorizontalAlignment="Stretch"
+                                       Margin="0,0,0,12" />
+        <ToggleSwitch x:Name="LanSharingToggle"
+                      IsChecked="{Binding IsLanSharingEnabled}"
+                      OnContent="{Binding [Settings.Others.LanSharing], Source={x:Static loc:Loc.Instance}}"
+                      OffContent="{Binding [Settings.Others.LanSharing], Source={x:Static loc:Loc.Instance}}" />
+    </StackPanel>
+</UserControl>

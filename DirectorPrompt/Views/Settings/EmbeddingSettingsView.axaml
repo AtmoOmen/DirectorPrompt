@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="DirectorPrompt.Views.Settings.EmbeddingSettingsView"
+             d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
+    <StackPanel>
+        <TextBlock Text="{Binding [Settings.Embedding.Title], Source={x:Static loc:Loc.Instance}}"
+                   FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+        <TextBlock
+            Text="{Binding [Settings.Embedding.Description], Source={x:Static loc:Loc.Instance}}"
+            FontSize="12" Foreground="Gray" Margin="0,0,0,16" />
+
+        <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [Settings.Model.Provider], Source={x:Static loc:Loc.Instance}}"
+                       VerticalAlignment="Center" />
+            <components:SearchableComboBox Grid.Column="1"
+                                           ItemsSource="{Binding Providers}"
+                                           DisplayMemberPath="DisplayName"
+                                           SelectedValuePath="ID"
+                                           SelectedValue="{Binding Embedding.ProviderID}" />
+        </Grid>
+
+        <Grid Margin="0,0,0,8" ColumnDefinitions="100,*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [Settings.Agent.ModelName], Source={x:Static loc:Loc.Instance}}"
+                       VerticalAlignment="Center" />
+            <components:SearchableComboBox Grid.Column="1"
+                                           ItemsSource="{Binding Embedding.AvailableModels}"
+                                           Text="{Binding Embedding.ModelName}" />
+            <Button Grid.Column="2"
+                    Margin="8,0,0,0"
+                    Command="{Binding FetchEmbeddingModelsCommand}"
+                    IsEnabled="{Binding Embedding.IsFetchingModels, Converter={StaticResource InverseBool}}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Download" />
+                    <TextBlock
+                        Text="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <TextBlock Text="{Binding Embedding.ModelFetchMessage}"
+                   Margin="100,0,0,8"
+                   TextWrapping="Wrap"
+                   Foreground="Gray"
+                   FontSize="12" />
+
+        <StackPanel Orientation="Horizontal">
+
+            <Button
+                Command="{Binding TestEmbeddingConnectionCommand}"
+                IsEnabled="{Binding Embedding.IsTestingConnection, Converter={StaticResource InverseBool}}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Link" />
+                    <TextBlock
+                        Text="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+            </Button>
+            <TextBlock
+                Text="{Binding Embedding.ConnectionMessage}"
+                Margin="8 0 0 0"
+                TextWrapping="Wrap"
+                VerticalAlignment="Center"
+                FontSize="12" />
+
+        </StackPanel>
+    </StackPanel>
+</UserControl>

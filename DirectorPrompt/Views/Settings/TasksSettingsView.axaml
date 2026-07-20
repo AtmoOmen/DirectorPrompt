@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="DirectorPrompt.Views.Settings.TasksSettingsView"
+             d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
+    <StackPanel>
+        <TextBlock Text="{Binding [Settings.Task.Title], Source={x:Static loc:Loc.Instance}}"
+                   FontSize="20"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,4" />
+        <TextBlock Text="为不同类型的智能代理任务配置默认使用的语言模型、系统提示词以及关联的 MCP 工具服务"
+                   FontSize="12"
+                   Foreground="Gray"
+                   Margin="0,0,0,16" />
+
+        <ItemsControl ItemsSource="{Binding AgentTasks}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Expander Margin="0,0,0,8" IsExpanded="True">
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="10"
+                                        VerticalAlignment="Center">
+                                <fa:FASymbolIcon Symbol="{Binding TaskIcon}" FontSize="18"
+                                                 Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                 VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding TaskTypeDisplay}" FontWeight="SemiBold"
+                                           FontSize="14" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Expander.Header>
+
+                        <StackPanel Margin="0,8,0,0">
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Task.Model], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <components:SearchableComboBox Grid.Column="1"
+                                                               ItemsSource="{Binding DataContext.Models, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               DisplayMemberPath="DisplayName"
+                                                               SelectedValuePath="ID"
+                                                               SelectedValue="{Binding ModelConfigID}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Task.Prompt], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <components:SearchableComboBox Grid.Column="1"
+                                                               ItemsSource="{Binding DataContext.Prompts, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               DisplayMemberPath="DisplayName"
+                                                               SelectedValuePath="ID"
+                                                               SelectedValue="{Binding PromptID}" />
+                                <Button Grid.Column="2"
+                                        Command="{Binding DataContext.ClearTaskPromptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"
+                                        Padding="8"
+                                        Margin="8,0,0,0"
+                                        ToolTip.Tip="{Binding [Common.Clear], Source={x:Static loc:Loc.Instance}}">
+                                    <fa:FASymbolIcon Symbol="Dismiss" />
+                                </Button>
+                            </Grid>
+
+                            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="12,10"
+                                    Margin="0,12,0,4">
+                                <StackPanel>
+                                    <Grid RowDefinitions="Auto,Auto" Margin="0,0,0,10">
+                                        <StackPanel Grid.Row="0" Orientation="Horizontal"
+                                                    Spacing="8" Margin="0,0,0,6">
+                                            <fa:FASymbolIcon Symbol="Globe" FontSize="16"
+                                                             Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                             VerticalAlignment="Center" />
+                                            <TextBlock
+                                                Text="{Binding [Settings.Task.MCPAssignment], Source={x:Static loc:Loc.Instance}}"
+                                                FontWeight="SemiBold" FontSize="13"
+                                                VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <Border Grid.Row="1" Height="1"
+                                                Background="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                Opacity="0.5" />
+                                    </Grid>
+
+                                    <ItemsControl ItemsSource="{Binding MCPServers}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"
+                                                           HorizontalAlignment="Left" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding DisplayName}"
+                                                          IsChecked="{Binding IsSelected}"
+                                                          Margin="0,0,16,6"
+                                                          VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Expander>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

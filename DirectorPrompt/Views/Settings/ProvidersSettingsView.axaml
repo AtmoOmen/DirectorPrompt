@@ -1,0 +1,107 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="DirectorPrompt.Views.Settings.ProvidersSettingsView"
+             d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
+    <StackPanel>
+        <Grid Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [Settings.Provider.Title], Source={x:Static loc:Loc.Instance}}"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Command="{Binding AddProviderCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Add" />
+                    <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <ItemsControl ItemsSource="{Binding Providers}" Margin="0,8,0,0">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Expander Margin="0,0,0,8" IsExpanded="True">
+                        <Expander.Header>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayName}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0" />
+                                    <TextBlock Text="{Binding Provider}"
+                                               Foreground="#569CD6"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <components:RemoveButton Grid.Column="1"
+                                                         Margin="0,0,-16,0"
+                                                         Click="OnRemoveProvider"
+                                                         Tag="{Binding}" />
+                            </Grid>
+                        </Expander.Header>
+
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Provider.DisplayName], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding DisplayName}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Provider.Provider], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <components:PathComboBox Grid.Column="1"
+                                                         ItemsSource="{x:Static vm:ProviderSettingViewModel.AvailableProviders}"
+                                                         SelectedItem="{Binding Provider}"
+                                                         HorizontalAlignment="Stretch" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Provider.Endpoint], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding Endpoint}"
+                                         PlaceholderText="{Binding [Settings.Agent.Placeholder.Endpoint], Source={x:Static loc:Loc.Instance}}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Agent.APIKey], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding APIKey}"
+                                         PlaceholderText="{Binding [Settings.Agent.Placeholder.APIKey], Source={x:Static loc:Loc.Instance}}" />
+                            </Grid>
+
+                            <StackPanel Margin="0, 8">
+                                <TextBlock
+                                    Text="{Binding [Settings.Provider.CustomHeaders], Source={x:Static loc:Loc.Instance}}"
+                                    Margin="0,0,0,6" />
+                                <TextBox
+                                    Text="{Binding CustomHeaders}"
+                                    AcceptsReturn="True"
+                                    TextWrapping="Wrap"
+                                    MinHeight="80"
+                                    MaxHeight="200"
+                                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                    PlaceholderText='{}{"X-Custom-Header": "value"}' />
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

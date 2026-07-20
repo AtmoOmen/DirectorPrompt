@@ -1,10 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
-using DirectorPrompt.Localization;
 using DirectorPrompt.Services;
 using DirectorPrompt.ViewModels;
 using DirectorPrompt.Views.Components;
@@ -85,7 +83,7 @@ public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
         if (root is null)
             return;
 
-        var panels = root.GetVisualDescendants().OfType<StackPanel>().Where(panel => panel.Name is not null);
+        var panels = root.GetVisualDescendants().OfType<Control>().Where(panel => panel.Name is not null);
 
         foreach (var panel in panels)
         {
@@ -102,62 +100,6 @@ public partial class SettingsWindow : FAAppWindow, IRemoteDialogOwner
                 "OthersPanel"    => tag == "others",
                 _                => panel.IsVisible
             };
-        }
-    }
-
-    private async void OnRemoveProvider(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Control { Tag: ProviderSettingViewModel provider })
-            return;
-
-        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmRemoveProvider", provider.DisplayName), true))
-            return;
-
-        viewModel.RemoveProviderCommand.Execute(provider);
-    }
-
-    private async void OnRemoveModel(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Control { Tag: ModelSettingViewModel model })
-            return;
-
-        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmRemoveModel", model.DisplayName), true))
-            return;
-
-        viewModel.RemoveModelCommand.Execute(model);
-    }
-
-    private async void OnRemovePrompt(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Control { Tag: PromptSettingViewModel prompt })
-            return;
-
-        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmRemovePrompt", prompt.DisplayName), true))
-            return;
-
-        viewModel.RemovePromptCommand.Execute(prompt);
-    }
-
-    private async void OnRemoveMCPServer(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Control { Tag: MCPServerSettingViewModel server })
-            return;
-
-        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Settings.MCP.Title"), Loc.Get("Dialog.ConfirmRemoveMCPServer", server.DisplayName), true))
-            return;
-
-        viewModel.RemoveMCPServerCommand.Execute(server);
-    }
-
-    private async void OnCopyInternalEndpoint(object sender, RoutedEventArgs e)
-    {
-        var clipboard = GetTopLevel(this)?.Clipboard;
-
-        if (clipboard is not null)
-        {
-            var transfer = new DataTransfer();
-            transfer.Add(DataTransferItem.CreateText(viewModel.InternalMCPEndpoint));
-            await clipboard.SetDataAsync(transfer);
         }
     }
 

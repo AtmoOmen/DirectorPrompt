@@ -1,0 +1,122 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="DirectorPrompt.Views.Settings.PromptsSettingsView"
+             d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
+    <StackPanel>
+        <Grid Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [Settings.Prompt.Title], Source={x:Static loc:Loc.Instance}}"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Add" />
+                    <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuItem
+                            Header="{Binding [Settings.Prompt.New], Source={x:Static loc:Loc.Instance}}"
+                            Command="{Binding AddPromptCommand}">
+                            <MenuItem.Icon>
+                                <fa:FASymbolIcon Symbol="Document" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem
+                            Header="{Binding [Settings.Prompt.NewFromPreset], Source={x:Static loc:Loc.Instance}}">
+                            <MenuItem.Icon>
+                                <fa:FASymbolIcon Symbol="Library" />
+                            </MenuItem.Icon>
+                            <MenuItem
+                                Header="{Binding [Settings.Prompt.Preset.Narrator], Source={x:Static loc:Loc.Instance}}"
+                                Command="{Binding AddPromptCommand}"
+                                CommandParameter="Narrator">
+                                <MenuItem.Icon>
+                                    <fa:FASymbolIcon Symbol="Message" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem
+                                Header="{Binding [Settings.Prompt.Preset.MemoryUpdate], Source={x:Static loc:Loc.Instance}}"
+                                Command="{Binding AddPromptCommand}"
+                                CommandParameter="MemoryUpdate">
+                                <MenuItem.Icon>
+                                    <fa:FASymbolIcon Symbol="SaveLocal" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem
+                                Header="{Binding [Settings.Prompt.Preset.Scene], Source={x:Static loc:Loc.Instance}}"
+                                Command="{Binding AddPromptCommand}"
+                                CommandParameter="Scene">
+                                <MenuItem.Icon>
+                                    <fa:FASymbolIcon Symbol="Flag" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem
+                                Header="{Binding [Settings.Prompt.Preset.SceneSummary], Source={x:Static loc:Loc.Instance}}"
+                                Command="{Binding AddPromptCommand}"
+                                CommandParameter="SceneSummary">
+                                <MenuItem.Icon>
+                                    <fa:FASymbolIcon Symbol="List" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </MenuItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+        </Grid>
+
+        <ItemsControl ItemsSource="{Binding Prompts}" Margin="0,8,0,0">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Expander Margin="0,0,0,8">
+                        <Expander.Header>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding DisplayName}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                                <components:RemoveButton Grid.Column="1"
+                                                         Margin="0,0,-16,0"
+                                                         Click="OnRemovePrompt"
+                                                         Tag="{Binding}" />
+                            </Grid>
+                        </Expander.Header>
+
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Prompt.DisplayName], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding DisplayName}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="100,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Settings.Prompt.Content], Source={x:Static loc:Loc.Instance}}"
+                                           VerticalAlignment="Top" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding Content}"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         MinHeight="120"
+                                         MaxHeight="300"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                            </Grid>
+
+                        </StackPanel>
+                    </Expander>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>
