@@ -6,6 +6,7 @@
     "Character.Category.Add": "添加",
     "Character.Category.AddAttribute": "添加",
     "Character.Category.DeleteFailed": "删除分类失败: {0}",
+    "Character.Category.InheritedFrom": "继承自",
     "Character.Category.ParentCategories.Description": "将继承上级分类的状态属性",
     "Character.Category.DescriptionLabel": "内容",
     "Character.Category.Name": "名称",

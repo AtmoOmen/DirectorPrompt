@@ -187,10 +187,18 @@
                                         <Expander Margin="0,0,0,8" IsExpanded="False">
                                             <Expander.Header>
                                                 <Grid ColumnDefinitions="*,Auto">
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="{Binding Name}"
-                                                               FontWeight="SemiBold"
-                                                               VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="0"
+                                                                Orientation="Horizontal"
+                                                                Spacing="8"
+                                                                VerticalAlignment="Center">
+                                                        <CheckBox IsChecked="{Binding Active}"
+                                                                  MinWidth="0"
+                                                                  Padding="0"
+                                                                  VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   FontWeight="SemiBold"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
                                                     <StackPanel Grid.Column="1"
                                                                 Margin="0, 0, -16, 0"
                                                                 Orientation="Horizontal">
@@ -201,11 +209,6 @@
                                             </Expander.Header>
 
                                             <StackPanel>
-
-                                                <CheckBox
-                                                    Content="{Binding [Knowledge.Group.Enable], Source={x:Static loc:Loc.Instance}}"
-                                                    IsChecked="{Binding Active}"
-                                                    Margin="0,-4,0,8" />
 
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                     <TextBlock
@@ -260,10 +263,18 @@
                                                                       IsExpanded="{Binding IsEditing, Mode=TwoWay}">
                                                                 <Expander.Header>
                                                                     <Grid ColumnDefinitions="*,Auto">
-                                                                        <TextBlock Grid.Column="0"
-                                                                                Text="{Binding Remarks}"
-                                                                                FontWeight="SemiBold"
-                                                                                VerticalAlignment="Center" />
+                                                                        <StackPanel Grid.Column="0"
+                                                                                    Orientation="Horizontal"
+                                                                                    Spacing="8"
+                                                                                    VerticalAlignment="Center">
+                                                                            <CheckBox IsChecked="{Binding Active}"
+                                                                                      MinWidth="0"
+                                                                                      Padding="0"
+                                                                                      VerticalAlignment="Center" />
+                                                                            <TextBlock Text="{Binding Remarks}"
+                                                                                       FontWeight="SemiBold"
+                                                                                       VerticalAlignment="Center" />
+                                                                        </StackPanel>
                                                                         <components:RemoveButton Grid.Column="1"
                                                                                                  Margin="0,0,-16,0"
                                                                                                  Click="OnDeleteKnowledgeEntry"
@@ -272,12 +283,6 @@
                                                                 </Expander.Header>
                                                                 <StackPanel>
                                                                     <StackPanel>
-
-                                                                        <CheckBox
-                                                                            Content="{Binding [Knowledge.Entry.Active], Source={x:Static loc:Loc.Instance}}"
-                                                                            IsChecked="{Binding Active}"
-                                                                            Margin="0,8,0,4" />
-
                                                                         <StackPanel Orientation="Horizontal"
                                                                                 Margin="0,8,0,4">
                                                                             <TextBlock
@@ -764,10 +769,46 @@
                                         <Expander Margin="0,0,0,8" IsExpanded="False">
                                             <Expander.Header>
                                                 <Grid ColumnDefinitions="*,Auto">
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="{Binding Name}"
-                                                               FontWeight="SemiBold"
-                                                               VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="0"
+                                                                Orientation="Horizontal"
+                                                                Spacing="12"
+                                                                VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   FontWeight="SemiBold"
+                                                                   VerticalAlignment="Center" />
+                                                        <Border Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                                BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                                                BorderThickness="1"
+                                                                CornerRadius="10"
+                                                                Padding="8,2"
+                                                                VerticalAlignment="Center"
+                                                                IsVisible="{Binding ParentCategoriesText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                                MaxWidth="300"
+                                                                ToolTip.Tip="{Binding ParentCategoriesText}">
+                                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                <fa:FASymbolIcon Symbol="Link"
+                                                                                 FontSize="10"
+                                                                                 Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                                                 VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding [Character.Category.InheritedFrom], Source={x:Static loc:Loc.Instance}}"
+                                                                           FontSize="10.5"
+                                                                           FontWeight="Medium"
+                                                                           Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                                           VerticalAlignment="Center" />
+                                                                <TextBlock Text=":"
+                                                                           FontSize="10.5"
+                                                                           FontWeight="Medium"
+                                                                           Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                                           VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding ParentCategoriesText}"
+                                                                           FontSize="10.5"
+                                                                           FontWeight="Medium"
+                                                                           Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </StackPanel>
                                                     <StackPanel Grid.Column="1"
                                                                 Orientation="Horizontal"
                                                                 Margin="0, 0, -16, 0">

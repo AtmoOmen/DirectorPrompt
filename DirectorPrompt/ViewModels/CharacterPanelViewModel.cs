@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Localization;
@@ -76,6 +77,9 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
     [ObservableProperty]
     public partial string? Description { get; set; }
 
+    [ObservableProperty]
+    public partial string ParentCategoriesText { get; set; } = string.Empty;
+
     public ObservableCollection<CategorySelectionItem> AvailableParentCategories { get; } = [];
 
     public ObservableCollection<StateAttributeEditViewModel> StateAttributes { get; } = [];
@@ -103,6 +107,9 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
         foreach (var id in pendingParentCategoryIDs)
             currentSelections.Add(id);
 
+        foreach (var item in AvailableParentCategories)
+            item.PropertyChanged -= OnSelectionItemPropertyChanged;
+
         AvailableParentCategories.Clear();
 
         foreach (var cat in allCategories.Where(c => c.ID != ID))
@@ -113,9 +120,25 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
                 Name       = cat.Name,
                 IsSelected = currentSelections.Contains(cat.ID)
             };
-
+            item.PropertyChanged += OnSelectionItemPropertyChanged;
             AvailableParentCategories.Add(item);
         }
+
+        UpdateParentCategoriesText();
+    }
+
+    private void OnSelectionItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CategorySelectionItem.IsSelected))
+        {
+            UpdateParentCategoriesText();
+        }
+    }
+
+    private void UpdateParentCategoriesText()
+    {
+        var selected = AvailableParentCategories.Where(i => i.IsSelected).Select(i => i.Name).ToList();
+        ParentCategoriesText = selected.Count > 0 ? string.Join(", ", selected) : string.Empty;
     }
 
     public CharacterCategory ToModel(long projectID)
