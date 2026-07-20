@@ -1,0 +1,184 @@
+<UserControl x:Class="DirectorPrompt.Views.ProjectKnowledgeEditView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             x:CompileBindings="True"
+             x:DataType="vm:ProjectEditViewModel">
+    <StackPanel>
+        <Grid Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [Knowledge.Title], Source={x:Static loc:Loc.Instance}}"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Command="{Binding AddKnowledgeGroupCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Add" />
+                    <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <ItemsControl ItemsSource="{Binding KnowledgeGroups}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:KnowledgeGroupEditViewModel">
+                    <Expander Margin="0,0,0,8" IsExpanded="False">
+                        <Expander.Header>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0"
+                                            Orientation="Horizontal"
+                                            Spacing="8"
+                                            VerticalAlignment="Center">
+                                    <CheckBox IsChecked="{Binding Active}"
+                                              MinWidth="0"
+                                              Padding="0"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1"
+                                            Margin="0, 0, -16, 0"
+                                            Orientation="Horizontal">
+                                    <components:RemoveButton Click="OnDeleteKnowledgeGroup"
+                                            Tag="{Binding}" />
+                                </StackPanel>
+                            </Grid>
+                        </Expander.Header>
+
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock
+                                    Text="{Binding [Knowledge.Group.Name], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
+                            <TextBox Text="{Binding Name}"
+                                     PlaceholderText="{Binding [Knowledge.Group.NamePlaceholder], Source={x:Static loc:Loc.Instance}}"
+                                     Margin="0,0,0,12" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock
+                                    Text="{Binding [Knowledge.Group.Description], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
+                            <TextBox
+                                Text="{Binding Description}"
+                                PlaceholderText="{Binding [Knowledge.Group.PlaceholderOptional], Source={x:Static loc:Loc.Instance}}"
+                                Margin="0,0,0,12" />
+
+                            <Grid Margin="0,8,0,8" ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Knowledge.Entry.Title], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                                <Button Grid.Column="1"
+                                        Padding="6,4"
+                                        Command="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).AddKnowledgeEntryCommand}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Add" />
+                                        <TextBlock
+                                            Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Entries}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:KnowledgeEntryEditViewModel">
+                                        <Expander Margin="0,0,0,6"
+                                                  IsExpanded="{Binding IsEditing, Mode=TwoWay}">
+                                            <Expander.Header>
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <StackPanel Grid.Column="0"
+                                                            Orientation="Horizontal"
+                                                            Spacing="8"
+                                                            VerticalAlignment="Center">
+                                                        <CheckBox IsChecked="{Binding Active}"
+                                                                MinWidth="0"
+                                                                Padding="0"
+                                                                VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding Remarks}"
+                                                                FontWeight="SemiBold"
+                                                                VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <components:RemoveButton Grid.Column="1"
+                                                            Margin="0,0,-16,0"
+                                                            Click="OnDeleteKnowledgeEntry"
+                                                            Tag="{Binding}" />
+                                                </Grid>
+                                            </Expander.Header>
+                                            <StackPanel>
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal"
+                                                            Margin="0,8,0,4">
+                                                        <TextBlock
+                                                            Text="{Binding [Knowledge.Entry.RemarksLabel], Source={x:Static loc:Loc.Instance}}" />
+                                                        <TextBlock
+                                                            Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                            Foreground="Gray"
+                                                            FontSize="12"
+                                                            VerticalAlignment="Center"
+                                                            Margin="8,0,0,0" />
+                                                    </StackPanel>
+                                                    <TextBox
+                                                        Text="{Binding Remarks}" />
+                                                    <StackPanel Orientation="Horizontal"
+                                                            Margin="0,8,0,4">
+                                                        <TextBlock
+                                                            Text="{Binding [Knowledge.Entry.Content], Source={x:Static loc:Loc.Instance}}" />
+                                                        <TextBlock
+                                                            Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                            Foreground="Gray"
+                                                            FontSize="12"
+                                                            VerticalAlignment="Center"
+                                                            Margin="8,0,0,0" />
+                                                    </StackPanel>
+                                                    <TextBox
+                                                        Text="{Binding Content}"
+                                                        AcceptsReturn="True"
+                                                        TextWrapping="Wrap"
+                                                        MinHeight="80"
+                                                        ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                                                    <StackPanel Orientation="Horizontal"
+                                                            Margin="0,8,0,4">
+                                                        <TextBlock
+                                                            Text="{Binding [Knowledge.Entry.Keywords], Source={x:Static loc:Loc.Instance}}" />
+                                                        <TextBlock
+                                                            Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                            Foreground="Gray"
+                                                            FontSize="12"
+                                                            VerticalAlignment="Center"
+                                                            Margin="8,0,0,0" />
+                                                    </StackPanel>
+                                                    <TextBox
+                                                        Text="{Binding Keywords}"
+                                                        PlaceholderText="{Binding [Knowledge.Entry.KeywordsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Expander>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Expander>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

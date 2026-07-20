@@ -1,0 +1,76 @@
+<UserControl x:Class="DirectorPrompt.Views.ProjectBasicEditView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             x:CompileBindings="True"
+             x:DataType="vm:ProjectEditViewModel">
+    <StackPanel>
+        <Grid Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [Project.Basic.Title], Source={x:Static loc:Loc.Instance}}"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Command="{Binding ExportProjectCommand}"
+                    IsEnabled="{Binding IsEditing}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Upload" />
+                    <TextBlock
+                        Text="{Binding [Navigation.ExportProject], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+            </Button>
+        </Grid>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <TextBlock Text="{Binding [Project.Basic.Name], Source={x:Static loc:Loc.Instance}}"
+                       FontWeight="SemiBold" />
+            <TextBlock
+                Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                Foreground="Gray"
+                FontSize="12"
+                VerticalAlignment="Center"
+                Margin="8,0,0,0" />
+        </StackPanel>
+        <TextBox Text="{Binding Name}"
+                 PlaceholderText="{Binding [Project.Basic.NamePlaceholder], Source={x:Static loc:Loc.Instance}}" />
+
+        <StackPanel Orientation="Horizontal" Margin="0,16,0,4">
+            <TextBlock
+                Text="{Binding [Project.Basic.Description], Source={x:Static loc:Loc.Instance}}"
+                FontWeight="SemiBold" />
+            <TextBlock
+                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                Foreground="Gray"
+                FontSize="12"
+                VerticalAlignment="Center"
+                Margin="8,0,0,0" />
+        </StackPanel>
+        <TextBox Text="{Binding Description}"
+                 PlaceholderText="{Binding [Project.Basic.DescriptionPlaceholder], Source={x:Static loc:Loc.Instance}}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="100"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
+
+        <StackPanel Orientation="Horizontal" Margin="0,16,0,4">
+            <TextBlock
+                Text="{Binding [Project.Basic.OpeningMessage], Source={x:Static loc:Loc.Instance}}"
+                FontWeight="SemiBold" />
+            <TextBlock
+                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                Foreground="Gray"
+                FontSize="12"
+                VerticalAlignment="Center"
+                Margin="8,0,0,0" />
+        </StackPanel>
+        <TextBox Text="{Binding OpeningMessage}"
+                 PlaceholderText="{Binding [Project.Basic.OpeningMessagePlaceholder], Source={x:Static loc:Loc.Instance}}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="80"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
+    </StackPanel>
+</UserControl>

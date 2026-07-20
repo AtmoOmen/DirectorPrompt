@@ -1,0 +1,171 @@
+<UserControl x:Class="DirectorPrompt.Views.ProjectCharacterEditView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             xmlns:views="using:DirectorPrompt.Views"
+             x:CompileBindings="True"
+             x:DataType="vm:ProjectEditViewModel">
+    <StackPanel>
+        <Grid Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [Character.Title], Source={x:Static loc:Loc.Instance}}"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Command="{Binding AddCharacterCategoryCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <fa:FASymbolIcon Symbol="Add" />
+                    <TextBlock
+                        Text="{Binding [Character.Category.Add], Source={x:Static loc:Loc.Instance}}" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <ItemsControl ItemsSource="{Binding CharacterCategories}" Margin="0,8,0,0">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:CharacterCategoryEditViewModel">
+                    <Expander Margin="0,0,0,8" IsExpanded="False">
+                        <Expander.Header>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0"
+                                            Orientation="Horizontal"
+                                            Spacing="12"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center" />
+                                    <Border
+                                        Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                        BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="8,2"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding ParentCategoriesText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                        MaxWidth="300"
+                                        ToolTip.Tip="{Binding ParentCategoriesText}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <fa:FASymbolIcon Symbol="Link"
+                                                    FontSize="10"
+                                                    Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                    VerticalAlignment="Center" />
+                                            <TextBlock
+                                                Text="{Binding [Character.Category.InheritedFrom], Source={x:Static loc:Loc.Instance}}"
+                                                FontSize="10.5"
+                                                FontWeight="Medium"
+                                                Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                VerticalAlignment="Center" />
+                                            <TextBlock Text=":"
+                                                       FontSize="10.5"
+                                                       FontWeight="Medium"
+                                                       Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding ParentCategoriesText}"
+                                                       FontSize="10.5"
+                                                       FontWeight="Medium"
+                                                       Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Margin="0, 0, -16, 0">
+                                    <components:RemoveButton Click="OnDeleteCharacterCategory"
+                                            Tag="{Binding}" />
+                                </StackPanel>
+                            </Grid>
+                        </Expander.Header>
+
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock
+                                            Text="{Binding [Character.Category.Name], Source={x:Static loc:Loc.Instance}}"
+                                            FontWeight="SemiBold" />
+                                        <TextBlock
+                                            Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                            Foreground="Gray"
+                                            FontSize="12"
+                                            VerticalAlignment="Center"
+                                            Margin="8,0,0,0" />
+                                    </StackPanel>
+                                    <TextBox
+                                        Text="{Binding Name}"
+                                        PlaceholderText="{Binding [Character.Category.NamePlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock
+                                            Text="{Binding [Character.Category.ParentCategories], Source={x:Static loc:Loc.Instance}}"
+                                            FontWeight="SemiBold"
+                                            Margin="0,0,0,4" />
+
+                                        <TextBlock
+                                            Text="{Binding [Character.Category.ParentCategories.Description], Source={x:Static loc:Loc.Instance}}"
+                                            Foreground="Gray" FontSize="12"
+                                            VerticalAlignment="Center"
+                                            Margin="8,0,0,0" />
+                                    </StackPanel>
+
+                                    <components:MultiSelectComboBox
+                                        ItemsSource="{Binding AvailableParentCategories}"
+                                        DisplayMemberPath="Name"
+                                        SelectedMemberPath="IsSelected" />
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock
+                                    Text="{Binding [Character.Category.DescriptionLabel], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
+                            <TextBox
+                                Text="{Binding Description}"
+                                Margin="0,0,0,16" />
+
+                            <Grid Margin="0,0,0,8" ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [Character.Category.StateAttributes], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                                <Button Grid.Column="1"
+                                        Padding="8,4"
+                                        Click="OnAddCategoryStateAttribute"
+                                        Tag="{Binding}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fa:FASymbolIcon Symbol="Add" />
+                                        <TextBlock
+                                            Text="{Binding [Character.Category.AddAttribute], Source={x:Static loc:Loc.Instance}}" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding StateAttributes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:StateAttributeEditViewModel">
+                                        <views:StateAttributeEditControl DeleteCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).DeleteStateAttributeCommand}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                        </StackPanel>
+                    </Expander>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

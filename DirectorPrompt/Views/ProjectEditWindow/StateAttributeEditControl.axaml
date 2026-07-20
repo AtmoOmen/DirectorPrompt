@@ -1,0 +1,398 @@
+<UserControl x:Class="DirectorPrompt.Views.StateAttributeEditControl"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             xmlns:views="using:DirectorPrompt.Views"
+             x:CompileBindings="True"
+             x:DataType="vm:StateAttributeEditViewModel">
+    <Expander Margin="0,2" IsExpanded="{Binding IsEditing, Mode=TwoWay}">
+        <Expander.Header>
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="{Binding DisplayName}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding Name}"
+                               Foreground="Gray"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            Margin="0,0,-16,0">
+                    <components:RemoveButton Click="OnDeleteStateAttribute"
+                            Tag="{Binding}" />
+                </StackPanel>
+            </Grid>
+        </Expander.Header>
+        <StackPanel>
+            <StackPanel>
+                <Grid Margin="0,8,0,4" ColumnDefinitions="*,*">
+                    <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock
+                                Text="{Binding [State.Attribute.Identifier], Source={x:Static loc:Loc.Instance}}" />
+                            <TextBlock
+                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                Foreground="Gray"
+                                FontSize="12"
+                                VerticalAlignment="Center"
+                                Margin="8,0,0,0" />
+                        </StackPanel>
+                        <TextBox
+                            Text="{Binding Name}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock
+                                Text="{Binding [State.Attribute.DisplayName], Source={x:Static loc:Loc.Instance}}" />
+                            <TextBlock
+                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                Foreground="Gray"
+                                FontSize="12"
+                                VerticalAlignment="Center"
+                                Margin="8,0,0,0" />
+                        </StackPanel>
+                        <TextBox
+                            Text="{Binding DisplayName}" />
+                    </StackPanel>
+                </Grid>
+                <Grid Margin="0,4,0,4" ColumnDefinitions="*,*">
+                    <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock
+                                Text="{Binding [State.Attribute.ValueType], Source={x:Static loc:Loc.Instance}}" />
+                            <TextBlock
+                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                Foreground="Gray"
+                                FontSize="12"
+                                VerticalAlignment="Center"
+                                Margin="8,0,0,0" />
+                        </StackPanel>
+                        <components:PathComboBox
+                            ItemsSource="{Binding ValueTypes, Source={x:Static vm:EnumOptions.Instance}}"
+                            SelectedValue="{Binding ValueType}"
+                            SelectedValuePath="Value"
+                            DisplayMemberPath="Display"
+                            HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="4,0,0,0"
+                                IsVisible="{Binding IsDriverVisible, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock
+                                Text="{Binding [State.Attribute.Driver], Source={x:Static loc:Loc.Instance}}" />
+                            <TextBlock
+                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                Foreground="Gray"
+                                FontSize="12"
+                                VerticalAlignment="Center"
+                                Margin="8,0,0,0" />
+                        </StackPanel>
+                        <components:PathComboBox
+                            ItemsSource="{Binding Drivers, Source={x:Static vm:EnumOptions.Instance}}"
+                            SelectedValue="{Binding Driver}"
+                            SelectedValuePath="Value"
+                            DisplayMemberPath="Display"
+                            HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Margin="0,8,0,0"
+                            IsVisible="{Binding IsNumericConfig, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock
+                            Text="{Binding [State.Attribute.MinValue], Source={x:Static loc:Loc.Instance}}" />
+                        <TextBlock
+                            Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                            Foreground="Gray"
+                            FontSize="12"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0" />
+                    </StackPanel>
+                    <fa:FANumberBox
+                        Value="{Binding MinValue, Converter={StaticResource NumberBoxValue}}"
+                        SimpleNumberFormat="F2"
+                        HorizontalAlignment="Stretch" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                        <TextBlock
+                            Text="{Binding [State.Attribute.MaxValue], Source={x:Static loc:Loc.Instance}}" />
+                        <TextBlock
+                            Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                            Foreground="Gray"
+                            FontSize="12"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0" />
+                    </StackPanel>
+                    <fa:FANumberBox
+                        Value="{Binding MaxValue, Converter={StaticResource NumberBoxValue}}"
+                        SimpleNumberFormat="F2"
+                        HorizontalAlignment="Stretch" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                        <TextBlock
+                            Text="{Binding [State.Attribute.InitialValue], Source={x:Static loc:Loc.Instance}}" />
+                        <TextBlock
+                            Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                            Foreground="Gray"
+                            FontSize="12"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0" />
+                    </StackPanel>
+                    <fa:FANumberBox
+                        Value="{Binding InitialValue, Converter={StaticResource NumberBoxValue}}"
+                        SimpleNumberFormat="F2"
+                        HorizontalAlignment="Stretch" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                        <TextBlock
+                            Text="{Binding [State.Attribute.Unit], Source={x:Static loc:Loc.Instance}}" />
+                        <TextBlock
+                            Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                            Foreground="Gray"
+                            FontSize="12"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0" />
+                    </StackPanel>
+                    <TextBox
+                        Text="{Binding Unit}"
+                        PlaceholderText="{Binding [State.Attribute.UnitPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                    <StackPanel
+                        IsVisible="{Binding IsNarrativeNumericConfig, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                            <TextBlock
+                                Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
+                            <TextBlock
+                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                Foreground="Gray"
+                                FontSize="12"
+                                VerticalAlignment="Center"
+                                Margin="8,0,0,0" />
+                        </StackPanel>
+                        <TextBox
+                            Text="{Binding ChangeRules}"
+                            AcceptsReturn="True"
+                            TextWrapping="Wrap"
+                            MinHeight="60"
+                            ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                    </StackPanel>
+                    <components:NumericChangeEditControl
+                        Source="{Binding}"
+                        IsVisible="{Binding IsSystemNumericConfig, Converter={StaticResource BoolToVisibility}}"
+                        AddNumericChangeCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).AddNumericChangeCommand}"
+                        DeleteNumericChangeCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).DeleteNumericChangeCommand}" />
+                </StackPanel>
+
+                <StackPanel Margin="0,8,0,0"
+                            IsVisible="{Binding IsEnumConfig, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock
+                            Text="{Binding [State.Attribute.Options], Source={x:Static loc:Loc.Instance}}" />
+                        <TextBlock
+                            Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                            Foreground="Gray"
+                            FontSize="12"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0" />
+                    </StackPanel>
+                    <TextBox
+                        Text="{Binding Options}"
+                        PlaceholderText="{Binding [State.Attribute.OptionsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                    <ItemsControl ItemsSource="{Binding Transitions}"
+                                  Margin="0,8,0,0"
+                                  IsVisible="{Binding IsNarrativeEnumConfig, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:EnumTransitionEditViewModel">
+                                <Border Margin="0,0,0,4" Padding="8,4"
+                                        Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                        BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                        BorderThickness="1" CornerRadius="4">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Option}"
+                                                FontWeight="SemiBold"
+                                                Margin="0,0,0,4" />
+                                        <StackPanel Margin="0,4,0,0">
+                                            <StackPanel Orientation="Horizontal"
+                                                Margin="0,0,0,4">
+                                                <TextBlock
+                                                    Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
+                                                <TextBlock
+                                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                    Foreground="Gray" FontSize="12"
+                                                    VerticalAlignment="Center"
+                                                    Margin="8,0,0,0" />
+                                            </StackPanel>
+                                            <TextBox
+                                                Text="{Binding ChangeRules}"
+                                                AcceptsReturn="True"
+                                                TextWrapping="Wrap"
+                                                MinHeight="60"
+                                                ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel
+                        IsVisible="{Binding IsSystemEnumConfig, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                            <TextBlock
+                                Text="{Binding [State.Attribute.Trigger], Source={x:Static loc:Loc.Instance}}" />
+                            <TextBlock
+                                Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                Foreground="Gray"
+                                FontSize="12"
+                                VerticalAlignment="Center"
+                                Margin="8,0,0,0" />
+                        </StackPanel>
+                        <components:PathComboBox
+                            ItemsSource="{Binding SystemTriggers, Source={x:Static vm:EnumOptions.Instance}}"
+                            SelectedValue="{Binding Trigger}"
+                            SelectedValuePath="Value"
+                            DisplayMemberPath="Display"
+                            HorizontalAlignment="Stretch" />
+
+                        <ItemsControl ItemsSource="{Binding Transitions}"
+                                      Margin="0,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:EnumTransitionEditViewModel">
+                                    <Border Margin="0,0,0,4" Padding="8,4"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderBrush="{DynamicResource ControlElevationBorderBrush}"
+                                            BorderThickness="1" CornerRadius="4">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Option}"
+                                                FontWeight="SemiBold"
+                                                Margin="0,0,0,4" />
+                                            <StackPanel Orientation="Horizontal"
+                                                Margin="0,0,0,4">
+                                                <TextBlock
+                                                    Text="{Binding [State.TransitionMethod.Method], Source={x:Static loc:Loc.Instance}}" />
+                                                <TextBlock
+                                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                    Foreground="Gray" FontSize="12"
+                                                    VerticalAlignment="Center"
+                                                    Margin="8,0,0,0" />
+                                            </StackPanel>
+                                            <components:PathComboBox
+                                                ItemsSource="{Binding TransitionMethods, Source={x:Static vm:EnumOptions.Instance}}"
+                                                SelectedValue="{Binding Method}"
+                                                SelectedValuePath="Value"
+                                                DisplayMemberPath="Display"
+                                                HorizontalAlignment="Stretch" />
+
+                                            <StackPanel
+                                                IsVisible="{Binding IsRandom, Converter={StaticResource BoolToVisibility}}"
+                                                Margin="0,4,0,0">
+                                                <StackPanel
+                                                    Orientation="Horizontal"
+                                                    Margin="0,0,0,4">
+                                                    <TextBlock
+                                                        Text="{Binding [State.TransitionMethod.Probability], Source={x:Static loc:Loc.Instance}}" />
+                                                    <TextBlock
+                                                        Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                        Foreground="Gray"
+                                                        FontSize="12"
+                                                        VerticalAlignment="Center"
+                                                        Margin="8,0,0,0" />
+                                                </StackPanel>
+                                                <fa:FANumberBox
+                                                    Value="{Binding Weight, Converter={StaticResource NumberBoxValue}}"
+                                                    SimpleNumberFormat="F2"
+                                                    Minimum="0"
+                                                    HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+
+                                            <StackPanel
+                                                IsVisible="{Binding IsExpression, Converter={StaticResource BoolToVisibility}}"
+                                                Margin="0,4,0,0">
+                                                <StackPanel
+                                                    Orientation="Horizontal"
+                                                    Margin="0,0,0,4">
+                                                    <TextBlock
+                                                        Text="{Binding [State.TransitionMethod.Attribute], Source={x:Static loc:Loc.Instance}}" />
+                                                    <TextBlock
+                                                        Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                        Foreground="Gray"
+                                                        FontSize="12"
+                                                        VerticalAlignment="Center"
+                                                        Margin="8,0,0,0" />
+                                                </StackPanel>
+                                                <components:PathComboBox
+                                                    ItemsSource="{Binding $parent[views:StateAttributeEditControl].((vm:StateAttributeEditViewModel)DataContext).AvailableNumericAttributes}"
+                                                    SelectedItem="{Binding AttributeName}"
+                                                    HorizontalAlignment="Stretch" />
+                                                <StackPanel
+                                                    Orientation="Horizontal"
+                                                    Margin="0,8,0,4">
+                                                    <TextBlock
+                                                        Text="{Binding [State.TransitionMethod.Expression], Source={x:Static loc:Loc.Instance}}" />
+                                                    <TextBlock
+                                                        Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                        Foreground="Gray"
+                                                        FontSize="12"
+                                                        VerticalAlignment="Center"
+                                                        Margin="8,0,0,0" />
+                                                </StackPanel>
+                                                <TextBox
+                                                    Text="{Binding Expression}"
+                                                    PlaceholderText="{Binding [State.TransitionMethod.ExpressionPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                <StackPanel
+                                                    Orientation="Horizontal"
+                                                    Margin="0,8,0,4">
+                                                    <TextBlock
+                                                        Text="{Binding [State.TransitionMethod.SwitchMode], Source={x:Static loc:Loc.Instance}}" />
+                                                    <TextBlock
+                                                        Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                        Foreground="Gray"
+                                                        FontSize="12"
+                                                        VerticalAlignment="Center"
+                                                        Margin="8,0,0,0" />
+                                                </StackPanel>
+                                                <components:PathComboBox
+                                                    ItemsSource="{Binding SwitchModes, Source={x:Static vm:EnumOptions.Instance}}"
+                                                    SelectedValue="{Binding SwitchMode}"
+                                                    SelectedValuePath="Value"
+                                                    DisplayMemberPath="Display"
+                                                    HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+
+                                            <StackPanel
+                                                IsVisible="{Binding IsOnce, Converter={StaticResource BoolToVisibility}}"
+                                                Margin="0,4,0,0">
+                                                <StackPanel
+                                                    Orientation="Horizontal"
+                                                    Margin="0,0,0,4">
+                                                    <TextBlock
+                                                        Text="{Binding [State.TransitionMethod.Probability], Source={x:Static loc:Loc.Instance}}" />
+                                                    <TextBlock
+                                                        Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                        Foreground="Gray"
+                                                        FontSize="12"
+                                                        VerticalAlignment="Center"
+                                                        Margin="8,0,0,0" />
+                                                </StackPanel>
+                                                <fa:FANumberBox
+                                                    Value="{Binding Weight, Converter={StaticResource NumberBoxValue}}"
+                                                    SimpleNumberFormat="F2"
+                                                    Minimum="0"
+                                                    HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+
+                <views:PhaseEditControl
+                    PhaseSource="{Binding}"
+                    AddPhaseCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).AddPhaseCommand}"
+                    DeletePhaseCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).DeletePhaseCommand}" />
+
+            </StackPanel>
+        </StackPanel>
+    </Expander>
+</UserControl>
