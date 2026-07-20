@@ -1,4 +1,3 @@
-using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 
 namespace DirectorPrompt.Domain.Models;

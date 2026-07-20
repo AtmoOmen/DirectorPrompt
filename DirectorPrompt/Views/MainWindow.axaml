@@ -1183,10 +1183,10 @@
                                                                                         FontSize="12" />
                                                                                 </Button>
                                                                                 <components:RemoveButton
-                                                                                     Padding="6,4"
-                                                                                     Margin="4,0,0,0"
-                                                                                     Click="OnDeleteMemory"
-                                                                                     Tag="{Binding}" />
+                                                                                    Padding="6,4"
+                                                                                    Margin="4,0,0,0"
+                                                                                    Click="OnDeleteMemory"
+                                                                                    Tag="{Binding}" />
                                                                             </StackPanel>
                                                                         </DockPanel>
                                                                         <TextBlock Text="{Binding Content}"

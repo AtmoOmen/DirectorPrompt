@@ -98,7 +98,7 @@ public sealed class EventRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<DialogPage> GetDialogPageAsync
@@ -189,7 +189,7 @@ public sealed class EventRepository
                         null
                 );
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<IReadOnlyList<PlaythroughEvent>> GetRecentBySceneAsync
@@ -247,7 +247,7 @@ public sealed class EventRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<PlaythroughEvent?> GetLatestByTypeBeforeRoundAsync
@@ -277,7 +277,7 @@ public sealed class EventRepository
                         cancellationToken: token
                     )
                 ),
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<IReadOnlyList<PlaythroughEvent>> GetSceneSummaryChunkAsync
@@ -357,7 +357,7 @@ public sealed class EventRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task RemoveByRoundAsync
@@ -400,7 +400,7 @@ public sealed class EventRepository
 
                 return result ?? 0;
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task UpdateEventDataAsync

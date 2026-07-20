@@ -71,7 +71,7 @@
                        LineHeight="20"
                        FontSize="14"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-            
+
             <!-- 输入框 -->
             <TextBox x:Name="InputBox"
                      IsVisible="False"
@@ -88,7 +88,7 @@
                         MinWidth="88"
                         Click="OnSecondaryClick"
                         IsVisible="{Binding $self.Content, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                
+
                 <!-- 确定/主要按钮 -->
                 <Button x:Name="PrimaryButton"
                         MinWidth="88"

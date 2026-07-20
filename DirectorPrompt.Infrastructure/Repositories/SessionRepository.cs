@@ -22,7 +22,7 @@ public sealed class SessionRepository
                         cancellationToken: token
                     )
                 ),
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<IReadOnlyList<Session>> GetByProjectAsync
@@ -46,21 +46,21 @@ public sealed class SessionRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<Session> CreateAsync
     (
-        Session                   session,
+        Session                    session,
         IReadOnlyList<StateValue>? initialStateValues = null,
-        CancellationToken         cancellationToken = default
+        CancellationToken          cancellationToken  = default
     ) =>
         scheduler.ExecuteAsync
         (
             async (connection, token) =>
             {
                 await using var transaction = await connection.BeginTransactionAsync(token);
-                var now = DateTime.UtcNow;
+                var             now         = DateTime.UtcNow;
                 var id = await connection.ExecuteScalarAsync<long>
                          (
                              new CommandDefinition

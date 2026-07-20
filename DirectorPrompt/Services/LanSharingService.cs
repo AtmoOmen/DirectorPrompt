@@ -174,8 +174,8 @@ public sealed class LanSharingService
     private void DisposeRemoteVisual()
     {
         remoteServer?.Dispose();
-        remoteServer = null;
-        remoteRoot = null;
+        remoteServer           = null;
+        remoteRoot             = null;
         remoteRenderingStarted = false;
         remoteContent?.RemoveHandler(InputElement.PointerReleasedEvent, OnRemoteInteraction);
         remoteContent?.RemoveHandler(InputElement.KeyDownEvent,         OnRemoteInteraction);
@@ -228,8 +228,8 @@ public sealed class LanSharingService
         remoteInteractionRouter.Attach(currentWindowService);
         currentTransport.ViewportChanged += OnRemoteViewportChanged;
         currentTransport.Start();
-        remoteContent                    =  content;
-        remoteWindowService              =  currentWindowService;
+        remoteContent       = content;
+        remoteWindowService = currentWindowService;
         return remoteWindow;
     }
 

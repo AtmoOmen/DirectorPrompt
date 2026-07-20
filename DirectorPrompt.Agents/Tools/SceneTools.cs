@@ -9,8 +9,8 @@ namespace DirectorPrompt.Agents.Tools;
 
 public sealed class SceneTools
 (
-    ISceneRepository    sceneRepository,
-    ITimelineCalculator timelineCalculator,
+    ISceneRepository        sceneRepository,
+    ITimelineCalculator     timelineCalculator,
     ISystemStateTransformer systemStateTransformer
 )
 {

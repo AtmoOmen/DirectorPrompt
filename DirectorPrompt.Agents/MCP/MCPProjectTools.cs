@@ -606,18 +606,18 @@ public sealed class MCPProjectTools
     [Description("创建数值状态属性")]
     public Task<ProjectStateAttribute> CreateNumericStateAttributeAsync
     (
-        [Description("项目 ID")]            long    projectID,
-        [Description("属性标识，供表达式引用")]      string  name,
-        [Description("显示名")]              string  displayName,
-        [Description("所属分类 ID；留空则为全局属性")] long?   categoryID        = null,
-        [Description("驱动方式")]             Driver  driver            = Driver.Narrative,
-        [Description("最小值")]              float?  min               = null,
-        [Description("最大值")]              float?  max               = null,
-        [Description("初始值")]              float?  initial           = null,
-        [Description("单位")]               string? unit              = null,
-        [Description("变更指引")]             string? changeRules       = null,
-        [Description("系统驱动时的数值变更条件")] MCPNumericStateChange[]? changes = null,
-        CancellationToken                         cancellationToken = default
+        [Description("项目 ID")]            long                     projectID,
+        [Description("属性标识，供表达式引用")]      string                   name,
+        [Description("显示名")]              string                   displayName,
+        [Description("所属分类 ID；留空则为全局属性")] long?                    categoryID        = null,
+        [Description("驱动方式")]             Driver                   driver            = Driver.Narrative,
+        [Description("最小值")]              float?                   min               = null,
+        [Description("最大值")]              float?                   max               = null,
+        [Description("初始值")]              float?                   initial           = null,
+        [Description("单位")]               string?                  unit              = null,
+        [Description("变更指引")]             string?                  changeRules       = null,
+        [Description("系统驱动时的数值变更条件")]     MCPNumericStateChange[]? changes           = null,
+        CancellationToken                                          cancellationToken = default
     ) =>
         ExecuteAsync
         (
@@ -666,12 +666,12 @@ public sealed class MCPProjectTools
         [Description("属性标识，供表达式引用")]      string        name,
         [Description("显示名")]              string        displayName,
         [Description("枚举选项，至少一项")]        string[]      options,
-        [Description("系统驱动时的触发时机")]       SystemTrigger trigger           = SystemTrigger.SceneChange,
-        [Description("所属分类 ID；留空则为全局属性")] long?         categoryID        = null,
-        [Description("驱动方式")]             Driver        driver            = Driver.System,
+        [Description("系统驱动时的触发时机")]       SystemTrigger trigger    = SystemTrigger.SceneChange,
+        [Description("所属分类 ID；留空则为全局属性")] long?         categoryID = null,
+        [Description("驱动方式")]             Driver        driver     = Driver.System,
         [Description("各枚举选项的配置；叙事驱动时填写 option 和 changeRules")]
-        MCPEnumStateTransition[]? transitions       = null,
-        CancellationToken                               cancellationToken = default
+        MCPEnumStateTransition[]? transitions = null,
+        CancellationToken cancellationToken = default
     ) =>
         ExecuteAsync
         (
@@ -703,25 +703,25 @@ public sealed class MCPProjectTools
                 );
 
                 return await CreateStateAttributeAsync
-                (
-                    projectID,
-                    new StateAttributeDefinition
-                    {
-                        Name        = name,
-                        DisplayName = displayName,
-                        Scope       = scope,
-                        CategoryID = categoryID,
-                        ValueType  = StateValueType.Enum,
-                        Driver     = driver,
-                        Enumeration = new EnumStateDefinition
-                        {
-                            Options     = values,
-                            Trigger     = trigger,
-                            Transitions = enumTransitions
-                        }
-                    },
-                    cancellationToken
-                );
+                       (
+                           projectID,
+                           new StateAttributeDefinition
+                           {
+                               Name        = name,
+                               DisplayName = displayName,
+                               Scope       = scope,
+                               CategoryID  = categoryID,
+                               ValueType   = StateValueType.Enum,
+                               Driver      = driver,
+                               Enumeration = new EnumStateDefinition
+                               {
+                                   Options     = values,
+                                   Trigger     = trigger,
+                                   Transitions = enumTransitions
+                               }
+                           },
+                           cancellationToken
+                       );
             }
         );
 
@@ -790,15 +790,15 @@ public sealed class MCPProjectTools
     [Description("替换数值状态属性配置")]
     public Task<ProjectStateAttribute> ConfigureNumericStateAttributeAsync
     (
-        [Description("项目 ID")]     long    projectID,
-        [Description("数值状态属性 ID")] long    attributeID,
-        [Description("最小值")]       float?  min               = null,
-        [Description("最大值")]       float?  max               = null,
-        [Description("初始值")]       float?  initial           = null,
-        [Description("单位")]        string? unit              = null,
-        [Description("变更指引")]      string? changeRules       = null,
-        [Description("系统驱动时的数值变更条件")] MCPNumericStateChange[]? changes = null,
-        CancellationToken                  cancellationToken = default
+        [Description("项目 ID")]        long                     projectID,
+        [Description("数值状态属性 ID")]    long                     attributeID,
+        [Description("最小值")]          float?                   min               = null,
+        [Description("最大值")]          float?                   max               = null,
+        [Description("初始值")]          float?                   initial           = null,
+        [Description("单位")]           string?                  unit              = null,
+        [Description("变更指引")]         string?                  changeRules       = null,
+        [Description("系统驱动时的数值变更条件")] MCPNumericStateChange[]? changes           = null,
+        CancellationToken                                      cancellationToken = default
     ) =>
         ExecuteAsync
         (
@@ -842,25 +842,25 @@ public sealed class MCPProjectTools
     [Description("替换枚举状态属性配置")]
     public Task<ProjectStateAttribute> ConfigureEnumStateAttributeAsync
     (
-        [Description("项目 ID")]     long          projectID,
-        [Description("枚举状态属性 ID")] long          attributeID,
-        [Description("枚举选项，至少一项")] string[]      options,
-        [Description("系统驱动时的触发时机；留空时保持不变")] SystemTrigger? trigger           = null,
-        [Description("驱动方式；留空时保持不变")] Driver?        driver            = null,
+        [Description("项目 ID")]              long           projectID,
+        [Description("枚举状态属性 ID")]          long           attributeID,
+        [Description("枚举选项，至少一项")]          string[]       options,
+        [Description("系统驱动时的触发时机；留空时保持不变")] SystemTrigger? trigger = null,
+        [Description("驱动方式；留空时保持不变")]       Driver?        driver  = null,
         [Description("各枚举选项的配置；叙事驱动时填写 option 和 changeRules")]
-        MCPEnumStateTransition[]? transitions       = null,
-        CancellationToken                        cancellationToken = default
+        MCPEnumStateTransition[]? transitions = null,
+        CancellationToken cancellationToken = default
     ) =>
         ExecuteAsync
         (
             new { projectID, attributeID, options, trigger, driver, transitions },
             async () =>
             {
-                var snapshot = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
+                var snapshot  = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
                 var attribute = GetRequiredProjectStateAttribute(snapshot, attributeID);
                 EnsureStateValueType(attribute, StateValueType.Enum);
-                var values = NormalizeEnumOptions(options);
-                var resolvedDriver = driver ?? attribute.Driver;
+                var values          = NormalizeEnumOptions(options);
+                var resolvedDriver  = driver  ?? attribute.Driver;
                 var resolvedTrigger = trigger ?? GetSystemTrigger(attribute);
                 var enumTransitions = transitions is null ?
                                           attribute.Configuration.Transitions?
@@ -927,11 +927,11 @@ public sealed class MCPProjectTools
             new { projectID, attributeID, transitions },
             async () =>
             {
-                var snapshot = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
+                var snapshot  = await GetRequiredProjectSnapshotAsync(projectID, cancellationToken);
                 var attribute = GetRequiredProjectStateAttribute(snapshot, attributeID);
                 EnsureStateValueType(attribute, StateValueType.Enum);
 
-                var options = attribute.Configuration.Options ?? [];
+                var options         = attribute.Configuration.Options ?? [];
                 var enumTransitions = ToEnumTransitions(options, transitions, attribute.Driver);
 
                 ValidateEnumTransitionAttributes
@@ -1103,7 +1103,7 @@ public sealed class MCPProjectTools
         long                   attributeID
     ) =>
         snapshot.StateAttributes.FirstOrDefault(attribute => attribute.ID == attributeID) ??
-               throw new InvalidOperationException($"状态属性不存在: ID={attributeID}");
+        throw new InvalidOperationException($"状态属性不存在: ID={attributeID}");
 
     private async Task<KnowledgeEntry> GetRequiredKnowledgeEntryAsync
     (
@@ -1161,9 +1161,9 @@ public sealed class MCPProjectTools
 
     private static List<EnumTransitionConfig> ToEnumTransitions
     (
-        IReadOnlyCollection<string>        options,
+        IReadOnlyCollection<string>          options,
         IEnumerable<MCPEnumStateTransition>? transitions,
-        Driver                              driver
+        Driver                               driver
     )
     {
         EnsureDriver(driver);
@@ -1185,11 +1185,11 @@ public sealed class MCPProjectTools
 
     private static List<EnumTransitionConfig> EnsureSystemEnumTransitions
     (
-        IReadOnlyCollection<string>        options,
+        IReadOnlyCollection<string>         options,
         IReadOnlyList<EnumTransitionConfig> transitions
     )
     {
-        var values = transitions.ToList();
+        var values            = transitions.ToList();
         var configuredOptions = values.Select(transition => transition.Option).ToHashSet(StringComparer.Ordinal);
 
         foreach (var option in options)
@@ -1207,31 +1207,32 @@ public sealed class MCPProjectTools
     (
         IEnumerable<EnumTransitionConfig>    transitions,
         IReadOnlyList<ProjectStateAttribute> attributes,
-        string                                attributeName,
-        StateScope                            scope,
-        long?                                 categoryID,
-        long?                                 attributeID
+        string                               attributeName,
+        StateScope                           scope,
+        long?                                categoryID,
+        long?                                attributeID
     )
     {
         foreach (var transition in transitions.Where(transition => transition.Method == EnumTransitionMethod.Expression))
         {
             var referencedAttribute = attributes.FirstOrDefault
-            (
-                candidate =>
-                    candidate.ID != attributeID &&
-                    candidate.Name == transition.AttributeName &&
-                    candidate.Name != attributeName &&
-                    candidate.ValueType == StateValueType.Numeric &&
-                    candidate.Scope == scope &&
-                    candidate.CategoryID == categoryID
+            (candidate =>
+                 candidate.ID         != attributeID              &&
+                 candidate.Name       == transition.AttributeName &&
+                 candidate.Name       != attributeName            &&
+                 candidate.ValueType  == StateValueType.Numeric   &&
+                 candidate.Scope      == scope                    &&
+                 candidate.CategoryID == categoryID
             );
 
             if (referencedAttribute is null)
+            {
                 throw new ArgumentException
                 (
                     $"表达式转移关联属性 {transition.AttributeName} 不存在或不属于同一作用域",
                     nameof(transitions)
                 );
+            }
         }
     }
 
@@ -1248,8 +1249,10 @@ public sealed class MCPProjectTools
         {
             return new EnumTransitionConfig
             {
-                Option      = option,
-                ChangeRules = string.IsNullOrWhiteSpace(transition.ChangeRules) ? null : transition.ChangeRules
+                Option = option,
+                ChangeRules = string.IsNullOrWhiteSpace(transition.ChangeRules) ?
+                                  null :
+                                  transition.ChangeRules
             };
         }
 

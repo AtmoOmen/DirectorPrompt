@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
+
 namespace DirectorPrompt.Domain.Models;
 
 public enum ProjectContentAction
@@ -145,13 +146,13 @@ public sealed record ProjectKnowledgeGroup
 
 public sealed record ProjectStateAttribute
 (
-    long                 ID,
-    long                 ProjectID,
-    string               Name,
-    string               DisplayName,
-    StateScope           Scope,
+    long       ID,
+    long       ProjectID,
+    string     Name,
+    string     DisplayName,
+    StateScope Scope,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)]
-    long?                CategoryID,
+    long? CategoryID,
     StateValueType       ValueType,
     Driver               Driver,
     StateAttributeConfig Configuration

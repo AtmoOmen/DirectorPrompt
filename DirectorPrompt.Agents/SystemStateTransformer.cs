@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
 using System.Globalization;
+using System.Text.Json;
 using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
@@ -18,7 +18,7 @@ public sealed class SystemStateTransformer
     IExpressionEngine    expressionEngine
 ) : ISystemStateTransformer
 {
-    private readonly ConcurrentDictionary<(long SessionID, long AttributeID, long? CharacterID, string Option), bool> onceTriggered = new();
+    private readonly ConcurrentDictionary<(long SessionID, long AttributeID, long? CharacterID, string Option), bool> onceTriggered        = new();
     private readonly ConcurrentDictionary<(long SessionID, long AttributeID, long? CharacterID, string RuleID), bool> numericOnceTriggered = new();
 
     public async Task ExecuteAsync
@@ -212,7 +212,7 @@ public sealed class SystemStateTransformer
                          null :
                          JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
 
-        if (config?.NumericChanges.Count is not > 0 ||
+        if (config?.NumericChanges.Count is not > 0                                                               ||
             !float.TryParse(currentValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var initialValue) ||
             !float.IsFinite(initialValue))
             return;
@@ -229,7 +229,7 @@ public sealed class SystemStateTransformer
             var ruleID = string.IsNullOrWhiteSpace(change.ID) ?
                              index.ToString(CultureInfo.InvariantCulture) :
                              change.ID;
-            var key = (sessionID, attr.ID, characterID, ruleID);
+            var key   = (sessionID, attr.ID, characterID, ruleID);
             var isMet = EvaluateNumericChangeCondition(change, stateValues, newValue);
 
             if (!isMet)
@@ -238,18 +238,19 @@ public sealed class SystemStateTransformer
                 continue;
             }
 
-            if (change.SwitchMode == EnumSwitchMode.Once &&
-                numericOnceTriggered.TryGetValue(key, out var triggered) && triggered)
+            if (change.SwitchMode == EnumSwitchMode.Once                 &&
+                numericOnceTriggered.TryGetValue(key, out var triggered) &&
+                triggered)
                 continue;
 
             try
             {
                 newValue = expressionEngine.EvaluateNumeric
-                           (
-                               change.ChangeExpression,
-                               newValue.ToString(CultureInfo.InvariantCulture)
-                           );
-                newValue = ClampNumericValue(newValue, config);
+                (
+                    change.ChangeExpression,
+                    newValue.ToString(CultureInfo.InvariantCulture)
+                );
+                newValue                  = ClampNumericValue(newValue, config);
                 numericOnceTriggered[key] = change.SwitchMode == EnumSwitchMode.Once;
             }
             catch (Exception ex)
@@ -297,8 +298,8 @@ public sealed class SystemStateTransformer
     private bool EvaluateNumericChangeCondition
     (
         NumericStateChangeRuleConfig change,
-        Dictionary<string, string>    stateValues,
-        float                          currentValue
+        Dictionary<string, string>   stateValues,
+        float                        currentValue
     )
     {
         var value = currentValue.ToString(CultureInfo.InvariantCulture);

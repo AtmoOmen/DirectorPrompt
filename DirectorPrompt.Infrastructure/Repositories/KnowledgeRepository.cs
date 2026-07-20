@@ -113,7 +113,7 @@ public sealed class KnowledgeRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<IReadOnlyList<KnowledgeEntry>> GetEntriesByIdsAsync
@@ -142,7 +142,7 @@ public sealed class KnowledgeRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
     }
 
@@ -185,7 +185,7 @@ public sealed class KnowledgeRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
     }
 
@@ -510,6 +510,6 @@ public sealed class KnowledgeRepository
                               .Take(topK)
                               .ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 }

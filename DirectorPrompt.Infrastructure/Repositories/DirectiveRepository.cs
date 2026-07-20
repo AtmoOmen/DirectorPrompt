@@ -37,7 +37,7 @@ public sealed class DirectiveRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<ActiveDirective> AddAsync
@@ -256,6 +256,6 @@ public sealed class DirectiveRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 }

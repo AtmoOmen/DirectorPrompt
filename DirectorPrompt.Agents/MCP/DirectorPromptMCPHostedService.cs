@@ -59,9 +59,9 @@ public sealed class DirectorPromptMCPHostedService
                                 Params: not null
                             } request)
                         {
-                            using var lease = await toolCallLimiter.AcquireAsync(1, cancelToken);
-                            var toolName  = request.Params["name"]?.GetValue<string>();
-                            var arguments = request.Params["arguments"]?.ToJsonString();
+                            using var lease     = await toolCallLimiter.AcquireAsync(1, cancelToken);
+                            var       toolName  = request.Params["name"]?.GetValue<string>();
+                            var       arguments = request.Params["arguments"]?.ToJsonString();
 
                             if (!lease.IsAcquired)
                             {

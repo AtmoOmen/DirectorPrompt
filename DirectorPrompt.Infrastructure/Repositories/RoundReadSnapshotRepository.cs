@@ -153,6 +153,6 @@ public sealed class RoundReadSnapshotRepository
                     CharacterRelations  = relations
                 };
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 }

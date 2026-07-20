@@ -24,7 +24,7 @@ public sealed class MemoryRepository
                         cancellationToken: token
                     )
                 ),
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<IReadOnlyList<MemoryEntry>> GetPendingIndexEntriesAsync
@@ -96,7 +96,7 @@ public sealed class MemoryRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
     }
 
@@ -140,7 +140,7 @@ public sealed class MemoryRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<MemoryPage> GetPageAsync
@@ -215,7 +215,7 @@ public sealed class MemoryRepository
                         null
                 );
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<MemoryEntry> CreateAsync
@@ -720,7 +720,7 @@ public sealed class MemoryRepository
                        .Take(topK)
                        .ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     private sealed class MergeSourceMetadata

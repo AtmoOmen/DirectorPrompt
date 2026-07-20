@@ -6,7 +6,6 @@ using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
-using DirectorPrompt.Infrastructure;
 using Microsoft.Data.Sqlite;
 
 namespace DirectorPrompt.Infrastructure.Services;
@@ -113,7 +112,7 @@ public sealed class ProjectContentService
                     states
                 );
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public async Task<ProjectBlueprintResult> CreateProjectAsync
@@ -286,15 +285,15 @@ public sealed class ProjectContentService
                        throw new InvalidOperationException($"项目不存在: ID={projectID}");
 
         return await UpdateProjectAsync
-        (
-            snapshot.Project with
-            {
-                Name           = patch.Name           ?? snapshot.Project.Name,
-                Description    = patch.Description    ?? snapshot.Project.Description,
-                OpeningMessage = patch.OpeningMessage ?? snapshot.Project.OpeningMessage
-            },
-            cancellationToken
-        );
+               (
+                   snapshot.Project with
+                   {
+                       Name = patch.Name                     ?? snapshot.Project.Name,
+                       Description = patch.Description       ?? snapshot.Project.Description,
+                       OpeningMessage = patch.OpeningMessage ?? snapshot.Project.OpeningMessage
+                   },
+                   cancellationToken
+               );
     }
 
     public async Task<ProjectDeleteSummary> DeleteProjectAsync(long projectID, CancellationToken cancellationToken = default)
@@ -416,18 +415,18 @@ public sealed class ProjectContentService
                     throw new InvalidOperationException($"知识分组不存在: ID={groupID}");
 
         return await ManageKnowledgeGroupAsync
-        (
-            projectID,
-            ProjectContentAction.Update,
-            group with
-            {
-                Name        = patch.Name        ?? group.Name,
-                Description = patch.Description ?? group.Description,
-                Active      = patch.Active      ?? group.Active
-            },
-            groupID,
-            cancellationToken
-        );
+               (
+                   projectID,
+                   ProjectContentAction.Update,
+                   group with
+                   {
+                       Name = patch.Name               ?? group.Name,
+                       Description = patch.Description ?? group.Description,
+                       Active = patch.Active           ?? group.Active
+                   },
+                   groupID,
+                   cancellationToken
+               );
     }
 
     public async Task<KnowledgeEntry> ManageKnowledgeEntryAsync
@@ -563,20 +562,22 @@ public sealed class ProjectContentService
                     throw new InvalidOperationException($"知识条目不存在: ID={entryID}");
 
         return await ManageKnowledgeEntryAsync
-        (
-            projectID,
-            ProjectContentAction.Update,
-            entry with
-            {
-                Remarks = patch.Remarks ?? entry.Remarks,
-                Content  = patch.Content  ?? entry.Content,
-                Keywords = patch.Keywords ?? entry.Keywords,
-                GroupID  = patch.MoveToUngrouped == true ? null : patch.GroupID ?? entry.GroupID,
-                Active   = patch.Active ?? entry.Active
-            },
-            entryID,
-            cancellationToken
-        );
+               (
+                   projectID,
+                   ProjectContentAction.Update,
+                   entry with
+                   {
+                       Remarks = patch.Remarks   ?? entry.Remarks,
+                       Content = patch.Content   ?? entry.Content,
+                       Keywords = patch.Keywords ?? entry.Keywords,
+                       GroupID = patch.MoveToUngrouped == true ?
+                                     null :
+                                     patch.GroupID ?? entry.GroupID,
+                       Active = patch.Active ?? entry.Active
+                   },
+                   entryID,
+                   cancellationToken
+               );
     }
 
     public async Task<CharacterCategory> ManageCharacterCategoryAsync
@@ -675,18 +676,18 @@ public sealed class ProjectContentService
                        throw new InvalidOperationException($"人物分类不存在: ID={categoryID}");
 
         return await ManageCharacterCategoryAsync
-        (
-            projectID,
-            ProjectContentAction.Update,
-            category with
-            {
-                Name              = patch.Name              ?? category.Name,
-                Description       = patch.Description       ?? category.Description,
-                ParentCategoryIDs = patch.ParentCategoryIDs ?? category.ParentCategoryIDs
-            },
-            categoryID,
-            cancellationToken
-        );
+               (
+                   projectID,
+                   ProjectContentAction.Update,
+                   category with
+                   {
+                       Name = patch.Name                           ?? category.Name,
+                       Description = patch.Description             ?? category.Description,
+                       ParentCategoryIDs = patch.ParentCategoryIDs ?? category.ParentCategoryIDs
+                   },
+                   categoryID,
+                   cancellationToken
+               );
     }
 
     public async Task<StateAttribute> ManageStateAttributeAsync
@@ -751,49 +752,52 @@ public sealed class ProjectContentService
         var scope = patch.Scope ?? attribute.Scope;
 
         return await ManageStateAttributeAsync
-        (
-            projectID,
-            ProjectContentAction.Update,
-            new StateAttributeDefinition
-            {
-                Name        = patch.Name        ?? attribute.Name,
-                DisplayName = patch.DisplayName ?? attribute.DisplayName,
-                Scope       = scope,
-                CategoryID = scope == StateScope.Global ?
-                                 null :
-                                 patch.CategoryID ?? attribute.CategoryID,
-                ValueType   = patch.ValueType   ?? attribute.ValueType,
-                Driver      = patch.Driver      ?? attribute.Driver,
-                Numeric = patch.Numeric ?? new NumericStateDefinition
-                {
-                    Min         = config.Min,
-                    Max         = config.Max,
-                    Initial     = config.Initial,
-                    Unit        = config.Unit,
-                    ChangeRules = config.ChangeRules,
-                    Changes     = config.NumericChanges
-                },
-                Enumeration = patch.Enumeration ?? new EnumStateDefinition
-                {
-                    Options     = config.Options ?? [],
-                    Trigger     = trigger,
-                    Transitions = config.Transitions ?? []
-                },
-                Phases = patch.Phases ?? config.Phases.Select
-                (phase => new PhaseDefinition
-                    {
-                        Name              = phase.Name,
-                        Expression        = phase.Expression,
-                        KnowledgeEntryIDs = [.. phase.KnowledgeIDs],
-                        KnowledgeGroupIDs = [.. phase.KnowledgeGroupIDs],
-                        EnterDirectives   = [.. phase.EnterDirectives],
-                        ExitDirectives    = [.. phase.ExitDirectives]
-                    }
-                ).ToList()
-            },
-            attributeID,
-            cancellationToken
-        );
+               (
+                   projectID,
+                   ProjectContentAction.Update,
+                   new StateAttributeDefinition
+                   {
+                       Name        = patch.Name        ?? attribute.Name,
+                       DisplayName = patch.DisplayName ?? attribute.DisplayName,
+                       Scope       = scope,
+                       CategoryID = scope == StateScope.Global ?
+                                        null :
+                                        patch.CategoryID ?? attribute.CategoryID,
+                       ValueType = patch.ValueType ?? attribute.ValueType,
+                       Driver    = patch.Driver    ?? attribute.Driver,
+                       Numeric = patch.Numeric ??
+                                 new NumericStateDefinition
+                                 {
+                                     Min         = config.Min,
+                                     Max         = config.Max,
+                                     Initial     = config.Initial,
+                                     Unit        = config.Unit,
+                                     ChangeRules = config.ChangeRules,
+                                     Changes     = config.NumericChanges
+                                 },
+                       Enumeration = patch.Enumeration ??
+                                     new EnumStateDefinition
+                                     {
+                                         Options     = config.Options ?? [],
+                                         Trigger     = trigger,
+                                         Transitions = config.Transitions ?? []
+                                     },
+                       Phases = patch.Phases ??
+                                config.Phases.Select
+                                (phase => new PhaseDefinition
+                                    {
+                                        Name              = phase.Name,
+                                        Expression        = phase.Expression,
+                                        KnowledgeEntryIDs = [.. phase.KnowledgeIDs],
+                                        KnowledgeGroupIDs = [.. phase.KnowledgeGroupIDs],
+                                        EnterDirectives   = [.. phase.EnterDirectives],
+                                        ExitDirectives    = [.. phase.ExitDirectives]
+                                    }
+                                ).ToList()
+                   },
+                   attributeID,
+                   cancellationToken
+               );
     }
 
     private async Task<KnowledgeGroup> DeleteKnowledgeGroupAsync(long projectID, long groupID, CancellationToken cancellationToken) =>
@@ -1137,7 +1141,7 @@ public sealed class ProjectContentService
                             definition.Scope;
             var resolvedCategoryID = categoryID ?? definition.CategoryID;
             var config             = JsonSerializer.Serialize(BuildConfig(definition, groupIDs, entryIDs), JsonOptions.Compact);
-            var driver = definition.Driver;
+            var driver             = definition.Driver;
 
             await connection.ExecuteAsync
             (
@@ -1580,16 +1584,16 @@ public sealed class ProjectContentService
 
         return new StateAttributeConfig
         {
-            Min         = numeric?.Min,
-            Max         = numeric?.Max,
-            Initial     = numeric?.Initial,
-            Unit        = numeric?.Unit,
-            ChangeRules = numeric?.ChangeRules,
+            Min            = numeric?.Min,
+            Max            = numeric?.Max,
+            Initial        = numeric?.Initial,
+            Unit           = numeric?.Unit,
+            ChangeRules    = numeric?.ChangeRules,
             NumericChanges = numeric?.Changes ?? [],
-            Options     = enumeration?.Options,
-            Trigger     = enumeration?.Trigger.ToString(),
-            Transitions = enumeration?.Transitions,
-            Phases      = phases
+            Options        = enumeration?.Options,
+            Trigger        = enumeration?.Trigger.ToString(),
+            Transitions    = enumeration?.Transitions,
+            Phases         = phases
         };
     }
 
@@ -1658,7 +1662,7 @@ public sealed class ProjectContentService
                 if (found is null)
                     throw new InvalidOperationException($"记录不存在或不属于项目: {table}/{id}");
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     private async Task ValidateKnowledgeGroupAsync(long projectID, long? groupID, CancellationToken cancellationToken)

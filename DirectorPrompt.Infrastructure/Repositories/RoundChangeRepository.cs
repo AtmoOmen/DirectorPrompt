@@ -129,7 +129,7 @@ public sealed class RoundChangeRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task RollbackRoundAsync

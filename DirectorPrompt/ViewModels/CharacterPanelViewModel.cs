@@ -130,15 +130,15 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
     private void OnSelectionItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(CategorySelectionItem.IsSelected))
-        {
             UpdateParentCategoriesText();
-        }
     }
 
     private void UpdateParentCategoriesText()
     {
         var selected = AvailableParentCategories.Where(i => i.IsSelected).Select(i => i.Name).ToList();
-        ParentCategoriesText = selected.Count > 0 ? string.Join(", ", selected) : string.Empty;
+        ParentCategoriesText = selected.Count > 0 ?
+                                   string.Join(", ", selected) :
+                                   string.Empty;
     }
 
     public CharacterCategory ToModel(long projectID)

@@ -151,11 +151,13 @@ public sealed partial class ProjectEditViewModel
         if (config is null)
             return;
 
-        vm.MinValue    = config.Min;
-        vm.MaxValue    = config.Max;
+        vm.MinValue     = config.Min;
+        vm.MaxValue     = config.Max;
         vm.InitialValue = config.Initial;
-        vm.Unit        = config.Unit        ?? string.Empty;
-        vm.ChangeRules = vm.ValueType == StateValueType.Numeric ? config.ChangeRules ?? string.Empty : string.Empty;
+        vm.Unit         = config.Unit ?? string.Empty;
+        vm.ChangeRules = vm.ValueType == StateValueType.Numeric ?
+                             config.ChangeRules ?? string.Empty :
+                             string.Empty;
 
         foreach (var change in config.NumericChanges)
         {
@@ -163,7 +165,9 @@ public sealed partial class ProjectEditViewModel
             (
                 new NumericStateChangeRuleEditViewModel
                 {
-                    ID               = string.IsNullOrWhiteSpace(change.ID) ? Guid.NewGuid().ToString("N") : change.ID,
+                    ID = string.IsNullOrWhiteSpace(change.ID) ?
+                             Guid.NewGuid().ToString("N") :
+                             change.ID,
                     Remarks          = change.Remarks,
                     AttributeName    = change.AttributeName,
                     Expression       = change.Expression,
@@ -470,8 +474,10 @@ public sealed partial class ProjectEditViewModel
                 }
 
                 foreach (var attribute in StateAttributes)
+                {
                     if (!await SaveStateAttributeIfChangedAsync(attribute))
                         return;
+                }
 
                 foreach (var category in CharacterCategories)
                 {
@@ -484,8 +490,10 @@ public sealed partial class ProjectEditViewModel
                     }
 
                     foreach (var attribute in category.StateAttributes)
+                    {
                         if (!await SaveStateAttributeIfChangedAsync(attribute))
                             return;
+                    }
                 }
 
                 ProjectContentService.NotifyProjectChanged(projectID);
@@ -818,7 +826,7 @@ public sealed partial class ProjectEditViewModel
                                  null,
                 ValueType = attribute.ValueType,
                 Driver    = attribute.Driver,
-                Config = attribute.BuildConfig()
+                Config    = attribute.BuildConfig()
             };
 
             await stateRepository.UpdateAttributeAsync(model);

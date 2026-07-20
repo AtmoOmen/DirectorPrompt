@@ -24,7 +24,7 @@ public sealed class SceneRepository
                         cancellationToken: token
                     )
                 ),
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<IReadOnlyList<Scene>> GetBySessionAsync
@@ -48,7 +48,7 @@ public sealed class SceneRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<Scene?> GetActiveSceneAsync(long sessionID, CancellationToken cancellationToken = default) =>
@@ -64,7 +64,7 @@ public sealed class SceneRepository
                         cancellationToken: token
                     )
                 ),
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<IReadOnlyList<Scene>> GetOrderedByTimelineAsync
@@ -88,7 +88,7 @@ public sealed class SceneRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<Scene> CreateAsync(Scene scene, long sessionID, long roundID, CancellationToken cancellationToken = default) =>
@@ -331,6 +331,6 @@ public sealed class SceneRepository
                                                  cancellationToken: token
                                              )
                                          ),
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 }

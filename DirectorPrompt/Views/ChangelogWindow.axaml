@@ -18,20 +18,23 @@
                         <GradientStop Offset="1" Color="#00B4D8" />
                     </LinearGradientBrush>
                 </Border.Background>
-                <fa:FASymbolIcon Symbol="Document" FontSize="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <fa:FASymbolIcon Symbol="Document" FontSize="18" Foreground="White" HorizontalAlignment="Center"
+                                 VerticalAlignment="Center" />
             </Border>
             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                <TextBlock Text="更新日志" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                <TextBlock Text="查看当前版本的新增功能和优化内容" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                <TextBlock Text="更新日志" FontSize="16" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                <TextBlock Text="查看当前版本的新增功能和优化内容" FontSize="12"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
             </StackPanel>
         </Grid>
 
         <!-- 主内容区：使用漂亮的卡片 Border 包裹 LiveMarkdownView -->
-        <Border Grid.Row="1" CornerRadius="8" 
-                Background="{DynamicResource ContentDialogBackground}" 
-                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" 
-                BorderThickness="1" 
-                Padding="16" 
+        <Border Grid.Row="1" CornerRadius="8"
+                Background="{DynamicResource ContentDialogBackground}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Padding="16"
                 BoxShadow="0 4 16 0 #15000000">
             <ScrollViewer>
                 <components:LiveMarkdownView x:Name="ChangelogViewer" />
@@ -41,9 +44,9 @@
         <!-- 底部按钮区 -->
         <Grid Grid.Row="2" Margin="0,16,0,0">
             <Button HorizontalAlignment="Right"
-                    Content="关闭" 
+                    Content="关闭"
                     Classes="accent"
-                    MinWidth="90" 
+                    MinWidth="90"
                     Click="OnCloseClick" />
         </Grid>
     </Grid>

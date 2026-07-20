@@ -153,9 +153,9 @@ public sealed class SQLiteDatabaseScheduler : IAsyncDisposable
                 return await foregroundQueue.Reader.WaitToReadAsync(shutdownSource.Token);
 
             using var waitCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdownSource.Token);
-            var foregroundWait  = foregroundQueue.Reader.WaitToReadAsync(waitCancellation.Token).AsTask();
-            var maintenanceWait = maintenanceQueue.Reader.WaitToReadAsync(waitCancellation.Token).AsTask();
-            var completedWait   = await Task.WhenAny(foregroundWait, maintenanceWait);
+            var       foregroundWait   = foregroundQueue.Reader.WaitToReadAsync(waitCancellation.Token).AsTask();
+            var       maintenanceWait  = maintenanceQueue.Reader.WaitToReadAsync(waitCancellation.Token).AsTask();
+            var       completedWait    = await Task.WhenAny(foregroundWait, maintenanceWait);
 
             waitCancellation.Cancel();
 

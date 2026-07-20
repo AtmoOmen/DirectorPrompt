@@ -24,7 +24,7 @@ public sealed class ProjectRepository
                         cancellationToken: token
                     )
                 ),
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<IReadOnlyList<Project>> GetAllAsync(CancellationToken cancellationToken = default) =>
@@ -43,7 +43,7 @@ public sealed class ProjectRepository
 
                 return rows.ToList();
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 
     public Task<Project> CreateAsync(Project project, CancellationToken cancellationToken = default) =>

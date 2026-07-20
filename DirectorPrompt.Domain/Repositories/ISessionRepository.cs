@@ -10,9 +10,9 @@ public interface ISessionRepository
 
     Task<Session> CreateAsync
     (
-        Session                   session,
+        Session                    session,
         IReadOnlyList<StateValue>? initialStateValues = null,
-        CancellationToken         cancellationToken = default
+        CancellationToken          cancellationToken  = default
     );
 
     Task UpdateAsync(Session session, CancellationToken cancellationToken = default);

@@ -47,11 +47,11 @@ public sealed class ExpressionEngine : IExpressionEngine
     private static object? EvaluateExpression(string expression, object currentValue)
     {
         var evaluator = new Expression
-                        (
-                            expression.Replace("{val}", "[val]")
-                                      .Replace(" AND ", " && ")
-                                      .Replace(" OR ", " || ")
-                        );
+        (
+            expression.Replace("{val}", "[val]")
+                      .Replace(" AND ", " && ")
+                      .Replace(" OR ",  " || ")
+        );
         evaluator.Parameters["val"] = currentValue;
 
         return evaluator.Evaluate();
@@ -60,10 +60,8 @@ public sealed class ExpressionEngine : IExpressionEngine
     private static (int Index, char Operation)? FindAssignment(string expression)
     {
         for (var i = 1; i < expression.Length; i++)
-        {
             if (expression[i] == '=' && expression[i - 1] is '+' or '-' or '*' or '/' or '%')
                 return (i, expression[i - 1]);
-        }
 
         return null;
     }

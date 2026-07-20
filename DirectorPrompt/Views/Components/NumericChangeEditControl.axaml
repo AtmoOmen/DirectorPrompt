@@ -48,21 +48,25 @@
                         </Expander.Header>
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                                <TextBlock Text="{Binding [State.NumericChange.Remarks], Source={x:Static loc:Loc.Instance}}" />
-                                <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0,0,0" />
+                                <TextBlock
+                                    Text="{Binding [State.NumericChange.Remarks], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
                             </StackPanel>
                             <TextBox Text="{Binding Remarks}" />
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                                <TextBlock Text="{Binding [State.NumericChange.Attribute], Source={x:Static loc:Loc.Instance}}" />
-                                <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0,0,0" />
+                                <TextBlock
+                                    Text="{Binding [State.NumericChange.Attribute], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock
+                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
                             </StackPanel>
                             <Grid ColumnDefinitions="*,Auto">
                                 <components:PathComboBox
@@ -79,42 +83,50 @@
                                 </Button>
                             </Grid>
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                                <TextBlock Text="{Binding [State.NumericChange.Condition], Source={x:Static loc:Loc.Instance}}" />
-                                <TextBlock Text="{Binding [State.NumericChange.ValueHelp], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0,0,0" />
-                                <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0,0,0" />
+                                <TextBlock
+                                    Text="{Binding [State.NumericChange.Condition], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock
+                                    Text="{Binding [State.NumericChange.ValueHelp], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                                <TextBlock
+                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
                             </StackPanel>
                             <TextBox Text="{Binding Expression}"
                                      PlaceholderText="{Binding [State.NumericChange.ConditionPlaceholder], Source={x:Static loc:Loc.Instance}}" />
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                                <TextBlock Text="{Binding [State.NumericChange.Expression], Source={x:Static loc:Loc.Instance}}" />
-                                <TextBlock Text="{Binding [State.NumericChange.ValueHelp], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0,0,0" />
-                                <TextBlock Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0,0,0" />
+                                <TextBlock
+                                    Text="{Binding [State.NumericChange.Expression], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock
+                                    Text="{Binding [State.NumericChange.ValueHelp], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                                <TextBlock
+                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
                             </StackPanel>
                             <TextBox Text="{Binding ChangeExpression}"
                                      PlaceholderText="{Binding [State.NumericChange.ExpressionPlaceholder], Source={x:Static loc:Loc.Instance}}" />
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                                <TextBlock Text="{Binding [State.NumericChange.Trigger], Source={x:Static loc:Loc.Instance}}" />
-                                <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0,0,0" />
+                                <TextBlock
+                                    Text="{Binding [State.NumericChange.Trigger], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
                             </StackPanel>
                             <components:PathComboBox
                                 ItemsSource="{Binding SystemTriggers, Source={x:Static vm:EnumOptions.Instance}}"
@@ -123,12 +135,14 @@
                                 DisplayMemberPath="Display"
                                 HorizontalAlignment="Stretch" />
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                                <TextBlock Text="{Binding [State.NumericChange.ApplyMode], Source={x:Static loc:Loc.Instance}}" />
-                                <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0,0,0" />
+                                <TextBlock
+                                    Text="{Binding [State.NumericChange.ApplyMode], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
                             </StackPanel>
                             <components:PathComboBox
                                 ItemsSource="{Binding NumericChangeSwitchModes, Source={x:Static vm:EnumOptions.Instance}}"

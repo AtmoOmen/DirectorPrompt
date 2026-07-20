@@ -4,7 +4,6 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using LiveMarkdown.Avalonia;
 using Markdig.Syntax;
-using Microsoft.AspNetCore.Components.RenderTree;
 
 namespace DirectorPrompt.Views.Components;
 

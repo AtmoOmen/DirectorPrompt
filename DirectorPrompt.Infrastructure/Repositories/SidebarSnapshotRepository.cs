@@ -54,6 +54,6 @@ public sealed class SidebarSnapshotRepository
                 var directives = (await grid.ReadAsync<ActiveDirective>()).ToList();
                 return new SidebarSnapshot(sceneLabel, states, directives);
             },
-            cancellationToken: cancellationToken
+            cancellationToken
         );
 }

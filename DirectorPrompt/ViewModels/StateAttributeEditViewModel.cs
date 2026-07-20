@@ -150,8 +150,10 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
         var transitions = Transitions.Select
         (t => new EnumTransitionConfig
             {
-                Option        = t.Option,
-                ChangeRules   = Driver == Driver.Narrative && !string.IsNullOrWhiteSpace(t.ChangeRules) ? t.ChangeRules : null,
+                Option = t.Option,
+                ChangeRules = Driver == Driver.Narrative && !string.IsNullOrWhiteSpace(t.ChangeRules) ?
+                                  t.ChangeRules :
+                                  null,
                 Method        = t.Method,
                 Weight        = t.Weight,
                 AttributeName = t.AttributeName,
@@ -175,16 +177,18 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
 
         var dto = new StateAttributeConfig
         {
-            Min         = MinValue,
-            Max         = MaxValue,
-            Initial     = InitialValue,
-            Unit        = Unit,
-            ChangeRules = ValueType == StateValueType.Numeric ? ChangeRules : null,
+            Min     = MinValue,
+            Max     = MaxValue,
+            Initial = InitialValue,
+            Unit    = Unit,
+            ChangeRules = ValueType == StateValueType.Numeric ?
+                              ChangeRules :
+                              null,
             NumericChanges = numericChanges,
-            Options     = Options.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
-            Trigger     = Trigger.ToString(),
-            Transitions = transitions,
-            Phases      = phases
+            Options        = Options.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+            Trigger        = Trigger.ToString(),
+            Transitions    = transitions,
+            Phases         = phases
         };
 
         return JsonSerializer.Serialize(dto, JsonOptions.Compact);

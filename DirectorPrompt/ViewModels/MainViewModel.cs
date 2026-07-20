@@ -39,8 +39,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IFilePickerService      filePickerService;
     private readonly IProjectContentService? projectContentService;
 
-    private readonly Lock                     projectContentChangeSync = new();
-    private readonly Dictionary<long, bool>   pendingProjectChanges    = [];
+    private readonly Lock                   projectContentChangeSync = new();
+    private readonly Dictionary<long, bool> pendingProjectChanges    = [];
 
     private bool projectContentRefreshScheduled;
 
@@ -48,7 +48,7 @@ public sealed partial class MainViewModel : ObservableObject
     private CancellationTokenSource? sessionLoadCts;
     private long?                    previousDialogRoundID;
     private long?                    selectedProjectID;
-    private bool                     isInitialLoad            = true;
+    private bool                     isInitialLoad = true;
     private bool                     isSwitchingProject;
 
     private DialogEntryViewModel? errorStreamingEntry;
@@ -88,7 +88,7 @@ public sealed partial class MainViewModel : ObservableObject
         this.userSettingsStore     = userSettingsStore;
         this.windowService         = windowService;
         this.filePickerService     = filePickerService;
-        this.LanSharingService     = lanSharingService;
+        LanSharingService          = lanSharingService;
         this.projectContentService = projectContentService;
         if (projectContentService is not null)
             projectContentService.Changed += OnProjectContentChanged;
@@ -163,7 +163,7 @@ public sealed partial class MainViewModel : ObservableObject
         lock (projectContentChangeSync)
         {
             pendingProjectChanges[change.ProjectID] = change.IsDeleted ||
-                                                     pendingProjectChanges.GetValueOrDefault(change.ProjectID);
+                                                      pendingProjectChanges.GetValueOrDefault(change.ProjectID);
 
             if (projectContentRefreshScheduled)
                 return;
@@ -257,24 +257,18 @@ public sealed partial class MainViewModel : ObservableObject
                 matchedSession = Sessions.FirstOrDefault(s => s.ID == previousID.Value);
 
             if (matchedSession is not null)
-            {
                 CurrentSession = matchedSession;
-            }
             else if (selectNewestIfNoMatch && !isInitialLoad)
             {
                 CurrentSession = Sessions.FirstOrDefault();
                 if (CurrentSession is null)
-                {
                     _ = SaveSessionStateAsync();
-                }
             }
             else
             {
                 CurrentSession = null;
                 if (!isInitialLoad)
-                {
                     _ = SaveSessionStateAsync();
-                }
             }
 
             isInitialLoad = false;
@@ -303,7 +297,7 @@ public sealed partial class MainViewModel : ObservableObject
                                          {
                                              AttributeID = attribute.ID,
                                              Value       = GetInitialStateValue(attribute),
-                                             UpdatedAt = now
+                                             UpdatedAt   = now
                                          }
                                      )
                                      .ToList();
@@ -941,9 +935,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         if (!sessionChanged && !isInitialLoad)
-        {
             _ = SaveSessionStateAsync();
-        }
     }
 
     partial void OnCurrentSessionChanged(Session? value)
@@ -962,9 +954,7 @@ public sealed partial class MainViewModel : ObservableObject
         ResetPipelineStages();
         ClearErrorState();
         if (!isSwitchingProject)
-        {
             _ = SaveSessionStateAsync();
-        }
 
         if (value is null)
         {

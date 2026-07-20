@@ -234,9 +234,7 @@ public partial class MessageRail : UserControl
         targetScrollViewer ??= TargetListBox?.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
 
         if (targetScrollViewer is not null)
-        {
             targetScrollViewer.Offset = targetScrollViewer.Offset.WithY(0);
-        }
     }
 
     private void OnGoToBottomClick(object? sender, RoutedEventArgs e)
@@ -249,6 +247,7 @@ public partial class MessageRail : UserControl
             return;
 
         var lastEntry = items[^1];
+
         if (lastEntry is DialogEntryViewModel entry)
         {
             var requestID = ++navigationRequestID;
