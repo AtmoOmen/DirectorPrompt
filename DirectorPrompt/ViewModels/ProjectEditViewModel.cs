@@ -114,6 +114,8 @@ public sealed partial class ProjectEditViewModel
 
     public async Task LoadFromProjectAsync(Project project)
     {
+        Log.Information("开始加载项目编辑数据: 项目={ProjectID}", project.ID);
+
         projectID      = project.ID;
         Name           = project.Name;
         Description    = project.Description;
@@ -125,6 +127,15 @@ public sealed partial class ProjectEditViewModel
         await LoadKnowledgeAsync();
         await LoadStateSystemAsync();
         CaptureSaveState(project);
+
+        Log.Information
+        (
+            "项目编辑数据加载完成: 项目={ProjectID}, 知识分组数={KnowledgeGroupCount}, 全局属性数={StateAttributeCount}, 人物分类数={CategoryCount}",
+            projectID,
+            KnowledgeGroups.Count,
+            StateAttributes.Count,
+            CharacterCategories.Count
+        );
     }
 
     private static KnowledgeEntryEditViewModel CreateEntryVM(KnowledgeEntry entry, string groupName) =>
@@ -249,6 +260,14 @@ public sealed partial class ProjectEditViewModel
 
             KnowledgeGroups.Add(groupVM);
         }
+
+        Log.Debug
+        (
+            "项目知识数据加载完成: 项目={ProjectID}, 知识分组数={KnowledgeGroupCount}, 知识条目数={KnowledgeEntryCount}",
+            projectID,
+            KnowledgeGroups.Count,
+            KnowledgeGroups.Sum(group => group.Entries.Count)
+        );
     }
 
     private async Task LoadStateSystemAsync()
@@ -302,6 +321,15 @@ public sealed partial class ProjectEditViewModel
         }
 
         RefreshAvailableNumericAttributes();
+
+        Log.Debug
+        (
+            "项目状态系统加载完成: 项目={ProjectID}, 全局属性数={GlobalStateAttributeCount}, 分类数={CategoryCount}, 分类属性数={CategoryStateAttributeCount}",
+            projectID,
+            StateAttributes.Count,
+            CharacterCategories.Count,
+            CharacterCategories.Sum(category => category.StateAttributes.Count)
+        );
     }
 
     private void RefreshAvailableNumericAttributes()
@@ -430,6 +458,16 @@ public sealed partial class ProjectEditViewModel
         SaveSuccess = false;
         IsSaving    = true;
 
+        Log.Information
+        (
+            "开始保存项目编辑数据: 项目={ProjectID}, 是否新建={IsNewProject}, 知识分组数={KnowledgeGroupCount}, 全局属性数={StateAttributeCount}, 分类数={CategoryCount}",
+            projectID,
+            projectID <= 0,
+            KnowledgeGroups.Count,
+            StateAttributes.Count,
+            CharacterCategories.Count
+        );
+
         try
         {
             using (ProjectContentService.BeginChangeBatch())
@@ -501,6 +539,15 @@ public sealed partial class ProjectEditViewModel
 
             SavedProjectID = projectID;
             SaveSuccess    = true;
+
+            Log.Information
+            (
+                "项目编辑数据保存完成: 项目={ProjectID}, 知识分组数={KnowledgeGroupCount}, 全局属性数={StateAttributeCount}, 分类数={CategoryCount}",
+                projectID,
+                KnowledgeGroups.Count,
+                StateAttributes.Count,
+                CharacterCategories.Count
+            );
         }
         catch (Exception ex)
         {
@@ -572,6 +619,7 @@ public sealed partial class ProjectEditViewModel
         };
 
         group?.Entries.Add(entryVM);
+        Log.Information("已新增知识条目: 项目={ProjectID}, 知识条目={KnowledgeEntryID}, 知识分组={KnowledgeGroupID}", projectID, created.ID, group?.ID);
     }
 
     [RelayCommand]
@@ -608,6 +656,14 @@ public sealed partial class ProjectEditViewModel
 
             await embeddingIndexService.IndexKnowledgeAsync([stored], embeddingConfig);
             ValidationMessage = string.Empty;
+            Log.Information
+            (
+                "知识条目已保存并建立索引: 项目={ProjectID}, 知识条目={KnowledgeEntryID}, 内容长度={ContentLength}, 关键词数={KeywordCount}",
+                projectID,
+                model.ID,
+                model.Content.Length,
+                model.Keywords.Length
+            );
         }
         catch (Exception ex)
         {
@@ -636,6 +692,7 @@ public sealed partial class ProjectEditViewModel
                 entry.ID
             );
             RemoveEntryFromGroups(entry);
+            Log.Information("知识条目已删除: 项目={ProjectID}, 知识条目={KnowledgeEntryID}", projectID, entry.ID);
         }
         catch (Exception ex)
         {
@@ -693,6 +750,7 @@ public sealed partial class ProjectEditViewModel
                 Active      = created.Active
             }
         );
+        Log.Information("已新增知识分组: 项目={ProjectID}, 知识分组={KnowledgeGroupID}", projectID, created.ID);
     }
 
     [RelayCommand]
@@ -717,6 +775,7 @@ public sealed partial class ProjectEditViewModel
                 model.ID
             );
             ValidationMessage = string.Empty;
+            Log.Information("知识分组已保存: 项目={ProjectID}, 知识分组={KnowledgeGroupID}", projectID, model.ID);
         }
         catch (Exception ex)
         {
@@ -742,6 +801,7 @@ public sealed partial class ProjectEditViewModel
                 group.ID
             );
             KnowledgeGroups.Remove(group);
+            Log.Information("知识分组已删除: 项目={ProjectID}, 知识分组={KnowledgeGroupID}", projectID, group.ID);
         }
         catch (Exception ex)
         {
@@ -788,6 +848,7 @@ public sealed partial class ProjectEditViewModel
         );
 
         RefreshAvailableNumericAttributes();
+        Log.Information("已新增全局状态属性: 项目={ProjectID}, 属性={StateAttributeID}, 名称={StateAttributeName}", projectID, created.ID, created.Name);
     }
 
     private async Task<bool> SaveStateAttributeAsync(StateAttributeEditViewModel attribute)
@@ -831,6 +892,15 @@ public sealed partial class ProjectEditViewModel
 
             await stateRepository.UpdateAttributeAsync(model);
             ValidationMessage = string.Empty;
+            Log.Information
+            (
+                "状态属性已保存: 项目={ProjectID}, 属性={StateAttributeID}, 名称={StateAttributeName}, 值类型={ValueType}, 范围={Scope}",
+                projectID,
+                model.ID,
+                model.Name,
+                model.ValueType,
+                model.Scope
+            );
             return true;
         }
         catch (Exception ex)
@@ -862,6 +932,7 @@ public sealed partial class ProjectEditViewModel
             );
             StateAttributes.Remove(attribute);
             RemoveAttributeFromCategory(attribute);
+            Log.Information("状态属性已删除: 项目={ProjectID}, 属性={StateAttributeID}", projectID, attribute.ID);
         }
         catch (Exception ex)
         {
@@ -914,6 +985,7 @@ public sealed partial class ProjectEditViewModel
         CharacterCategories.Add(vm);
 
         RefreshAvailableParentCategories();
+        Log.Information("已新增人物分类: 项目={ProjectID}, 分类={CategoryID}", projectID, created.ID);
     }
 
     [RelayCommand]
@@ -924,6 +996,7 @@ public sealed partial class ProjectEditViewModel
             var model = category.ToModel(projectID);
             await characterRepository.UpdateCategoryAsync(model);
             ValidationMessage = string.Empty;
+            Log.Information("人物分类已保存: 项目={ProjectID}, 分类={CategoryID}, 父分类数={ParentCategoryCount}", projectID, model.ID, model.ParentCategoryIDs.Length);
         }
         catch (Exception ex)
         {
@@ -955,6 +1028,7 @@ public sealed partial class ProjectEditViewModel
 
             RefreshAvailableParentCategories();
             RefreshAvailableNumericAttributes();
+            Log.Information("人物分类已删除: 项目={ProjectID}, 分类={CategoryID}", projectID, category.ID);
         }
         catch (Exception ex)
         {
@@ -1007,6 +1081,7 @@ public sealed partial class ProjectEditViewModel
         category.StateAttributes.Add(attrVM);
 
         RefreshAvailableNumericAttributes();
+        Log.Information("已新增分类状态属性: 项目={ProjectID}, 分类={CategoryID}, 属性={StateAttributeID}, 名称={StateAttributeName}", projectID, category.ID, created.ID, created.Name);
     }
 
     [RelayCommand]

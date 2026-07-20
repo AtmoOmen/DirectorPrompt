@@ -56,12 +56,17 @@ public sealed class LanSharingService
 
     public async Task ApplyAsync(bool enabled, CancellationToken cancellationToken = default)
     {
+        Log.Information("应用局域网共享配置: 请求启用={Enabled}, 当前启用={IsActive}", enabled, IsActive);
+
         await stateLock.WaitAsync(cancellationToken);
 
         try
         {
             if (enabled == IsActive)
+            {
+                Log.Debug("局域网共享状态无需变更: 已启用={IsActive}", IsActive);
                 return;
+            }
 
             if (enabled)
                 await StartAsync(cancellationToken);
@@ -76,6 +81,8 @@ public sealed class LanSharingService
 
     public async ValueTask DisposeAsync()
     {
+        Log.Information("开始释放局域网共享服务");
+
         await stateLock.WaitAsync().ConfigureAwait(false);
 
         try
@@ -86,6 +93,7 @@ public sealed class LanSharingService
         {
             stateLock.Release();
             stateLock.Dispose();
+            Log.Information("局域网共享服务已释放");
         }
     }
 
@@ -95,6 +103,14 @@ public sealed class LanSharingService
         var port             = GetAvailablePort(address, userSettings.RemoteControl.Port);
         var currentTransport = new BrowserRemoteTransport(address, port);
         currentTransport.OnException += OnTransportException;
+
+        Log.Information
+        (
+            "开始启动局域网共享: 地址={Address}, 端口={Port}, 首选端口={PreferredPort}",
+            address,
+            port,
+            userSettings.RemoteControl.Port
+        );
 
         try
         {
@@ -117,7 +133,7 @@ public sealed class LanSharingService
 
             Log.Information("局域网共享已开启: {Endpoint}", Endpoint);
         }
-        catch
+        catch (Exception exception)
         {
             if (Dispatcher.UIThread.CheckAccess())
                 DisposeRemoteVisual();
@@ -132,12 +148,14 @@ public sealed class LanSharingService
             currentTransport.OnException     -= OnTransportException;
             currentTransport.ViewportChanged -= OnRemoteViewportChanged;
             await currentTransport.DisposeAsync();
+            Log.Error(exception, "局域网共享启动失败: 地址={Address}, 端口={Port}", address, port);
             throw;
         }
     }
 
     private async Task StopAsync()
     {
+        Log.Information("开始停止局域网共享: 端点={Endpoint}", Endpoint);
         Endpoint = null;
 
         if (Dispatcher.UIThread.CheckAccess())
@@ -173,6 +191,7 @@ public sealed class LanSharingService
 
     private void DisposeRemoteVisual()
     {
+        Log.Debug("开始释放局域网远程界面");
         remoteServer?.Dispose();
         remoteServer           = null;
         remoteRoot             = null;
@@ -186,10 +205,13 @@ public sealed class LanSharingService
         remoteWindowService = null;
         remoteWindow?.DisposeRemoteVisual();
         remoteWindow = null;
+        Log.Debug("局域网远程界面已释放");
     }
 
     internal MainWindow CreateRemoteVisual(BrowserRemoteTransport currentTransport)
     {
+        Log.Information("开始创建局域网远程界面");
+
         var currentWindowService = new RemoteWindowService(serviceProvider, userSettings, this);
         var viewModel            = serviceProvider.GetRequiredService<MainViewModel>();
         remoteWindow                  = new MainWindow(viewModel, false);
@@ -230,12 +252,15 @@ public sealed class LanSharingService
         currentTransport.Start();
         remoteContent       = content;
         remoteWindowService = currentWindowService;
+        Log.Information("局域网远程界面已创建");
         return remoteWindow;
     }
 
     private void OnRemoteInteraction(object? sender, RoutedEventArgs e)
     {
         var interactionID = remoteInteractionRouter.Activate();
+
+        Log.Debug("收到局域网远程交互: 事件={EventName}, 交互={InteractionID}", e.RoutedEvent.Name, interactionID);
 
         Dispatcher.UIThread.Post
         (
@@ -248,6 +273,8 @@ public sealed class LanSharingService
     {
         if (width <= 0 || height <= 0)
             return;
+
+        Log.Debug("收到局域网远程视口变化: 宽={Width}, 高={Height}", width, height);
 
         if (Dispatcher.UIThread.CheckAccess())
         {
@@ -273,6 +300,7 @@ public sealed class LanSharingService
             return;
 
         remoteRenderingStarted = true;
+        Log.Debug("开始局域网远程界面渲染");
         Dispatcher.UIThread.Post
         (
             () => remoteRoot?.StartRendering(),

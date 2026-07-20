@@ -24,13 +24,15 @@ public static class LoggingConfiguration
                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
                .MinimumLevel.Override("System", LogEventLevel.Warning)
                .Enrich.FromLogContext()
+               .Enrich.WithProperty("Application", "DirectorPrompt")
+               .Enrich.WithProperty("ProcessID", Environment.ProcessId)
                .WriteTo.Async
                (
                    sink =>
                        sink.File
                        (
                            logPath,
-                           outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"
+                           outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"
                        ),
                    1024
                )

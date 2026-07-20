@@ -7,6 +7,7 @@ using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Data.Sqlite;
+using Serilog;
 
 namespace DirectorPrompt.Infrastructure.Services;
 
@@ -25,16 +26,24 @@ public sealed class ProjectContentService
 
     public IDisposable BeginChangeBatch()
     {
+        int batchDepth;
+
         lock (changeSync)
         {
             changeBatchDepth++;
+            batchDepth = changeBatchDepth;
         }
+
+        Log.Debug("开始项目内容变更批次: 深度={BatchDepth}", batchDepth);
 
         return new ChangeBatch(this);
     }
 
-    public void NotifyProjectChanged(long projectID, bool isDeleted = false) =>
+    public void NotifyProjectChanged(long projectID, bool isDeleted = false)
+    {
+        Log.Debug("收到项目内容变更通知: 项目={ProjectID}, 已删除={IsDeleted}", projectID, isDeleted);
         NotifyChanged(projectID, isDeleted);
+    }
 
     public Task<IReadOnlyList<Project>> ListProjectsAsync(CancellationToken cancellationToken = default) =>
         projectRepository.GetAllAsync(cancellationToken);
@@ -125,12 +134,23 @@ public sealed class ProjectContentService
         CancellationToken cancellationToken = default
     )
     {
+        Log.Information
+        (
+            "开始创建项目内容: 项目名称长度={NameLength}, 知识分组数={KnowledgeGroupCount}, 分类数={CategoryCount}, 全局属性数={StateAttributeCount}, 仅校验={DryRun}",
+            name.Length,
+            blueprint?.KnowledgeGroups.Count ?? 0,
+            blueprint?.CharacterCategories.Count ?? 0,
+            blueprint?.StateAttributes.Count ?? 0,
+            dryRun
+        );
+
         ValidateProjectName(name);
         blueprint ??= new ProjectBlueprint();
         ValidateBlueprint(blueprint);
 
         if (dryRun)
         {
+            Log.Information("项目内容校验完成, 未写入数据: 项目名称长度={NameLength}", name.Trim().Length);
             return new ProjectBlueprintResult
             (
                 new Project { Name = name.Trim(), Description = description, OpeningMessage = openingMessage },
@@ -256,11 +276,23 @@ public sealed class ProjectContentService
                      );
 
         NotifyChanged(result.Project.ID, false);
+
+        Log.Information
+        (
+            "项目内容创建完成: 项目={ProjectID}, 分类数={CategoryCount}, 知识分组数={KnowledgeGroupCount}, 知识条目数={KnowledgeEntryCount}",
+            result.Project.ID,
+            result.CategoryIDs.Count,
+            result.GroupIDs.Count,
+            result.EntryIDs.Count
+        );
+
         return result;
     }
 
     public async Task<Project> UpdateProjectAsync(Project project, CancellationToken cancellationToken = default)
     {
+        Log.Information("开始更新项目基本信息: 项目={ProjectID}, 名称长度={NameLength}", project.ID, project.Name.Length);
+
         ValidateProjectName(project.Name);
         await EnsureProjectExistsAsync(project.ID, cancellationToken);
         await projectRepository.UpdateAsync(project with { Name = project.Name.Trim() }, cancellationToken);
@@ -268,6 +300,8 @@ public sealed class ProjectContentService
                       throw new InvalidOperationException($"项目不存在: ID={project.ID}");
 
         NotifyChanged(project.ID, false);
+
+        Log.Information("项目基本信息更新完成: 项目={ProjectID}", project.ID);
         return updated;
     }
 
@@ -298,6 +332,8 @@ public sealed class ProjectContentService
 
     public async Task<ProjectDeleteSummary> DeleteProjectAsync(long projectID, CancellationToken cancellationToken = default)
     {
+        Log.Information("开始删除项目: 项目={ProjectID}", projectID);
+
         var snapshot = await GetProjectAsync(projectID, cancellationToken) ??
                        throw new InvalidOperationException($"项目不存在: ID={projectID}");
         var metrics = CountDependencies(snapshot, new HashSet<string>());
@@ -305,7 +341,7 @@ public sealed class ProjectContentService
         await projectRepository.DeleteAsync(projectID, cancellationToken);
         NotifyChanged(projectID, true);
 
-        return new ProjectDeleteSummary
+        var summary = new ProjectDeleteSummary
         (
             1,
             snapshot.KnowledgeGroups.Count,
@@ -315,6 +351,18 @@ public sealed class ProjectContentService
             metrics.Transitions,
             metrics.PhaseReferences
         );
+
+        Log.Information
+        (
+            "项目删除完成: 项目={ProjectID}, 知识分组数={KnowledgeGroupCount}, 知识条目数={KnowledgeEntryCount}, 分类数={CategoryCount}, 属性数={StateAttributeCount}",
+            projectID,
+            summary.KnowledgeGroups,
+            summary.KnowledgeEntries,
+            summary.CharacterCategories,
+            summary.StateAttributes
+        );
+
+        return summary;
     }
 
     public async Task<KnowledgeGroup> ManageKnowledgeGroupAsync
@@ -326,6 +374,14 @@ public sealed class ProjectContentService
         CancellationToken    cancellationToken = default
     )
     {
+        Log.Information
+        (
+            "管理知识分组: 项目={ProjectID}, 操作={Action}, 知识分组={KnowledgeGroupID}",
+            projectID,
+            action,
+            groupID ?? group?.ID
+        );
+
         await EnsureProjectExistsAsync(projectID, cancellationToken);
 
         switch (action)
@@ -438,6 +494,15 @@ public sealed class ProjectContentService
         CancellationToken    cancellationToken = default
     )
     {
+        Log.Information
+        (
+            "管理知识条目: 项目={ProjectID}, 操作={Action}, 知识条目={KnowledgeEntryID}, 内容长度={ContentLength}",
+            projectID,
+            action,
+            entryID ?? entry?.ID,
+            entry?.Content.Length ?? 0
+        );
+
         await EnsureProjectExistsAsync(projectID, cancellationToken);
 
         switch (action)
@@ -589,6 +654,15 @@ public sealed class ProjectContentService
         CancellationToken    cancellationToken = default
     )
     {
+        Log.Information
+        (
+            "管理人物分类: 项目={ProjectID}, 操作={Action}, 分类={CategoryID}, 父分类数={ParentCategoryCount}",
+            projectID,
+            action,
+            categoryID ?? category?.ID,
+            category?.ParentCategoryIDs.Length ?? 0
+        );
+
         await EnsureProjectExistsAsync(projectID, cancellationToken);
 
         switch (action)
@@ -699,6 +773,17 @@ public sealed class ProjectContentService
         CancellationToken         cancellationToken = default
     )
     {
+        Log.Information
+        (
+            "管理状态属性: 项目={ProjectID}, 操作={Action}, 属性={AttributeID}, 属性名称={AttributeName}, 值类型={ValueType}, 范围={Scope}",
+            projectID,
+            action,
+            attributeID,
+            definition?.Name,
+            definition?.ValueType,
+            definition?.Scope
+        );
+
         await EnsureProjectExistsAsync(projectID, cancellationToken);
 
         switch (action)
@@ -1782,12 +1867,22 @@ public sealed class ProjectContentService
             {
                 pendingChanges[projectID] = isDeleted ||
                                             pendingChanges.GetValueOrDefault(projectID);
+
+                Log.Debug
+                (
+                    "项目内容变更已合并到批次: 项目={ProjectID}, 已删除={IsDeleted}, 批次深度={BatchDepth}, 待通知项目数={PendingChangeCount}",
+                    projectID,
+                    isDeleted,
+                    changeBatchDepth,
+                    pendingChanges.Count
+                );
                 return;
             }
 
             change = new ProjectContentChange(projectID, isDeleted);
         }
 
+        Log.Debug("发布项目内容变更: 项目={ProjectID}, 已删除={IsDeleted}", projectID, isDeleted);
         Changed?.Invoke(change);
     }
 
@@ -1810,7 +1905,12 @@ public sealed class ProjectContentService
         }
 
         foreach (var change in changes)
+        {
+            Log.Debug("发布批量项目内容变更: 项目={ProjectID}, 已删除={IsDeleted}", change.ProjectID, change.IsDeleted);
             Changed?.Invoke(change);
+        }
+
+        Log.Debug("项目内容变更批次已完成: 变更项目数={ChangeCount}", changes.Length);
     }
 
     private sealed class ChangeBatch

@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Anthropic;
@@ -6,6 +7,7 @@ using Anthropic.Core;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
 using OpenAI;
+using Serilog;
 
 namespace DirectorPrompt.Infrastructure.AI;
 
@@ -20,7 +22,10 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         CancellationToken cancellationToken = default
     )
     {
+        var stopwatch          = Stopwatch.StartNew();
         var normalizedProvider = provider.ToLowerInvariant();
+
+        Log.Information("开始获取模型列表: 提供商={Provider}, Endpoint={Endpoint}", normalizedProvider, endpoint);
 
         if (normalizedProvider == "anthropic")
             throw new InvalidOperationException("Anthropic 不支持获取模型列表, 请手动输入模型名");
@@ -53,6 +58,14 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         if (models.Count == 0)
             throw new InvalidOperationException("端点没有返回可用模型");
 
+        Log.Information
+        (
+            "模型列表获取完成: 提供商={Provider}, 模型数={ModelCount}, 耗时={ElapsedMilliseconds}ms",
+            normalizedProvider,
+            models.Count,
+            stopwatch.ElapsedMilliseconds
+        );
+
         return models;
     }
 
@@ -69,11 +82,27 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         if (string.IsNullOrWhiteSpace(modelName))
             throw new ArgumentException("模型名不能为空");
 
+        var stopwatch          = Stopwatch.StartNew();
         var normalizedProvider = provider.ToLowerInvariant();
+
+        Log.Information
+        (
+            "开始测试聊天模型连接: 提供商={Provider}, 模型={Model}, Endpoint={Endpoint}",
+            normalizedProvider,
+            modelName,
+            endpoint
+        );
 
         if (normalizedProvider == "anthropic")
         {
             await TestAnthropicChatAsync(apiKey, endpoint, modelName, customHeaders, cancellationToken);
+            Log.Information
+            (
+                "聊天模型连接测试完成: 提供商={Provider}, 模型={Model}, 耗时={ElapsedMilliseconds}ms",
+                normalizedProvider,
+                modelName,
+                stopwatch.ElapsedMilliseconds
+            );
             return;
         }
 
@@ -89,6 +118,15 @@ public sealed class ModelConnectionTester : IModelConnectionTester
 
         if (response.Messages.Count == 0)
             throw new InvalidOperationException("模型返回了空响应");
+
+        Log.Information
+        (
+            "聊天模型连接测试完成: 提供商={Provider}, 模型={Model}, 返回消息数={MessageCount}, 耗时={ElapsedMilliseconds}ms",
+            normalizedProvider,
+            modelName,
+            response.Messages.Count,
+            stopwatch.ElapsedMilliseconds
+        );
     }
 
     public async Task TestEmbeddingAsync
@@ -104,6 +142,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         if (string.IsNullOrWhiteSpace(modelName))
             throw new ArgumentException("模型名不能为空");
 
+        var stopwatch          = Stopwatch.StartNew();
         var normalizedProvider = provider.ToLowerInvariant();
         var effectiveEndpoint = normalizedProvider switch
         {
@@ -121,6 +160,15 @@ public sealed class ModelConnectionTester : IModelConnectionTester
 
         if (result.Count == 0 || result[0].Vector.Length == 0)
             throw new InvalidOperationException("Embedding 模型返回了空向量");
+
+        Log.Information
+        (
+            "向量模型连接测试完成: 提供商={Provider}, 模型={Model}, 维度={Dimension}, 耗时={ElapsedMilliseconds}ms",
+            normalizedProvider,
+            modelName,
+            result[0].Vector.Length,
+            stopwatch.ElapsedMilliseconds
+        );
     }
 
     private static async Task TestAnthropicChatAsync

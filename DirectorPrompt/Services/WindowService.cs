@@ -20,6 +20,13 @@ public sealed class WindowService
     {
         var remoteWindowService = remoteInteractionRouter.Consume();
 
+        Log.Debug
+        (
+            "显示输入对话框: 来源={Source}, 默认值长度={DefaultValueLength}",
+            remoteWindowService is null ? "本地" : "远程",
+            defaultValue.Length
+        );
+
         return remoteWindowService is not null ?
                    remoteWindowService.InputAsync(title, prompt, defaultValue) :
                    PromptDialog.InputAsync(App.GetActiveWindow(), title, prompt, defaultValue);
@@ -30,7 +37,12 @@ public sealed class WindowService
         var remoteWindowService = remoteInteractionRouter.Consume();
 
         if (remoteWindowService is not null)
+        {
+            Log.Information("通过远程交互打开项目编辑窗口: 项目={ProjectID}", project.ID);
             return await remoteWindowService.EditProjectAsync(project);
+        }
+
+        Log.Information("打开本地项目编辑窗口: 项目={ProjectID}", project.ID);
 
         var window = serviceProvider.GetRequiredService<ProjectEditWindow>();
         await window.ViewModel.LoadFromProjectAsync(project);
@@ -40,7 +52,9 @@ public sealed class WindowService
 
         try
         {
-            return owner is not null && await window.ShowDialog<bool>(owner);
+            var saved = owner is not null && await window.ShowDialog<bool>(owner);
+            Log.Information("本地项目编辑窗口已关闭: 项目={ProjectID}, 已保存={Saved}", project.ID, saved);
+            return saved;
         }
         finally
         {
@@ -54,9 +68,12 @@ public sealed class WindowService
 
         if (remoteWindowService is not null)
         {
+            Log.Information("通过远程交互打开设置窗口");
             await remoteWindowService.ShowSettingsAsync();
             return;
         }
+
+        Log.Information("打开本地设置窗口");
 
         var window = serviceProvider.GetRequiredService<SettingsWindow>();
         var owner  = App.GetActiveWindow();
@@ -68,11 +85,15 @@ public sealed class WindowService
             window.Show();
 
         if (!saved)
+        {
+            Log.Information("本地设置窗口未保存即关闭");
             return;
+        }
 
         try
         {
             await lanSharingService.ApplyAsync(userSettings.RemoteControl.IsLanSharingEnabled);
+            Log.Information("本地设置已应用局域网共享: 已启用={Enabled}", userSettings.RemoteControl.IsLanSharingEnabled);
         }
         catch (Exception ex)
         {

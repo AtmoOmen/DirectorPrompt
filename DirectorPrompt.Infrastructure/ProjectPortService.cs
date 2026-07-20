@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dapper;
@@ -6,6 +7,7 @@ using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Data.Sqlite;
+using Serilog;
 
 namespace DirectorPrompt.Infrastructure;
 
@@ -21,48 +23,78 @@ public sealed class ProjectPortService
 
     public async Task ExportAsync(long projectID, string filePath, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
+        var stopwatch = Stopwatch.StartNew();
 
-        var project = await QueryProjectAsync(connection, projectID, cancellationToken);
+        Log.Information("开始导出项目包: 项目={ProjectID}, 路径={FilePath}", projectID, filePath);
 
-        if (project is null)
-            throw new InvalidOperationException($"项目不存在: ID={projectID}");
-
-        var categories  = await QueryCharacterCategoriesAsync(connection, projectID, cancellationToken);
-        var attributes  = await QueryStateAttributesAsync(connection, projectID, cancellationToken);
-        var groups      = await QueryKnowledgeGroupsAsync(connection, projectID, cancellationToken);
-        var entries     = await QueryKnowledgeEntriesAsync(connection, projectID, cancellationToken);
-        var entityIndex = await QueryKnowledgeEntityIndexAsync(connection, projectID, cancellationToken);
-
-        var packageData = new ProjectPackageData
+        try
         {
-            Project              = project,
-            CharacterCategories  = categories,
-            StateAttributes      = attributes,
-            KnowledgeGroups      = groups,
-            KnowledgeEntries     = entries.Select(e => e with { ContentHash = null }).ToList(),
-            KnowledgeEntityIndex = entityIndex
-        };
+            await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
 
-        var manifest = new PackageManifest
+            var project = await QueryProjectAsync(connection, projectID, cancellationToken);
+
+            if (project is null)
+                throw new InvalidOperationException($"项目不存在: ID={projectID}");
+
+            var categories  = await QueryCharacterCategoriesAsync(connection, projectID, cancellationToken);
+            var attributes  = await QueryStateAttributesAsync(connection, projectID, cancellationToken);
+            var groups      = await QueryKnowledgeGroupsAsync(connection, projectID, cancellationToken);
+            var entries     = await QueryKnowledgeEntriesAsync(connection, projectID, cancellationToken);
+            var entityIndex = await QueryKnowledgeEntityIndexAsync(connection, projectID, cancellationToken);
+
+            var packageData = new ProjectPackageData
+            {
+                Project              = project,
+                CharacterCategories  = categories,
+                StateAttributes      = attributes,
+                KnowledgeGroups      = groups,
+                KnowledgeEntries     = entries.Select(e => e with { ContentHash = null }).ToList(),
+                KnowledgeEntityIndex = entityIndex
+            };
+
+            var manifest = new PackageManifest
+            {
+                Format      = PACKAGE_FORMAT,
+                Version     = PACKAGE_VERSION,
+                ExportedAt  = DateTime.UtcNow,
+                ProjectName = project.Name
+            };
+
+            using (var zip = ZipFile.Open(filePath, ZipArchiveMode.Create))
+            {
+                var manifestEntry = zip.CreateEntry("manifest.json");
+
+                await using (var manifestStream = manifestEntry.Open())
+                    await JsonSerializer.SerializeAsync(manifestStream, manifest, JsonOptions.Default, cancellationToken);
+
+                var dataEntry = zip.CreateEntry("project.json");
+
+                await using var dataStream = dataEntry.Open();
+                await JsonSerializer.SerializeAsync(dataStream, packageData, JsonOptions.Default, cancellationToken);
+            }
+
+            Log.Information
+            (
+                "项目包导出完成: 项目={ProjectID}, 分类数={CategoryCount}, 属性数={StateAttributeCount}, 知识分组数={KnowledgeGroupCount}, 知识条目数={KnowledgeEntryCount}, 实体索引数={EntityIndexCount}, 耗时={ElapsedMilliseconds}ms",
+                projectID,
+                categories.Count,
+                attributes.Count,
+                groups.Count,
+                entries.Count,
+                entityIndex.Count,
+                stopwatch.ElapsedMilliseconds
+            );
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Format      = PACKAGE_FORMAT,
-            Version     = PACKAGE_VERSION,
-            ExportedAt  = DateTime.UtcNow,
-            ProjectName = project.Name
-        };
-
-        using var zip = ZipFile.Open(filePath, ZipArchiveMode.Create);
-
-        var manifestEntry = zip.CreateEntry("manifest.json");
-
-        await using (var manifestStream = manifestEntry.Open())
-            await JsonSerializer.SerializeAsync(manifestStream, manifest, JsonOptions.Default, cancellationToken);
-
-        var dataEntry = zip.CreateEntry("project.json");
-
-        await using (var dataStream = dataEntry.Open())
-            await JsonSerializer.SerializeAsync(dataStream, packageData, JsonOptions.Default, cancellationToken);
+            Log.Information("项目包导出已取消: 项目={ProjectID}, 耗时={ElapsedMilliseconds}ms", projectID, stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, "项目包导出失败: 项目={ProjectID}, 路径={FilePath}, 耗时={ElapsedMilliseconds}ms", projectID, filePath, stopwatch.ElapsedMilliseconds);
+            throw;
+        }
     }
 
     public async Task<ProjectImportResult> ImportAsync
@@ -72,49 +104,71 @@ public sealed class ProjectPortService
         CancellationToken cancellationToken      = default
     )
     {
-        using var zip = ZipFile.OpenRead(filePath);
+        var stopwatch = Stopwatch.StartNew();
 
-        var manifestEntry = zip.GetEntry("manifest.json") ?? throw new InvalidDataException("无效的项目包: 缺少 manifest.json");
-
-        PackageManifest manifest;
-
-        using (var manifestStream = manifestEntry.Open())
-        {
-            manifest = await JsonSerializer.DeserializeAsync<PackageManifest>(manifestStream, JsonOptions.Default, cancellationToken) ??
-                       throw new InvalidDataException("无效的项目包: manifest.json 解析失败");
-        }
-
-        if (manifest.Format != PACKAGE_FORMAT)
-            throw new InvalidDataException($"不支持的项目包格式: {manifest.Format}");
-
-        if (manifest.Version > PACKAGE_VERSION)
-            throw new InvalidDataException($"项目包版本过高: v{manifest.Version}, 当前支持: v{PACKAGE_VERSION}");
-
-        var dataEntry = zip.GetEntry("project.json") ?? throw new InvalidDataException("无效的项目包: 缺少 project.json");
-
-        ProjectPackageData data;
-
-        using (var dataStream = dataEntry.Open())
-        {
-            data = await JsonSerializer.DeserializeAsync<ProjectPackageData>(dataStream, JsonOptions.Default, cancellationToken) ??
-                   throw new InvalidDataException("无效的项目包: project.json 解析失败");
-        }
-
-        if (data.Project is null)
-            throw new InvalidDataException("无效的项目包: 缺少项目数据");
-
-        if (requireKnowledgeGroups)
-            ValidateKnowledgeEntryGroups(data.KnowledgeGroups ?? [], data.KnowledgeEntries ?? []);
-
-        await using var connection  = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        Log.Information
+        (
+            "开始导入项目包: 路径={FilePath}, 要求知识分组={RequireKnowledgeGroups}",
+            filePath,
+            requireKnowledgeGroups
+        );
 
         try
         {
-            var now          = DateTime.UtcNow;
-            var newProjectID = await InsertProjectAsync(connection, transaction, data.Project, now, cancellationToken);
+            using var zip = ZipFile.OpenRead(filePath);
 
-            var categoryIDMap = await InsertCharacterCategoriesAsync
+            var manifestEntry = zip.GetEntry("manifest.json") ?? throw new InvalidDataException("无效的项目包: 缺少 manifest.json");
+
+            PackageManifest manifest;
+
+            using (var manifestStream = manifestEntry.Open())
+            {
+                manifest = await JsonSerializer.DeserializeAsync<PackageManifest>(manifestStream, JsonOptions.Default, cancellationToken) ??
+                           throw new InvalidDataException("无效的项目包: manifest.json 解析失败");
+            }
+
+            if (manifest.Format != PACKAGE_FORMAT)
+                throw new InvalidDataException($"不支持的项目包格式: {manifest.Format}");
+
+            if (manifest.Version > PACKAGE_VERSION)
+                throw new InvalidDataException($"项目包版本过高: v{manifest.Version}, 当前支持: v{PACKAGE_VERSION}");
+
+            var dataEntry = zip.GetEntry("project.json") ?? throw new InvalidDataException("无效的项目包: 缺少 project.json");
+
+            ProjectPackageData data;
+
+            using (var dataStream = dataEntry.Open())
+            {
+                data = await JsonSerializer.DeserializeAsync<ProjectPackageData>(dataStream, JsonOptions.Default, cancellationToken) ??
+                       throw new InvalidDataException("无效的项目包: project.json 解析失败");
+            }
+
+            if (data.Project is null)
+                throw new InvalidDataException("无效的项目包: 缺少项目数据");
+
+            if (requireKnowledgeGroups)
+                ValidateKnowledgeEntryGroups(data.KnowledgeGroups ?? [], data.KnowledgeEntries ?? []);
+
+            Log.Information
+            (
+                "项目包校验完成: 包版本={PackageVersion}, 项目名称={ProjectName}, 分类数={CategoryCount}, 属性数={StateAttributeCount}, 知识分组数={KnowledgeGroupCount}, 知识条目数={KnowledgeEntryCount}",
+                manifest.Version,
+                data.Project.Name,
+                data.CharacterCategories?.Count ?? 0,
+                data.StateAttributes?.Count ?? 0,
+                data.KnowledgeGroups?.Count ?? 0,
+                data.KnowledgeEntries?.Count ?? 0
+            );
+
+            await using var connection  = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
+            await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                var now          = DateTime.UtcNow;
+                var newProjectID = await InsertProjectAsync(connection, transaction, data.Project, now, cancellationToken);
+
+                var categoryIDMap = await InsertCharacterCategoriesAsync
                                 (
                                     connection,
                                     transaction,
@@ -123,7 +177,7 @@ public sealed class ProjectPortService
                                     cancellationToken
                                 );
 
-            await UpdateCategoryParentIDsAsync
+                await UpdateCategoryParentIDsAsync
             (
                 connection,
                 transaction,
@@ -132,7 +186,7 @@ public sealed class ProjectPortService
                 cancellationToken
             );
 
-            await InsertStateAttributesAsync
+                await InsertStateAttributesAsync
             (
                 connection,
                 transaction,
@@ -142,7 +196,7 @@ public sealed class ProjectPortService
                 cancellationToken
             );
 
-            var groupIDMap = await InsertKnowledgeGroupsAsync
+                var groupIDMap = await InsertKnowledgeGroupsAsync
                              (
                                  connection,
                                  transaction,
@@ -151,7 +205,7 @@ public sealed class ProjectPortService
                                  cancellationToken
                              );
 
-            var entryIDMap = await InsertKnowledgeEntriesAsync
+                var entryIDMap = await InsertKnowledgeEntriesAsync
                              (
                                  connection,
                                  transaction,
@@ -161,7 +215,7 @@ public sealed class ProjectPortService
                                  cancellationToken
                              );
 
-            await InsertKnowledgeEntityIndexAsync
+                await InsertKnowledgeEntityIndexAsync
             (
                 connection,
                 transaction,
@@ -170,19 +224,43 @@ public sealed class ProjectPortService
                 cancellationToken
             );
 
-            await transaction.CommitAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
 
-            return new ProjectImportResult
+                var result = new ProjectImportResult
+                {
+                    ProjectID           = newProjectID,
+                    ProjectName         = data.Project.Name,
+                    KnowledgeEntryCount = data.KnowledgeEntries?.Count ?? 0,
+                    StateAttributeCount = data.StateAttributes?.Count  ?? 0
+                };
+
+                Log.Information
+                (
+                    "项目包导入完成: 新项目={ProjectID}, 项目名称={ProjectName}, 知识条目数={KnowledgeEntryCount}, 属性数={StateAttributeCount}, 耗时={ElapsedMilliseconds}ms",
+                    result.ProjectID,
+                    result.ProjectName,
+                    result.KnowledgeEntryCount,
+                    result.StateAttributeCount,
+                    stopwatch.ElapsedMilliseconds
+                );
+
+                return result;
+            }
+            catch (Exception exception)
             {
-                ProjectID           = newProjectID,
-                ProjectName         = data.Project.Name,
-                KnowledgeEntryCount = data.KnowledgeEntries?.Count ?? 0,
-                StateAttributeCount = data.StateAttributes?.Count  ?? 0
-            };
+                await transaction.RollbackAsync(cancellationToken);
+                Log.Error(exception, "项目包导入事务失败并已回滚: 路径={FilePath}, 耗时={ElapsedMilliseconds}ms", filePath, stopwatch.ElapsedMilliseconds);
+                throw;
+            }
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            Log.Information("项目包导入已取消: 路径={FilePath}, 耗时={ElapsedMilliseconds}ms", filePath, stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, "项目包导入失败: 路径={FilePath}, 耗时={ElapsedMilliseconds}ms", filePath, stopwatch.ElapsedMilliseconds);
             throw;
         }
     }
@@ -558,6 +636,10 @@ public sealed class ProjectPortService
 
     public async Task<ProjectImportResult> ImportSillyTavernAsync(string filePath, CancellationToken cancellationToken = default)
     {
+        var stopwatch = Stopwatch.StartNew();
+
+        Log.Information("开始导入 SillyTavern 角色卡: 路径={FilePath}", filePath);
+
         await using var stream = File.OpenRead(filePath);
 
         var card = await JsonSerializer.DeserializeAsync<SillyTavernCard>(stream, JsonOptions.Default, cancellationToken) ??
@@ -614,6 +696,14 @@ public sealed class ProjectPortService
             }
         }
 
+        Log.Information
+        (
+            "SillyTavern 角色卡已解析: 项目名称长度={ProjectNameLength}, 知识分组数={KnowledgeGroupCount}, 知识条目数={KnowledgeEntryCount}",
+            project.Name.Length,
+            groups.Count,
+            entries.Count
+        );
+
         await using var connection  = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
@@ -643,16 +733,27 @@ public sealed class ProjectPortService
 
             await transaction.CommitAsync(cancellationToken);
 
-            return new ProjectImportResult
+            var result = new ProjectImportResult
             {
                 ProjectID           = newProjectID,
                 ProjectName         = project.Name,
                 KnowledgeEntryCount = entries.Count
             };
+
+            Log.Information
+            (
+                "SillyTavern 角色卡导入完成: 新项目={ProjectID}, 知识条目数={KnowledgeEntryCount}, 耗时={ElapsedMilliseconds}ms",
+                result.ProjectID,
+                result.KnowledgeEntryCount,
+                stopwatch.ElapsedMilliseconds
+            );
+
+            return result;
         }
-        catch
+        catch (Exception exception)
         {
             await transaction.RollbackAsync(cancellationToken);
+            Log.Error(exception, "SillyTavern 角色卡导入失败并已回滚: 路径={FilePath}, 耗时={ElapsedMilliseconds}ms", filePath, stopwatch.ElapsedMilliseconds);
             throw;
         }
     }

@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Reflection;
 using Microsoft.Data.Sqlite;
+using Serilog;
 
 namespace DirectorPrompt.Infrastructure;
 
@@ -11,8 +13,28 @@ public sealed class SchemaMigrator
     public SchemaMigrator(SQLiteDatabaseScheduler databaseScheduler) =>
         this.databaseScheduler = databaseScheduler;
 
-    public Task MigrateAsync(CancellationToken cancellationToken = default) =>
-        databaseScheduler.ExecuteAsync(MigrateAsync, cancellationToken: cancellationToken);
+    public async Task MigrateAsync(CancellationToken cancellationToken = default)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        Log.Information("开始执行数据库架构迁移");
+
+        try
+        {
+            await databaseScheduler.ExecuteAsync(MigrateAsync, cancellationToken: cancellationToken);
+            Log.Information("数据库架构迁移完成: 耗时={ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            Log.Information("数据库架构迁移已取消: 耗时={ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, "数据库架构迁移失败: 耗时={ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+    }
 
     private async Task MigrateAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
@@ -24,6 +46,14 @@ public sealed class SchemaMigrator
 
         var currentVersion = await GetCurrentVersionAsync(connection, cancellationToken);
         var scripts        = GetMigrationScripts();
+        var appliedCount   = 0;
+
+        Log.Information
+        (
+            "数据库架构状态: 当前版本={CurrentVersion}, 可用迁移数={ScriptCount}",
+            currentVersion,
+            scripts.Count
+        );
 
         foreach (var (version, scriptName) in scripts)
         {
@@ -31,6 +61,9 @@ public sealed class SchemaMigrator
                 continue;
 
             var sql = await ReadEmbeddedScriptAsync(scriptName, cancellationToken);
+            var stopwatch = Stopwatch.StartNew();
+
+            Log.Information("开始应用数据库迁移: 版本={Version}, 脚本={ScriptName}", version, scriptName);
 
             await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
@@ -46,13 +79,38 @@ public sealed class SchemaMigrator
                 await logCommand.ExecuteNonQueryAsync(cancellationToken);
 
                 await transaction.CommitAsync(cancellationToken);
+                appliedCount++;
+
+                Log.Information
+                (
+                    "数据库迁移已应用: 版本={Version}, 脚本={ScriptName}, SQL长度={SqlLength}, 耗时={ElapsedMilliseconds}ms",
+                    version,
+                    scriptName,
+                    sql.Length,
+                    stopwatch.ElapsedMilliseconds
+                );
             }
-            catch
+            catch (Exception exception)
             {
                 await transaction.RollbackAsync(cancellationToken);
+                Log.Error
+                (
+                    exception,
+                    "数据库迁移失败并已回滚: 版本={Version}, 脚本={ScriptName}, 耗时={ElapsedMilliseconds}ms",
+                    version,
+                    scriptName,
+                    stopwatch.ElapsedMilliseconds
+                );
                 throw;
             }
         }
+
+        Log.Information
+        (
+            "数据库架构检查完成: 初始版本={CurrentVersion}, 已应用迁移数={AppliedCount}",
+            currentVersion,
+            appliedCount
+        );
     }
 
     private static async Task<int> GetCurrentVersionAsync(SqliteConnection connection, CancellationToken cancellationToken)

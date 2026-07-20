@@ -92,6 +92,8 @@ public sealed partial class MainViewModel : ObservableObject
         this.projectContentService = projectContentService;
         if (projectContentService is not null)
             projectContentService.Changed += OnProjectContentChanged;
+
+        Log.Information("主界面视图模型已创建: 已连接项目内容服务={HasProjectContentService}", projectContentService is not null);
     }
 
     [ObservableProperty]
@@ -160,6 +162,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OnProjectContentChanged(ProjectContentChange change)
     {
+        Log.Debug("收到项目内容变更: 项目={ProjectID}, 已删除={IsDeleted}", change.ProjectID, change.IsDeleted);
+
         lock (projectContentChangeSync)
         {
             pendingProjectChanges[change.ProjectID] = change.IsDeleted ||
@@ -176,6 +180,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async void RefreshProjectContentAsync()
     {
+        Log.Debug("开始刷新项目内容变更");
+
         while (true)
         {
             ProjectContentChange[] changes;
@@ -185,6 +191,8 @@ public sealed partial class MainViewModel : ObservableObject
                 changes = [.. pendingProjectChanges.Select(change => new ProjectContentChange(change.Key, change.Value))];
                 pendingProjectChanges.Clear();
             }
+
+            Log.Debug("处理项目内容变更批次: 变更项目数={ChangeCount}", changes.Length);
 
             if (changes.Any(change => change.IsDeleted && CurrentProject?.ID == change.ProjectID))
             {
@@ -199,6 +207,7 @@ public sealed partial class MainViewModel : ObservableObject
                 if (pendingProjectChanges.Count == 0)
                 {
                     projectContentRefreshScheduled = false;
+                    Log.Debug("项目内容变更刷新完成");
                     return;
                 }
             }
@@ -377,6 +386,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (CurrentProject is null)
             return;
 
+        Log.Information("打开项目编辑窗口: 项目={ProjectID}", CurrentProject.ID);
         await windowService.EditProjectAsync(CurrentProject);
     }
 
@@ -586,8 +596,11 @@ public sealed partial class MainViewModel : ObservableObject
         IsSessionSidebarExpanded = !IsSessionSidebarExpanded;
 
     [RelayCommand]
-    private Task OpenSettingsAsync() =>
-        windowService.ShowSettingsAsync();
+    private async Task OpenSettingsAsync()
+    {
+        Log.Information("打开设置窗口");
+        await windowService.ShowSettingsAsync();
+    }
 
     [RelayCommand]
     private void OpenLanSharing()
@@ -595,7 +608,16 @@ public sealed partial class MainViewModel : ObservableObject
         if (LanSharingService.Endpoint is null)
             return;
 
-        Process.Start(new ProcessStartInfo(LanSharingService.Endpoint.AbsoluteUri) { UseShellExecute = true });
+        try
+        {
+            Log.Information("在浏览器中打开局域网共享地址: 端点={Endpoint}", LanSharingService.Endpoint);
+            Process.Start(new ProcessStartInfo(LanSharingService.Endpoint.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, "打开局域网共享地址失败: 端点={Endpoint}", LanSharingService.Endpoint);
+            StatusMessage = Loc.Get("Status.LoadFailed", exception.Message);
+        }
     }
 
     private void ResetPipelineStages() =>
@@ -761,13 +783,25 @@ public sealed partial class MainViewModel : ObservableObject
                 (() =>
                     {
                         if (CurrentSession?.ID == sessionID)
+                        {
                             UpdatePipelineStage(update.Stage, update.Status, update.Detail);
+
+                            Log.Debug
+                            (
+                                "界面流水线状态已更新: 对话={SessionID}, 阶段={Stage}, 状态={Status}, 详情={Detail}",
+                                sessionID,
+                                update.Stage,
+                                update.Status,
+                                update.Detail
+                            );
+                        }
                     }
                 );
         }
         catch (OperationCanceledException)
         {
             await RollbackRoundAsync(sessionID, expectedRoundID, streamingEntry, directorEntry);
+            Log.Information("用户取消指令处理: 对话={SessionID}, 预计轮次={RoundID}", sessionID, expectedRoundID);
             StatusMessage = Loc.Get("Status.Cancelled");
         }
         catch (Exception ex)
@@ -835,6 +869,8 @@ public sealed partial class MainViewModel : ObservableObject
         IsProcessing  = true;
         StatusMessage = Loc.Get("Status.RollingBack");
 
+        Log.Information("用户请求回退上一轮: 对话={SessionID}", CurrentSession.ID);
+
         try
         {
             var result = await orchestrator.RollbackLastRoundAsync(CurrentSession.ID);
@@ -858,6 +894,7 @@ public sealed partial class MainViewModel : ObservableObject
             }
 
             StatusMessage = Loc.Get("Status.RolledBack");
+            Log.Information("界面回退完成: 对话={SessionID}, 轮次={RoundID}, 恢复指令数={DirectiveCount}", CurrentSession.ID, result.RoundID, result.Directives.Count);
         }
         catch (Exception ex)
         {
@@ -973,11 +1010,18 @@ public sealed partial class MainViewModel : ObservableObject
         _ = LoadSessionDataAsync(value.ID, token);
     }
 
-    private void CancelGeneration() =>
+    private void CancelGeneration()
+    {
+        if (generationCts is { IsCancellationRequested: false })
+            Log.Information("取消当前指令生成: 对话={SessionID}", CurrentSession?.ID);
+
         generationCts?.Cancel();
+    }
 
     private async Task LoadSessionDataAsync(long sessionID, CancellationToken token)
     {
+        Log.Debug("开始加载对话数据: 对话={SessionID}", sessionID);
+
         try
         {
             await LoadDialogHistoryAsync(sessionID, token);
@@ -989,6 +1033,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            Log.Debug("对话数据加载已取消: 对话={SessionID}", sessionID);
         }
     }
 
@@ -1027,6 +1072,12 @@ public sealed partial class MainViewModel : ObservableObject
             userSettings.Session.LastSessionID = CurrentSession?.ID;
 
             await userSettingsStore.SaveAsync(userSettings);
+            Log.Debug
+            (
+                "最近项目和对话状态已保存: 项目={ProjectID}, 对话={SessionID}",
+                userSettings.Session.LastProjectID,
+                userSettings.Session.LastSessionID
+            );
         }
         catch (Exception ex)
         {
@@ -1038,6 +1089,8 @@ public sealed partial class MainViewModel : ObservableObject
     {
         IsLoadingDialog = true;
 
+        Log.Information("开始加载对话历史: 对话={SessionID}", sessionID);
+
         try
         {
             var result = await dialogHistoryService.LoadAsync(sessionID, token: token);
@@ -1046,6 +1099,7 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
 
             await AddDialogHistoryAsync(result, false, token);
+            Log.Information("对话历史加载完成: 对话={SessionID}, 轮次数={RoundCount}", sessionID, result.Rounds.Count);
         }
         catch (Exception ex)
         {
@@ -1067,6 +1121,8 @@ public sealed partial class MainViewModel : ObservableObject
         var token     = sessionLoadCts?.Token ?? CancellationToken.None;
         IsLoadingEarlierDialog = true;
 
+        Log.Information("开始加载更早对话历史: 对话={SessionID}, 起始轮次={StartRoundID}", sessionID, previousDialogRoundID);
+
         try
         {
             var result = await dialogHistoryService.LoadAsync(sessionID, previousDialogRoundID, token);
@@ -1075,6 +1131,7 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
 
             await AddDialogHistoryAsync(result, true, token);
+            Log.Information("更早对话历史加载完成: 对话={SessionID}, 轮次数={RoundCount}", sessionID, result.Rounds.Count);
         }
         catch (OperationCanceledException)
         {
@@ -1159,6 +1216,14 @@ public sealed partial class MainViewModel : ObservableObject
 
         previousDialogRoundID   = result.PreviousRoundID;
         HasEarlierDialogEntries = previousDialogRoundID is not null;
+
+        Log.Debug
+        (
+            "对话历史已写入界面: 条目数={EntryCount}, 追加到前方={Prepend}, 下一页起始轮次={PreviousRoundID}",
+            entries.Count,
+            prepend,
+            previousDialogRoundID
+        );
     }
 
     private static Task PrepareMarkdownDocumentsAsync(IReadOnlyList<DialogEntryViewModel> entries, CancellationToken token) =>
@@ -1205,6 +1270,16 @@ public sealed partial class MainViewModel : ObservableObject
             return;
 
         await RefreshMemoryPanelAsync();
+
+        Log.Debug
+        (
+            "侧边栏刷新完成: 对话={SessionID}, 状态项数={StateItemCount}, 指令数={DirectiveCount}, 人物分组数={CharacterGroupCount}, 记忆分组数={MemoryGroupCount}",
+            sessionID,
+            StatePanel.StateItems.Count,
+            DirectivesPanel.Directives.Count,
+            CharacterPanel.Groups.Count,
+            MemoryPanel.Groups.Count
+        );
     }
 
     private async Task RefreshStatePanelAsync()

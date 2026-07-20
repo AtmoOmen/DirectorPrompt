@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog;
 using RemoteKey = Avalonia.Remote.Protocol.Input.Key;
 using RemotePhysicalKey = Avalonia.Remote.Protocol.Input.PhysicalKey;
 
@@ -49,10 +50,14 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
         using var memory = new MemoryStream();
         stream.CopyTo(memory);
         page = memory.ToArray();
+
+        Log.Information("已创建浏览器远程传输: 地址={Address}, 端口={Port}, 页面字节数={PageByteCount}", address, port, page.Length);
     }
 
     public async Task StartServerAsync(CancellationToken cancellationToken = default)
     {
+        Log.Information("开始启动浏览器远程服务: 地址={Address}, 端口={Port}", address, port);
+
         var builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
         builder.WebHost.ConfigureKestrel
@@ -67,11 +72,13 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
         application.Map("/remote", HandleRemoteAsync);
 
         await application.StartAsync(cancellationToken);
+        Log.Information("浏览器远程服务已启动: 地址={Address}, 端口={Port}", address, port);
     }
 
     public void Start()
     {
         isStarted = true;
+        Log.Debug("浏览器远程传输已开始接收 Avalonia 渲染数据");
         StartRemoteSession();
     }
 
@@ -116,6 +123,8 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
 
     public async ValueTask DisposeAsync()
     {
+        Log.Information("开始停止浏览器远程传输: 地址={Address}, 端口={Port}", address, port);
+
         WebSocket? currentSocket;
 
         lock (connectionLock)
@@ -143,6 +152,7 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
             }
             catch (OperationCanceledException)
             {
+                Log.Warning("浏览器远程服务停止超时: 地址={Address}, 端口={Port}", address, port);
             }
 
             try
@@ -154,10 +164,12 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
             }
             catch (TimeoutException)
             {
+                Log.Warning("浏览器远程服务释放超时: 地址={Address}, 端口={Port}", address, port);
             }
         }
 
         sendLock.Dispose();
+        Log.Information("浏览器远程传输已停止: 地址={Address}, 端口={Port}", address, port);
     }
 
     private async Task HandleRemoteAsync(HttpContext context)
@@ -165,10 +177,13 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
         if (!context.WebSockets.IsWebSocketRequest)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            Log.Warning("浏览器远程服务拒绝非 WebSocket 请求: 远程地址={RemoteAddress}", context.Connection.RemoteIpAddress);
             return;
         }
 
         var currentSocket = await context.WebSockets.AcceptWebSocketAsync();
+
+        Log.Information("浏览器远程客户端已连接: 远程地址={RemoteAddress}", context.Connection.RemoteIpAddress);
 
         lock (connectionLock)
         {
@@ -208,9 +223,11 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
         }
         catch (OperationCanceledException)
         {
+            Log.Debug("浏览器远程客户端连接已取消: 远程地址={RemoteAddress}", context.Connection.RemoteIpAddress);
         }
         catch (WebSocketException ex)
         {
+            Log.Warning(ex, "浏览器远程 WebSocket 异常: 远程地址={RemoteAddress}", context.Connection.RemoteIpAddress);
             OnException?.Invoke(this, ex);
         }
         finally
@@ -222,6 +239,7 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
             }
 
             currentSocket.Dispose();
+            Log.Information("浏览器远程客户端已断开: 远程地址={RemoteAddress}", context.Connection.RemoteIpAddress);
         }
     }
 
@@ -308,6 +326,7 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
         }
         catch (Exception ex) when (ex is FormatException or IndexOutOfRangeException or ArgumentException)
         {
+            Log.Warning(ex, "浏览器远程消息解析失败: 消息类型={MessageType}", parts[0]);
             OnException?.Invoke(this, ex);
         }
     }
@@ -330,6 +349,7 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
         );
 
         ViewportChanged?.Invoke(width, height);
+        Log.Debug("浏览器远程视口已更新: 宽={Width}, 高={Height}, DPI={Dpi}", width, height, dpi);
     }
 
     private static EncodedFrame EncodeFrame(byte[] data)
@@ -420,6 +440,7 @@ public sealed class BrowserRemoteTransport : IAvaloniaRemoteTransportConnection,
         }
         catch (Exception ex) when (ex is WebSocketException or ObjectDisposedException)
         {
+            Log.Warning(ex, "浏览器远程帧发送失败");
             OnException?.Invoke(this, ex);
         }
         finally

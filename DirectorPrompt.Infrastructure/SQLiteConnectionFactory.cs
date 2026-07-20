@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Data.Sqlite;
 using Serilog;
@@ -20,11 +21,20 @@ public sealed class SQLiteConnectionFactory
         CancellationToken cancellationToken   = default
     )
     {
+        var stopwatch  = Stopwatch.StartNew();
         var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
 
         if (enableVecExtension && loadVectorExtension)
             TryLoadVecExtension(connection, vecPath);
+
+        Log.Debug
+        (
+            "SQLite 连接已打开: 已请求向量扩展={LoadVectorExtension}, 向量扩展可用={VectorExtensionAvailable}, 耗时={ElapsedMilliseconds}ms",
+            loadVectorExtension,
+            vecPath is not null,
+            stopwatch.ElapsedMilliseconds
+        );
 
         return connection;
     }

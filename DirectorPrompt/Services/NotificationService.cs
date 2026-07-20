@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using CommunityToolkit.WinUI.Notifications;
+using Serilog;
 
 namespace DirectorPrompt.Services;
 
@@ -38,6 +39,7 @@ public sealed class NotificationService : IDisposable
 
         disposed                                   =  true;
         ToastNotificationManagerCompat.OnActivated -= OnNotificationActivated;
+        Log.Information("通知服务已释放");
     }
 
     private void NotifyCore
@@ -51,7 +53,25 @@ public sealed class NotificationService : IDisposable
     )
     {
         if (disposed || (backgroundOnly && IsAnyWindowActive()))
+        {
+            Log.Debug
+            (
+                "通知已跳过: 服务已释放={Disposed}, 仅后台={BackgroundOnly}, 存在活动窗口={HasActiveWindow}",
+                disposed,
+                backgroundOnly,
+                IsAnyWindowActive()
+            );
             return;
+        }
+
+        Log.Information
+        (
+            "发送系统通知: 级别={Level}, 标题长度={TitleLength}, 内容长度={MessageLength}, 按钮数={ButtonCount}",
+            level,
+            title.Length,
+            message.Length,
+            buttons?.Length ?? 0
+        );
 
         var builder = new ToastContentBuilder()
                       .AddText(title)
@@ -77,6 +97,7 @@ public sealed class NotificationService : IDisposable
         }
 
         builder.Show();
+        Log.Debug("系统通知已提交");
     }
 
     private static bool IsAnyWindowActive() =>
@@ -92,6 +113,8 @@ public sealed class NotificationService : IDisposable
         var action = parsed.Contains("action") ?
                          parsed["action"] :
                          null;
+
+        Log.Information("收到系统通知激活: 有上下文={HasContext}, 有操作={HasAction}", context is not null, action is not null);
 
         Dispatcher.UIThread.Post
         (() =>

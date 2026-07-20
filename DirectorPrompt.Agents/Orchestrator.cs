@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using DirectorPrompt.Agents.Config;
 using DirectorPrompt.Agents.Pipeline;
@@ -8,6 +9,7 @@ using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using Serilog;
+using Serilog.Context;
 
 namespace DirectorPrompt.Agents;
 
@@ -56,6 +58,13 @@ public sealed class Orchestrator
         var activeScene      = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
         var oldSceneID       = activeScene?.ID;
         var timelinePosition = activeScene?.TimelinePosition ?? 0;
+        var batchStopwatch   = Stopwatch.StartNew();
+        var pipelineID       = Guid.NewGuid().ToString("N");
+
+        using var pipelineContext = LogContext.PushProperty("PipelineID", pipelineID);
+        using var projectContext  = LogContext.PushProperty("ProjectID", batch.ProjectID);
+        using var sessionContext  = LogContext.PushProperty("SessionID", sessionID);
+        using var roundContext    = LogContext.PushProperty("RoundID", roundID);
 
         Log.Information
         (
@@ -77,6 +86,14 @@ public sealed class Orchestrator
 
         batch = InjectSystemDirectives(batch, transitionResults);
 
+        Log.Information
+        (
+            "系统指令已合并: 轮次={RoundID}, 合并后指令数={DirectiveCount}, 转换来源数={TransitionSourceCount}",
+            roundID,
+            batch.Directives.Count,
+            transitionResults.Count
+        );
+
         var phaseResult = transitionResults
                           .Where(t => t.Source is PhaseEvaluator)
                           .Select(t => t.Result)
@@ -96,9 +113,16 @@ public sealed class Orchestrator
                 cancellationToken
             );
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Failed));
+            Log.Information("指令处理阶段已取消: 耗时={ElapsedMilliseconds}ms", batchStopwatch.ElapsedMilliseconds);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Failed));
+            Log.Error(exception, "指令处理阶段失败: 耗时={ElapsedMilliseconds}ms", batchStopwatch.ElapsedMilliseconds);
             throw;
         }
 
@@ -154,10 +178,12 @@ public sealed class Orchestrator
 
         Log.Information
         (
-            "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 叙事长度={NarrativeLen}",
+            "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 叙事长度={NarrativeLen}, 思考长度={ThinkingLen}, 耗时={ElapsedMilliseconds}ms",
             sessionID,
             roundID,
-            context.NarrativeOutput?.Length ?? 0
+            context.NarrativeOutput?.Length ?? 0,
+            context.ThinkingOutput?.Length ?? 0,
+            batchStopwatch.ElapsedMilliseconds
         );
 
         return result;
@@ -165,12 +191,22 @@ public sealed class Orchestrator
 
     public async Task DeleteRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         Log.Information("删除轮次: 对话={SessionID}, 轮次={RoundID}", sessionID, roundID);
 
         await roundChangeRepository.RollbackRoundAsync(sessionID, roundID, cancellationToken);
         await stateRepository.RollbackByRoundAsync(sessionID, roundID, cancellationToken);
         await roundChangeRepository.RemoveByRoundAsync(sessionID, roundID, cancellationToken);
         await eventRepository.RemoveByRoundAsync(sessionID, roundID, cancellationToken);
+
+        Log.Information
+        (
+            "轮次删除完成: 对话={SessionID}, 轮次={RoundID}, 耗时={ElapsedMilliseconds}ms",
+            sessionID,
+            roundID,
+            stopwatch.ElapsedMilliseconds
+        );
     }
 
     public async Task<RollbackResult?> RollbackLastRoundAsync(long sessionID, CancellationToken cancellationToken = default)
@@ -178,7 +214,10 @@ public sealed class Orchestrator
         var latestRound = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken);
 
         if (latestRound <= 0)
+        {
+            Log.Information("回退请求已忽略: 对话={SessionID} 没有可回退轮次", sessionID);
             return null;
+        }
 
         var events        = await eventRepository.GetByRoundAsync(sessionID, latestRound, cancellationToken);
         var directorEvent = events.FirstOrDefault(e => e.Type == EventType.DirectorInput);
@@ -191,18 +230,32 @@ public sealed class Orchestrator
                              EventDataSerializer.ParseDirectives(directorEvent.Data) :
                              [];
 
+        Log.Information
+        (
+            "轮次回退完成: 对话={SessionID}, 轮次={RoundID}, 已恢复指令数={DirectiveCount}",
+            sessionID,
+            latestRound,
+            directives.Count
+        );
+
         return new RollbackResult(latestRound, directives);
     }
 
     public async Task TryDeleteRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
     {
         if (roundID <= 0)
+        {
+            Log.Debug("忽略无效轮次删除请求: 对话={SessionID}, 轮次={RoundID}", sessionID, roundID);
             return;
+        }
 
         var events = await eventRepository.GetByRoundAsync(sessionID, roundID, cancellationToken);
 
         if (events.Count == 0)
+        {
+            Log.Debug("轮次无需删除: 对话={SessionID}, 轮次={RoundID}", sessionID, roundID);
             return;
+        }
 
         await DeleteRoundAsync(sessionID, roundID, cancellationToken);
     }
@@ -213,6 +266,13 @@ public sealed class Orchestrator
 
         if (resolved is null)
             throw new InvalidOperationException("向量模型配置无效: 未找到对应的提供商");
+
+        Log.Information
+        (
+            "已解析向量模型配置: 提供商={Provider}, 模型={Model}",
+            resolved.Provider,
+            resolved.ModelName
+        );
 
         return resolved;
     }
@@ -225,21 +285,65 @@ public sealed class Orchestrator
         Func<string?>?    detailFactory = null
     )
     {
+        var stopwatch = Stopwatch.StartNew();
+
+        Log.Information
+        (
+            "流水线阶段开始: 阶段={Stage}, 对话={SessionID}, 轮次={RoundID}",
+            kind,
+            context.SessionID,
+            context.RoundID
+        );
+
         context.OnStageUpdate?.Invoke(new PipelineStageUpdate(kind, PipelineStageStatus.Running));
 
         try
         {
             await action();
         }
-        catch
+        catch (OperationCanceledException)
         {
             context.OnStageUpdate?.Invoke(new PipelineStageUpdate(kind, PipelineStageStatus.Failed));
+            Log.Information
+            (
+                "流水线阶段已取消: 阶段={Stage}, 对话={SessionID}, 轮次={RoundID}, 耗时={ElapsedMilliseconds}ms",
+                kind,
+                context.SessionID,
+                context.RoundID,
+                stopwatch.ElapsedMilliseconds
+            );
+            throw;
+        }
+        catch (Exception exception)
+        {
+            context.OnStageUpdate?.Invoke(new PipelineStageUpdate(kind, PipelineStageStatus.Failed));
+            Log.Error
+            (
+                exception,
+                "流水线阶段失败: 阶段={Stage}, 对话={SessionID}, 轮次={RoundID}, 耗时={ElapsedMilliseconds}ms",
+                kind,
+                context.SessionID,
+                context.RoundID,
+                stopwatch.ElapsedMilliseconds
+            );
             throw;
         }
 
+        var detail = detailFactory?.Invoke();
+
         context.OnStageUpdate?.Invoke
         (
-            new PipelineStageUpdate(kind, PipelineStageStatus.Complete, detailFactory?.Invoke())
+            new PipelineStageUpdate(kind, PipelineStageStatus.Complete, detail)
+        );
+
+        Log.Information
+        (
+            "流水线阶段完成: 阶段={Stage}, 对话={SessionID}, 轮次={RoundID}, 详情={Detail}, 耗时={ElapsedMilliseconds}ms",
+            kind,
+            context.SessionID,
+            context.RoundID,
+            detail,
+            stopwatch.ElapsedMilliseconds
         );
     }
 
@@ -324,6 +428,14 @@ public sealed class Orchestrator
 
         await eventRepository.AppendBatchAsync(events, cancellationToken);
 
+        Log.Information
+        (
+            "对话事件已持久化: 对话={SessionID}, 轮次={RoundID}, 事件数={EventCount}",
+            context.SessionID,
+            context.RoundID,
+            events.Count
+        );
+
         await RunStageAsync
         (
             context,
@@ -348,6 +460,13 @@ public sealed class Orchestrator
 
         await directiveRepository.DecrementTTLAsync(context.SessionID, context.RoundID, cancellationToken);
 
+        Log.Information
+        (
+            "有效指令 TTL 已更新: 对话={SessionID}, 轮次={RoundID}",
+            context.SessionID,
+            context.RoundID
+        );
+
         return new NarrationResult
         (
             context.NarrativeOutput ?? string.Empty,
@@ -371,8 +490,29 @@ public sealed class Orchestrator
         foreach (var source in sources)
         {
             var previousKeys = await GetPreviousTransitionKeysAsync(sessionID, roundID, source.EventType, cancellationToken);
+            var stopwatch    = Stopwatch.StartNew();
+
+            Log.Debug
+            (
+                "开始评估状态转换: 来源={Source}, 事件类型={EventType}, 上一轮激活键数={PreviousKeyCount}",
+                source.GetType().Name,
+                source.EventType,
+                previousKeys?.Count ?? 0
+            );
+
             var result       = await source.EvaluateAsync(projectID, sessionID, previousKeys, cancellationToken);
             results.Add((source, result));
+
+            Log.Information
+            (
+                "状态转换评估完成: 来源={Source}, 事件类型={EventType}, 激活键数={ActiveKeyCount}, 进入指令数={EnterDirectiveCount}, 退出指令数={ExitDirectiveCount}, 耗时={ElapsedMilliseconds}ms",
+                source.GetType().Name,
+                source.EventType,
+                result.ActiveKeys.Count,
+                result.EnterDirectives.Count,
+                result.ExitDirectives.Count,
+                stopwatch.ElapsedMilliseconds
+            );
         }
 
         return results;
@@ -456,6 +596,8 @@ public sealed class Orchestrator
 
         if (systemDirectives.Count == 0)
             return batch;
+
+        Log.Information("已注入系统指令: 数量={SystemDirectiveCount}", systemDirectives.Count);
 
         var userDirectives = batch.Directives
                                   .Select(d => d with { Order = d.Order + systemDirectives.Count })

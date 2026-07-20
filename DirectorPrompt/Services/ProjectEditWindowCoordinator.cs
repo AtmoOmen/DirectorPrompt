@@ -1,4 +1,5 @@
 using Avalonia.Threading;
+using Serilog;
 
 namespace DirectorPrompt.Services;
 
@@ -18,6 +19,8 @@ public sealed class ProjectEditWindowCoordinator : IProjectEditWindowCoordinator
             }
 
             projectWindows.Add(closeWithoutSaving);
+
+            Log.Debug("已注册项目编辑窗口: 项目={ProjectID}, 窗口数={WindowCount}", projectID, projectWindows.Count);
         }
     }
 
@@ -32,6 +35,8 @@ public sealed class ProjectEditWindowCoordinator : IProjectEditWindowCoordinator
 
             if (projectWindows.Count == 0)
                 windows.Remove(projectID);
+
+            Log.Debug("已注销项目编辑窗口: 项目={ProjectID}, 剩余窗口数={WindowCount}", projectID, projectWindows.Count);
         }
     }
 
@@ -47,7 +52,12 @@ public sealed class ProjectEditWindowCoordinator : IProjectEditWindowCoordinator
         }
 
         if (closeActions.Length == 0)
+        {
+            Log.Debug("项目外部变更无需关闭编辑窗口: 项目={ProjectID}", projectID);
             return;
+        }
+
+        Log.Information("因项目外部变更关闭编辑窗口: 项目={ProjectID}, 窗口数={WindowCount}", projectID, closeActions.Length);
 
         await Dispatcher.UIThread.InvokeAsync
         (() =>

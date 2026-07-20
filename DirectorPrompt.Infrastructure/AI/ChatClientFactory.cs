@@ -33,13 +33,31 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
             var snapshot = clients;
 
             if (snapshot.TryGetValue(key, out var existing))
+            {
+                Log.Debug
+                (
+                    "复用 ChatClient: 提供商={Provider}, 模型={Model}, 已缓存客户端数={ClientCount}",
+                    provider.Provider,
+                    model.ModelName,
+                    snapshot.Count
+                );
                 return existing;
+            }
 
             var created = CreateClient(provider, model);
             var updated = snapshot.Add(key, created);
 
             if (ReferenceEquals(Interlocked.CompareExchange(ref clients, updated, snapshot), snapshot))
+            {
+                Log.Information
+                (
+                    "ChatClient 已加入缓存: 提供商={Provider}, 模型={Model}, 已缓存客户端数={ClientCount}",
+                    provider.Provider,
+                    model.ModelName,
+                    updated.Count
+                );
                 return created;
+            }
 
             created.Dispose();
         }
@@ -48,6 +66,9 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
     public void Reset()
     {
         var previous = Interlocked.Exchange(ref clients, ImmutableDictionary<string, IChatClient>.Empty);
+
+        if (previous.Count > 0)
+            Log.Information("重置 ChatClient 缓存: 已释放客户端数={ClientCount}", previous.Count);
 
         foreach (var client in previous.Values)
             client.Dispose();

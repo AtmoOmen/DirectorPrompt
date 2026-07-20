@@ -4,6 +4,7 @@ using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Services;
+using Serilog;
 
 namespace DirectorPrompt.Infrastructure;
 
@@ -16,14 +17,29 @@ public sealed class UserSettingsStore : IUserSettingsStore
 
     public UserSettings Load()
     {
-        MigrateIfNeeded();
+        var migrated = MigrateIfNeeded();
 
         if (!File.Exists(userSettingsPath))
+        {
+            Log.Information("用户设置文件不存在, 使用默认设置: 路径={UserSettingsPath}", userSettingsPath);
             return new UserSettings();
+        }
 
         var json = File.ReadAllText(userSettingsPath);
+        var settings = JsonSerializer.Deserialize<UserSettings>(json, JsonOptions.Default) ?? new UserSettings();
 
-        return JsonSerializer.Deserialize<UserSettings>(json, JsonOptions.Default) ?? new UserSettings();
+        Log.Information
+        (
+            "用户设置已加载: 路径={UserSettingsPath}, 已迁移={Migrated}, 提供商数={ProviderCount}, 模型数={ModelCount}, Agent任务数={AgentTaskCount}, MCP服务数={MCPServerCount}",
+            userSettingsPath,
+            migrated,
+            settings.Orchestrator.Providers.Count,
+            settings.Orchestrator.Models.Count,
+            settings.Orchestrator.AgentTasks.Count,
+            settings.MCPServers.Count
+        );
+
+        return settings;
     }
 
     public async Task SaveAsync(UserSettings settings, CancellationToken cancellationToken = default)
@@ -35,7 +51,26 @@ public sealed class UserSettingsStore : IUserSettingsStore
         if (!string.IsNullOrWhiteSpace(directory))
             Directory.CreateDirectory(directory);
 
-        await File.WriteAllTextAsync(userSettingsPath, json, cancellationToken);
+        try
+        {
+            await File.WriteAllTextAsync(userSettingsPath, json, cancellationToken);
+
+            Log.Information
+            (
+                "用户设置已保存: 路径={UserSettingsPath}, 字节数={ByteCount}, 提供商数={ProviderCount}, 模型数={ModelCount}, Agent任务数={AgentTaskCount}, MCP服务数={MCPServerCount}",
+                userSettingsPath,
+                System.Text.Encoding.UTF8.GetByteCount(json),
+                settings.Orchestrator.Providers.Count,
+                settings.Orchestrator.Models.Count,
+                settings.Orchestrator.AgentTasks.Count,
+                settings.MCPServers.Count
+            );
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, "保存用户设置失败: 路径={UserSettingsPath}", userSettingsPath);
+            throw;
+        }
     }
 
     public bool MigrateIfNeeded()
@@ -54,8 +89,10 @@ public sealed class UserSettingsStore : IUserSettingsStore
             orch.TryGetProperty("Agents", out var agentsEl) &&
             agentsEl.ValueKind == JsonValueKind.Array)
         {
+            Log.Information("检测到旧版用户设置, 开始迁移: 路径={UserSettingsPath}", userSettingsPath);
             var settings = MigrateFromLegacy(doc.RootElement);
             File.WriteAllText(userSettingsPath, JsonSerializer.Serialize(settings, JsonOptions.Default));
+            Log.Information("旧版用户设置迁移完成: 路径={UserSettingsPath}", userSettingsPath);
             return true;
         }
 
@@ -230,7 +267,8 @@ public sealed class UserSettingsStore : IUserSettingsStore
         if (tasks is null)
             return false;
 
-        var removed = false;
+        var removed      = false;
+        var removedCount = 0;
 
         for (var index = tasks.Count - 1; index >= 0; index--)
         {
@@ -242,10 +280,20 @@ public sealed class UserSettingsStore : IUserSettingsStore
 
             tasks.RemoveAt(index);
             removed = true;
+            removedCount++;
         }
 
         if (removed)
+        {
             File.WriteAllText(userSettingsPath, root.ToJsonString(JsonOptions.Default));
+
+            Log.Information
+            (
+                "已清理废弃 Agent 任务配置: 路径={UserSettingsPath}, 删除数量={RemovedCount}",
+                userSettingsPath,
+                removedCount
+            );
+        }
 
         return removed;
     }

@@ -4,6 +4,7 @@ using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using Serilog;
 
 namespace DirectorPrompt.Agents;
 
@@ -22,6 +23,17 @@ public sealed class HistoryBuilder
     )
     {
         var config = orchestratorConfig.HistoryContext;
+
+        Log.Debug
+        (
+            "开始构建叙事历史: 对话={SessionID}, 场景={SceneID}, 当前轮次={CurrentRoundID}, 最大轮次={MaxRounds}, Token预算={TokenBudget}",
+            sessionID,
+            sceneID,
+            currentRoundID,
+            config.MaxRounds,
+            config.TokenBudget
+        );
+
         var events = await eventRepository.GetRecentBySceneAsync
                      (
                          sessionID,
@@ -81,6 +93,17 @@ public sealed class HistoryBuilder
         }
 
         selected.Reverse();
+
+        Log.Information
+        (
+            "叙事历史构建完成: 对话={SessionID}, 场景={SceneID}, 候选轮次={CandidateRoundCount}, 已选轮次={SelectedRoundCount}, 估算Token={UsedTokens}",
+            sessionID,
+            sceneID,
+            history.Count,
+            selected.Count,
+            usedTokens
+        );
+
         return selected;
     }
 
@@ -118,8 +141,9 @@ public sealed class HistoryBuilder
 
             return sb.ToString();
         }
-        catch
+        catch (JsonException exception)
         {
+            Log.Warning(exception, "解析导演指令历史失败, 将使用原始数据: 数据长度={DataLength}", json.Length);
             return json;
         }
     }

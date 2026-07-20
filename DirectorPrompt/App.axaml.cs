@@ -51,12 +51,25 @@ public class App : Application
         desktop.ShutdownMode                   =  ShutdownMode.OnExplicitShutdown;
         desktop.Exit                           += OnExit;
         Dispatcher.UIThread.UnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+        TaskScheduler.UnobservedTaskException     += OnUnobservedTaskException;
+
+        Log.Information
+        (
+            "应用启动: 版本={Version}, 进程={ProcessID}, 基目录={BaseDirectory}",
+            typeof(App).Assembly.GetName().Version?.ToString() ?? "未知",
+            Environment.ProcessId,
+            AppContext.BaseDirectory
+        );
 
         try
         {
             var settingsStore = new UserSettingsStore();
-            settingsStore.MigrateIfNeeded();
+            var settingsMigrated = settingsStore.MigrateIfNeeded();
 
+            Log.Information("用户设置已准备: 已迁移={SettingsMigrated}", settingsMigrated);
+
+            Log.Information("开始构建应用宿主");
             host = Host.CreateDefaultBuilder()
                        .UseContentRoot(AppContext.BaseDirectory)
                        .UseSerilog()
@@ -74,9 +87,11 @@ public class App : Application
             await migrator.MigrateAsync();
 
             await host.StartAsync();
+            Log.Information("应用宿主已启动");
 
             var localizationService = host.Services.GetRequiredService<ILocalizationService>();
             Loc.Instance.SetService(localizationService);
+            Log.Information("本地化服务已就绪: 当前语言={Language}", localizationService.CurrentLanguage);
 
 #if RELEASE
             var shouldContinue = await CheckForUpdatesAsync();
@@ -92,12 +107,20 @@ public class App : Application
             desktop.MainWindow   = mainWindow;
             desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
             mainWindow.Show();
+            Log.Information("主窗口已显示");
 
             var lanSharingService = host.Services.GetRequiredService<ILanSharingService>();
 
             try
             {
-                await lanSharingService.ApplyAsync(host.Services.GetRequiredService<UserSettings>().RemoteControl.IsLanSharingEnabled);
+                var isLanSharingEnabled = host.Services.GetRequiredService<UserSettings>().RemoteControl.IsLanSharingEnabled;
+                await lanSharingService.ApplyAsync(isLanSharingEnabled);
+                Log.Information
+                (
+                    "局域网共享配置已应用: 已启用={Enabled}, 端点={Endpoint}",
+                    isLanSharingEnabled,
+                    lanSharingService.Endpoint
+                );
             }
             catch (Exception ex)
             {
@@ -121,6 +144,8 @@ public class App : Application
 
     private void OnExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
+        Log.Information("应用退出开始: 退出代码={ExitCode}", e.ApplicationExitCode);
+
         if (host is not null)
         {
             using var shutdownTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -131,7 +156,7 @@ public class App : Application
             }
             catch (Exception ex)
             {
-                Log.Warning("应用宿主停止错误: {exception}", ex);
+                Log.Warning(ex, "应用宿主停止时发生错误");
             }
 
             try
@@ -146,10 +171,11 @@ public class App : Application
             }
             catch (Exception ex)
             {
-                Log.Warning("应用宿主释放错误: {exception}", ex);
+                Log.Warning(ex, "应用宿主释放时发生错误");
             }
         }
 
+        Log.Information("应用退出日志已刷新");
         Log.CloseAndFlush();
     }
 
@@ -201,6 +227,17 @@ public class App : Application
         e.Handled = false;
     }
 
+    private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        if (e.ExceptionObject is Exception exception)
+            Log.Fatal(exception, "应用域未处理异常: 即将终止={IsTerminating}", e.IsTerminating);
+        else
+            Log.Fatal("应用域发生非异常对象的未处理错误: 即将终止={IsTerminating}", e.IsTerminating);
+    }
+
+    private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e) =>
+        Log.Error(e.Exception, "未观察到的后台任务异常");
+
     internal static Window? GetActiveWindow()
     {
         if (Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
@@ -213,6 +250,13 @@ public class App : Application
     {
         SQLiteTypeHandlers.Register();
         Directory.CreateDirectory(AppPaths.DataDirectory);
+
+        Log.Information
+        (
+            "配置应用服务: 数据目录={DataDirectory}, 数据库路径={DatabasePath}",
+            AppPaths.DataDirectory,
+            AppPaths.DatabasePath
+        );
 
         var connectionString  = $"Data Source={AppPaths.DatabasePath}";
         var connectionFactory = new SQLiteConnectionFactory(connectionString);
@@ -303,6 +347,8 @@ public class App : Application
 
         if (string.IsNullOrEmpty(preferredLanguage))
             preferredLanguage = "zh-CN";
+
+        Log.Information("注册本地化服务: 首选语言={PreferredLanguage}, 语言目录={LanguageDirectory}", preferredLanguage, langDirectory);
 
         var options = new LocalizationOptions
         {

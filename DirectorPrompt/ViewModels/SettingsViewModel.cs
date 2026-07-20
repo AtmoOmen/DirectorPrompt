@@ -113,12 +113,27 @@ public sealed partial class SettingsViewModel : ObservableObject
         Embedding = new EmbeddingSettingViewModel(userSettings.EmbeddingConfig);
         Memory    = new MemorySettingViewModel(userSettings.Orchestrator.MemoryConfig);
         Knowledge = new KnowledgeSettingViewModel(userSettings.Orchestrator.KnowledgeConfig);
+
+        Log.Information
+        (
+            "设置视图模型已初始化: 提供商数={ProviderCount}, 模型数={ModelCount}, 提示词数={PromptCount}, MCP服务数={MCPServerCount}, 局域网共享={LanSharingEnabled}",
+            Providers.Count,
+            Models.Count,
+            Prompts.Count,
+            MCPServers.Count,
+            IsLanSharingEnabled
+        );
+
         _         = InitializeMCPServersAsync();
     }
 
     private async Task InitializeMCPServersAsync()
     {
         await Task.Delay(100);
+
+        var enabledServerCount = MCPServers.Count(server => server.Enabled);
+
+        Log.Debug("开始自动检查 MCP 服务: 已启用服务数={EnabledServerCount}", enabledServerCount);
 
         foreach (var server in MCPServers)
         {
@@ -130,6 +145,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private void EnsureAgentTasks()
     {
         var existing = userSettings.Orchestrator.AgentTasks.ToDictionary(t => t.TaskType);
+        var added     = 0;
 
         foreach (var taskType in Enum.GetValues<AgentTaskType>())
         {
@@ -139,8 +155,12 @@ public sealed partial class SettingsViewModel : ObservableObject
                 (
                     new AgentTaskConfig { TaskType = taskType }
                 );
+                added++;
             }
         }
+
+        if (added > 0)
+            Log.Information("已补齐缺失的 Agent 任务配置: 数量={TaskCount}", added);
     }
 
     partial void OnSelectedLanguageChanged(string value)
@@ -149,7 +169,10 @@ public sealed partial class SettingsViewModel : ObservableObject
             return;
 
         if (localizationService.CurrentLanguage != value)
+        {
+            Log.Information("切换界面语言: 原语言={CurrentLanguage}, 新语言={NewLanguage}", localizationService.CurrentLanguage, value);
             localizationService.LoadLanguage(value);
+        }
     }
 
     [RelayCommand]
@@ -158,6 +181,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         var config = new ProviderConfig { DisplayName = "新提供商" };
         userSettings.Orchestrator.Providers.Add(config);
         Providers.Add(new ProviderSettingViewModel(config));
+        Log.Information("新增模型提供商配置: 提供商配置={ProviderID}", config.ID);
     }
 
     [RelayCommand]
@@ -168,6 +192,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         userSettings.Orchestrator.Providers.Remove(provider.Config);
         Providers.Remove(provider);
+        Log.Information("删除模型提供商配置: 提供商配置={ProviderID}", provider.ID);
     }
 
     [RelayCommand]
@@ -176,6 +201,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         var config = new ModelConfig { DisplayName = "新模型" };
         userSettings.Orchestrator.Models.Add(config);
         Models.Add(new ModelSettingViewModel(config));
+        Log.Information("新增模型配置: 模型配置={ModelID}", config.ID);
     }
 
     [RelayCommand]
@@ -186,6 +212,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         userSettings.Orchestrator.Models.Remove(model.Config);
         Models.Remove(model);
+        Log.Information("删除模型配置: 模型配置={ModelID}, 模型={ModelName}", model.ID, model.ModelName);
     }
 
     [RelayCommand]
@@ -222,6 +249,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         };
         userSettings.Orchestrator.Prompts.Add(config);
         Prompts.Add(new PromptSettingViewModel(config));
+        Log.Information("新增提示词配置: 提示词配置={PromptID}, 预设类型={PresetType}, 内容长度={ContentLength}", config.ID, presetType, content.Length);
     }
 
     [RelayCommand]
@@ -232,6 +260,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         userSettings.Orchestrator.Prompts.Remove(prompt.Config);
         Prompts.Remove(prompt);
+        Log.Information("删除提示词配置: 提示词配置={PromptID}", prompt.ID);
     }
 
     [RelayCommand]
@@ -243,6 +272,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         foreach (var task in AgentTasks)
             task.AddMCPServer(config);
+
+        Log.Information("新增 MCP 服务配置: 服务配置={MCPServerID}", config.ID);
     }
 
     [RelayCommand]
@@ -256,6 +287,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         foreach (var task in AgentTasks)
             task.RemoveMCPServer(server.Config.ID);
+
+        Log.Information("删除 MCP 服务配置: 服务配置={MCPServerID}", server.Config.ID);
     }
 
     [RelayCommand]
@@ -267,6 +300,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         server.Apply();
         server.IsTesting         = true;
         server.InspectionMessage = "正在连接";
+
+        Log.Information("开始测试 MCP 服务连接: 服务配置={MCPServerID}, 传输类型={TransportType}", server.Config.ID, server.Config.Transport);
 
         try
         {
@@ -283,6 +318,15 @@ public sealed partial class SettingsViewModel : ObservableObject
             server.InspectionMessage = inspection.IsAvailable ?
                                            $"连接成功, 发现 {inspection.Tools.Count} 个工具: {string.Join(", ", inspection.Tools.Select(t => t.Name))}" :
                                            $"连接失败: {inspection.ErrorMessage}";
+
+            Log.Information
+            (
+                "MCP 服务连接测试完成: 服务配置={MCPServerID}, 可用={IsAvailable}, 工具数={ToolCount}, 错误={ErrorMessage}",
+                server.Config.ID,
+                inspection.IsAvailable,
+                inspection.Tools.Count,
+                inspection.ErrorMessage
+            );
         }
         finally
         {
@@ -300,6 +344,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         server.IsTesting         = true;
         server.InspectionMessage = "正在刷新工具";
 
+        Log.Information("开始刷新 MCP 服务工具: 服务配置={MCPServerID}, 传输类型={TransportType}", server.Config.ID, server.Config.Transport);
+
         try
         {
             var inspection = await externalMCPToolRegistry.InspectAsync(server.Config, true);
@@ -315,6 +361,15 @@ public sealed partial class SettingsViewModel : ObservableObject
             server.InspectionMessage = inspection.IsAvailable ?
                                            $"已刷新, 发现 {inspection.Tools.Count} 个工具: {string.Join(", ", inspection.Tools.Select(t => t.Name))}" :
                                            $"刷新失败: {inspection.ErrorMessage}";
+
+            Log.Information
+            (
+                "MCP 服务工具刷新完成: 服务配置={MCPServerID}, 可用={IsAvailable}, 工具数={ToolCount}, 错误={ErrorMessage}",
+                server.Config.ID,
+                inspection.IsAvailable,
+                inspection.Tools.Count,
+                inspection.ErrorMessage
+            );
         }
         finally
         {
@@ -326,6 +381,16 @@ public sealed partial class SettingsViewModel : ObservableObject
     private async Task SaveAsync()
     {
         IsSaving = true;
+
+        Log.Information
+        (
+            "开始保存设置: 提供商数={ProviderCount}, 模型数={ModelCount}, 提示词数={PromptCount}, MCP服务数={MCPServerCount}, 局域网共享={LanSharingEnabled}",
+            Providers.Count,
+            Models.Count,
+            Prompts.Count,
+            MCPServers.Count,
+            IsLanSharingEnabled
+        );
 
         try
         {
@@ -339,6 +404,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             await externalMCPToolRegistry.InvalidateAsync();
 
             SaveSuccess = true;
+
+            Log.Information("设置保存完成: 当前语言={Language}, 局域网共享={LanSharingEnabled}", SelectedLanguage, IsLanSharingEnabled);
         }
         catch (Exception ex)
         {
@@ -365,6 +432,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         model.IsFetchingModels  = true;
         model.ModelFetchMessage = Loc.Get("Settings.FetchingModels");
 
+        Log.Information("开始获取聊天模型列表: 提供商={Provider}, 模型配置={ModelID}", provider.Provider, model.ID);
+
         try
         {
             var models = await connectionTester.FetchModelsAsync
@@ -384,10 +453,12 @@ public sealed partial class SettingsViewModel : ObservableObject
                 model.ModelName = model.AvailableModels[0];
 
             model.ModelFetchMessage = Loc.Get("Settings.FetchModelsSuccess", model.AvailableModels.Count);
+            Log.Information("聊天模型列表获取完成: 提供商={Provider}, 模型配置={ModelID}, 模型数={ModelCount}", provider.Provider, model.ID, model.AvailableModels.Count);
         }
         catch (Exception ex)
         {
             model.ModelFetchMessage = Loc.Get("Settings.FetchModelsFailed", ex.Message);
+            Log.Error(ex, "获取聊天模型列表失败: 提供商={Provider}, 模型配置={ModelID}", provider.Provider, model.ID);
         }
         finally
         {
@@ -410,6 +481,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         model.ConnectionSuccess   = null;
         model.ConnectionMessage   = Loc.Get("Settings.TestingConnection");
 
+        Log.Information("开始测试聊天模型连接: 提供商={Provider}, 模型={Model}", provider.Provider, model.ModelName);
+
         try
         {
             await connectionTester.TestChatAsync
@@ -423,11 +496,13 @@ public sealed partial class SettingsViewModel : ObservableObject
 
             model.ConnectionSuccess = true;
             model.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", model.ModelName);
+            Log.Information("聊天模型连接测试成功: 提供商={Provider}, 模型={Model}", provider.Provider, model.ModelName);
         }
         catch (Exception ex)
         {
             model.ConnectionSuccess = false;
             model.ConnectionMessage = Loc.Get("Settings.ConnectionFailed", ex.Message);
+            Log.Error(ex, "聊天模型连接测试失败: 提供商={Provider}, 模型={Model}", provider.Provider, model.ModelName);
         }
         finally
         {
@@ -460,6 +535,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         Embedding.IsFetchingModels  = true;
         Embedding.ModelFetchMessage = Loc.Get("Settings.FetchingModels");
 
+        Log.Information("开始获取向量模型列表: 提供商={Provider}", provider.Provider);
+
         try
         {
             var models = await connectionTester.FetchModelsAsync
@@ -479,10 +556,12 @@ public sealed partial class SettingsViewModel : ObservableObject
                 Embedding.ModelName = Embedding.AvailableModels[0];
 
             Embedding.ModelFetchMessage = Loc.Get("Settings.FetchModelsSuccess", Embedding.AvailableModels.Count);
+            Log.Information("向量模型列表获取完成: 提供商={Provider}, 模型数={ModelCount}", provider.Provider, Embedding.AvailableModels.Count);
         }
         catch (Exception ex)
         {
             Embedding.ModelFetchMessage = Loc.Get("Settings.FetchModelsFailed", ex.Message);
+            Log.Error(ex, "获取向量模型列表失败: 提供商={Provider}", provider.Provider);
         }
         finally
         {
@@ -502,6 +581,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         Embedding.ConnectionSuccess   = null;
         Embedding.ConnectionMessage   = Loc.Get("Settings.TestingConnection");
 
+        Log.Information("开始测试向量模型连接: 提供商={Provider}, 模型={Model}", provider.Provider, Embedding.ModelName);
+
         try
         {
             await connectionTester.TestEmbeddingAsync
@@ -515,11 +596,13 @@ public sealed partial class SettingsViewModel : ObservableObject
 
             Embedding.ConnectionSuccess = true;
             Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", Embedding.ModelName);
+            Log.Information("向量模型连接测试成功: 提供商={Provider}, 模型={Model}", provider.Provider, Embedding.ModelName);
         }
         catch (Exception ex)
         {
             Embedding.ConnectionSuccess = false;
             Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionFailed", ex.Message);
+            Log.Error(ex, "向量模型连接测试失败: 提供商={Provider}, 模型={Model}", provider.Provider, Embedding.ModelName);
         }
         finally
         {

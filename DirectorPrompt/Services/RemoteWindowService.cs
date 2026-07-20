@@ -7,6 +7,7 @@ using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Localization;
 using DirectorPrompt.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace DirectorPrompt.Services;
 
@@ -29,10 +30,13 @@ public sealed class RemoteWindowService
         this.popupLayer   = popupLayer;
         overlay.IsVisible = true;
         RemotePopupHost.Attach(popupLayer);
+        Log.Information("远程窗口宿主已连接");
     }
 
     public void Detach()
     {
+        Log.Information("开始断开远程窗口宿主: 打开窗口数={OpenWindowCount}", openWindows.Count);
+
         if (popupLayer is not null)
             RemotePopupHost.Detach(popupLayer);
 
@@ -42,6 +46,7 @@ public sealed class RemoteWindowService
         openWindows.Clear();
         overlay    = null;
         popupLayer = null;
+        Log.Information("远程窗口宿主已断开");
     }
 
     public Task<string?> InputAsync(string title, string prompt, string defaultValue) =>
@@ -49,6 +54,8 @@ public sealed class RemoteWindowService
 
     public async Task<bool> EditProjectAsync(Project project)
     {
+        Log.Information("通过远程界面打开项目编辑窗口: 项目={ProjectID}", project.ID);
+
         var window = serviceProvider.GetRequiredService<ProjectEditWindow>();
         await window.ViewModel.LoadFromProjectAsync(project);
 
@@ -71,6 +78,8 @@ public sealed class RemoteWindowService
 
     public async Task ShowSettingsAsync()
     {
+        Log.Information("通过远程界面打开设置窗口");
+
         var window = serviceProvider.GetRequiredService<SettingsWindow>();
         window.RemoteDialogHost = this;
 
@@ -81,7 +90,10 @@ public sealed class RemoteWindowService
                     );
 
         if (!saved)
+        {
+            Log.Information("远程设置窗口未保存即关闭");
             return;
+        }
 
         try
         {
@@ -89,6 +101,7 @@ public sealed class RemoteWindowService
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "远程设置应用局域网共享失败");
             await ShowErrorAsync
             (
                 Loc.Get("Settings.Title"),
@@ -106,6 +119,8 @@ public sealed class RemoteWindowService
         bool   danger
     )
     {
+        Log.Debug("显示远程确认对话框: 危险操作={Danger}", danger);
+
         var dialog = new PromptDialog();
         var completion = dialog.ShowRemoteConfirmationAsync
         (
@@ -127,6 +142,8 @@ public sealed class RemoteWindowService
         bool   multiline
     )
     {
+        Log.Debug("显示远程输入对话框: 多行={Multiline}, 默认值长度={DefaultValueLength}", multiline, defaultValue.Length);
+
         var dialog     = new PromptDialog();
         var completion = dialog.ShowRemoteInputAsync(title, prompt, defaultValue, multiline);
 
@@ -149,6 +166,8 @@ public sealed class RemoteWindowService
         Action<Action<TResult>> setCompletion
     )
     {
+        Log.Information("显示远程窗口: 类型={WindowType}", window.GetType().Name);
+
         if (window is SettingsWindow settingsWindow)
             settingsWindow.UseRemoteLayout();
         else if (window is ProjectEditWindow projectEditWindow)
@@ -168,6 +187,7 @@ public sealed class RemoteWindowService
         finally
         {
             RemoveWindow(window, modal, content);
+            Log.Information("远程窗口已关闭: 类型={WindowType}", window.GetType().Name);
         }
     }
 
@@ -177,6 +197,8 @@ public sealed class RemoteWindowService
         Task<TResult> completion
     )
     {
+        Log.Information("显示远程提示对话框: 类型={DialogType}", dialog.GetType().Name);
+
         var content = DetachContent(dialog);
         var modal   = CreateModal(dialog, content);
         AddWindow(dialog, modal);
@@ -188,6 +210,7 @@ public sealed class RemoteWindowService
         finally
         {
             RemoveWindow(dialog, modal, content);
+            Log.Information("远程提示对话框已关闭: 类型={DialogType}", dialog.GetType().Name);
         }
     }
 
@@ -256,6 +279,7 @@ public sealed class RemoteWindowService
 
         openWindows.Add(modal);
         overlay.Children.Add(modal);
+        Log.Debug("远程窗口已加入覆盖层: 类型={WindowType}, 打开窗口数={OpenWindowCount}", window.GetType().Name, openWindows.Count);
     }
 
     private void RemoveWindow(Window window, Control modal, Control content)
@@ -274,5 +298,6 @@ public sealed class RemoteWindowService
             promptDialog.SetRemoteCompletion(null);
 
         window.Content = content;
+        Log.Debug("远程窗口已从覆盖层移除: 类型={WindowType}, 打开窗口数={OpenWindowCount}", window.GetType().Name, openWindows.Count);
     }
 }
