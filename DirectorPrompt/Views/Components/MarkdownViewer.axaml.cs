@@ -124,6 +124,7 @@ public sealed partial class MarkdownViewer : UserControl
         if (renderer.MarkdownDocument is not null)
         {
             renderer.MarkdownDocument = null;
+            MarkdownBuilder.Clear();
             queuedMarkdown            = string.Empty;
             renderedMarkdown          = string.Empty;
         }
