@@ -16,8 +16,8 @@ public partial class MessageRail : UserControl
     public static readonly StyledProperty<IEnumerable?> EntriesProperty =
         AvaloniaProperty.Register<MessageRail, IEnumerable?>(nameof(Entries));
 
-    public static readonly StyledProperty<ListBox?> TargetListBoxProperty =
-        AvaloniaProperty.Register<MessageRail, ListBox?>(nameof(TargetListBox));
+    public static readonly StyledProperty<DialogMessageList?> TargetDialogMessagesProperty =
+        AvaloniaProperty.Register<MessageRail, DialogMessageList?>(nameof(TargetDialogMessages));
 
     private ScrollViewer? railScrollViewer;
     private ScrollViewer? targetScrollViewer;
@@ -33,14 +33,14 @@ public partial class MessageRail : UserControl
         set => SetValue(EntriesProperty, value);
     }
 
-    public ListBox? TargetListBox
+    public DialogMessageList? TargetDialogMessages
     {
-        get => GetValue(TargetListBoxProperty);
-        set => SetValue(TargetListBoxProperty, value);
+        get => GetValue(TargetDialogMessagesProperty);
+        set => SetValue(TargetDialogMessagesProperty, value);
     }
 
     static MessageRail() =>
-        TargetListBoxProperty.Changed.AddClassHandler<MessageRail>
+        TargetDialogMessagesProperty.Changed.AddClassHandler<MessageRail>
         (static (rail, _) => rail.HookTargetScrollViewer()
         );
 
@@ -58,7 +58,7 @@ public partial class MessageRail : UserControl
 
     private void HookTargetScrollViewer()
     {
-        var scrollViewer = TargetListBox?.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+        var scrollViewer = TargetDialogMessages?.ScrollViewer;
 
         if (ReferenceEquals(scrollViewer, targetScrollViewer))
             return;
@@ -83,60 +83,42 @@ public partial class MessageRail : UserControl
 
     private void SyncRailToTargetScroll()
     {
-        if (targetScrollViewer is null || TargetListBox is null || railScrollViewer is null)
+        if (targetScrollViewer is null || TargetDialogMessages is null || railScrollViewer is null)
             return;
 
-        var items = TargetListBox.Items;
+        var items = Entries?.OfType<DialogEntryViewModel>().ToList();
 
-        if (items.Count == 0)
+        if (items is null || items.Count == 0)
             return;
 
-        var panel = TargetListBox.GetVisualDescendants().OfType<VirtualizingStackPanel>().FirstOrDefault();
-        var firstIndex = panel is { FirstRealizedIndex: >= 0 } ?
-                             panel.FirstRealizedIndex :
-                             0;
-        var lastIndex = panel is { LastRealizedIndex: >= 0 } ?
-                            panel.LastRealizedIndex :
-                            items.Count - 1;
-
-        object? topEntry    = null;
+        DialogEntryViewModel? topEntry    = null;
         var     targetIndex = -1;
         var     minDistance = double.MaxValue;
 
-        for (var index = firstIndex; index <= lastIndex; index++)
+        foreach (var (entry, container) in TargetDialogMessages.GetRealizedEntries())
         {
-            var item = items[index];
+            var position = container.TranslatePoint(new Point(0, 0), targetScrollViewer);
 
-            if (item is null)
+            if (!position.HasValue)
                 continue;
 
-            var container = TargetListBox.ContainerFromItem(item);
+            var y      = position.Value.Y;
+            var height = container.Bounds.Height;
 
-            if (container is not null)
+            if (y <= 1 && y + height > 1)
             {
-                var position = container.TranslatePoint(new Point(0, 0), targetScrollViewer);
+                topEntry    = entry;
+                targetIndex = items.IndexOf(entry);
+                break;
+            }
 
-                if (position.HasValue)
-                {
-                    var y      = position.Value.Y;
-                    var height = container.Bounds.Height;
+            var distance = Math.Abs(y);
 
-                    if (y <= 1 && y + height > 1)
-                    {
-                        topEntry    = item;
-                        targetIndex = index;
-                        break;
-                    }
-
-                    var distance = Math.Abs(y);
-
-                    if (distance < minDistance)
-                    {
-                        minDistance = distance;
-                        topEntry    = item;
-                        targetIndex = index;
-                    }
-                }
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                topEntry    = entry;
+                targetIndex = items.IndexOf(entry);
             }
         }
 
@@ -147,7 +129,7 @@ public partial class MessageRail : UserControl
             if (targetIndex >= 0 && items.Count > 1)
             {
                 double lastItemHeight = 80;
-                var    lastContainer  = TargetListBox.ContainerFromIndex(items.Count - 1);
+                var    lastContainer  = TargetDialogMessages.ContainerFromItem(items[^1]);
 
                 if (lastContainer is not null)
                     lastItemHeight = lastContainer.Bounds.Height;
@@ -166,7 +148,7 @@ public partial class MessageRail : UserControl
 
     private void OnRailItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Control { DataContext: DialogEntryViewModel entry } || TargetListBox is null)
+        if (sender is not Control { DataContext: DialogEntryViewModel entry } || TargetDialogMessages is null)
             return;
 
         var requestID = ++navigationRequestID;
@@ -182,10 +164,10 @@ public partial class MessageRail : UserControl
 
     private void ScrollToEntry(int requestID, DialogEntryViewModel entry)
     {
-        if (requestID != navigationRequestID || TargetListBox is null)
+        if (requestID != navigationRequestID || TargetDialogMessages is null)
             return;
 
-        TargetListBox.ScrollIntoView(entry);
+        TargetDialogMessages.ScrollIntoView(entry);
 
         Dispatcher.UIThread.Post
         (
@@ -196,15 +178,15 @@ public partial class MessageRail : UserControl
 
     private void AlignEntryToTop(int requestID, DialogEntryViewModel entry)
     {
-        if (requestID != navigationRequestID || TargetListBox is null)
+        if (requestID != navigationRequestID || TargetDialogMessages is null)
             return;
 
-        targetScrollViewer ??= TargetListBox.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+        targetScrollViewer ??= TargetDialogMessages.ScrollViewer;
 
         if (targetScrollViewer is null)
             return;
 
-        var container = TargetListBox.ContainerFromItem(entry);
+        var container = TargetDialogMessages.ContainerFromItem(entry);
 
         if (container is null)
             return;
@@ -231,7 +213,7 @@ public partial class MessageRail : UserControl
 
     private void OnGoToTopClick(object? sender, RoutedEventArgs e)
     {
-        targetScrollViewer ??= TargetListBox?.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+        targetScrollViewer ??= TargetDialogMessages?.ScrollViewer;
 
         if (targetScrollViewer is not null)
             targetScrollViewer.Offset = targetScrollViewer.Offset.WithY(0);
@@ -239,24 +221,21 @@ public partial class MessageRail : UserControl
 
     private void OnGoToBottomClick(object? sender, RoutedEventArgs e)
     {
-        if (TargetListBox is null)
+        if (TargetDialogMessages is null)
             return;
 
-        var items = TargetListBox.Items;
-        if (items.Count == 0)
+        var items = Entries?.OfType<DialogEntryViewModel>().ToList();
+        if (items is null || items.Count == 0)
             return;
 
         var lastEntry = items[^1];
 
-        if (lastEntry is DialogEntryViewModel entry)
-        {
-            var requestID = ++navigationRequestID;
-            TargetListBox.ScrollIntoView(entry);
-            Dispatcher.UIThread.Post
-            (
-                () => AlignEntryToTop(requestID, entry),
-                DispatcherPriority.Render
-            );
-        }
+        var requestID = ++navigationRequestID;
+        TargetDialogMessages.ScrollIntoView(lastEntry);
+        Dispatcher.UIThread.Post
+        (
+            () => AlignEntryToTop(requestID, lastEntry),
+            DispatcherPriority.Render
+        );
     }
 }

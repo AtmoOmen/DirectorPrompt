@@ -494,70 +494,17 @@
                         <TextBlock Text="{Binding [Dialog.LoadEarlier], Source={x:Static loc:Loc.Instance}}" />
                     </Button>
 
-                    <ListBox x:Name="DialogListBox"
-                             Grid.Row="1"
-                             Grid.Column="0"
-                             ItemsSource="{Binding Dialog.Entries}"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             ScrollViewer.VerticalScrollBarVisibility="Hidden"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Padding="16,8,8,8"
-                             Focusable="False">
-                        <ListBox.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <VirtualizingStackPanel CacheLength="1" />
-                            </ItemsPanelTemplate>
-                        </ListBox.ItemsPanel>
-                        <ListBox.Styles>
-                            <Style Selector="ListBoxItem">
-                                <Setter Property="Padding" Value="0" />
-                                <Setter Property="Margin" Value="0" />
-                                <Setter Property="Background" Value="Transparent" />
-                                <Setter Property="BorderThickness" Value="0" />
-                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                <Setter Property="Focusable" Value="False" />
-                                <Setter Property="Template">
-                                    <ControlTemplate>
-                                        <ContentPresenter Content="{TemplateBinding Content}"
-                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                          HorizontalContentAlignment="Stretch" />
-                                    </ControlTemplate>
-                                </Setter>
-                            </Style>
-                            <Style Selector="Border.message.director">
-                                <Setter Property="HorizontalAlignment" Value="Right" />
-                            </Style>
-                            <Style Selector="Border.message.error">
-                                <Setter Property="Background"
-                                        Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
-                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
-                            </Style>
-                            <Style Selector="StackPanel.message-actions Button">
-                                <Setter Property="Width" Value="26" />
-                                <Setter Property="Height" Value="26" />
-                                <Setter Property="Padding" Value="0" />
-                                <Setter Property="VerticalAlignment" Value="Center" />
-                            </Style>
-                            <Style Selector="Button.message-menu">
-                                <Setter Property="Width" Value="28" />
-                                <Setter Property="Height" Value="28" />
-                                <Setter Property="Padding" Value="0" />
-                                <Setter Property="VerticalAlignment" Value="Center" />
-                            </Style>
-                        </ListBox.Styles>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <components:DialogEntryView />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <components:DialogMessageList x:Name="DialogMessageList"
+                                                  Grid.Row="1"
+                                                  Grid.Column="0"
+                                                  StableEntries="{Binding Dialog.StableEntries}"
+                                                  StreamingEntry="{Binding Dialog.StreamingEntry}" />
 
                     <components:MessageRail x:Name="MessageRail"
                                             Grid.Row="1"
                                             Grid.Column="1"
                                             Entries="{Binding Dialog.Entries}"
-                                            TargetListBox="{Binding ElementName=DialogListBox}"
+                                            TargetDialogMessages="{Binding ElementName=DialogMessageList}"
                                             MaxHeight="400"
                                             VerticalAlignment="Center"
                                             Margin="0,8,4,8" />
@@ -567,7 +514,7 @@
                                             Grid.Column="1"
                                             Classes="mobile"
                                             Entries="{Binding Dialog.Entries}"
-                                            TargetListBox="{Binding ElementName=DialogListBox}"
+                                            TargetDialogMessages="{Binding ElementName=DialogMessageList}"
                                             Width="40"
                                             MaxHeight="264"
                                             HorizontalAlignment="Right"

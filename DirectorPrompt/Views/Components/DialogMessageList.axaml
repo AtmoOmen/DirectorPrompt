@@ -1,0 +1,84 @@
+<UserControl x:Class="DirectorPrompt.Views.Components.DialogMessageList"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             Background="Transparent">
+    <UserControl.Resources>
+        <DataTemplate x:Key="DialogEntryTemplate">
+            <components:DialogEntryView />
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="Stretch" />
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Border.message.director">
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <Style Selector="Border.message.error">
+            <Setter Property="Background"
+                    Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        </Style>
+        <Style Selector="StackPanel.message-actions Button">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.message-menu">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer x:Name="DialogScrollViewer"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Hidden"
+                  Background="Transparent">
+        <Border Padding="16,8,8,8">
+            <StackPanel HorizontalAlignment="Stretch">
+                <ListBox x:Name="StableEntriesListBox"
+                         ItemsSource="{Binding StableEntries, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                         ItemTemplate="{StaticResource DialogEntryTemplate}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0"
+                         Focusable="False">
+                    <ListBox.Template>
+                        <ControlTemplate>
+                            <ItemsPresenter Name="PART_ItemsPresenter" />
+                        </ControlTemplate>
+                    </ListBox.Template>
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel CacheLength="1" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                </ListBox>
+
+                <ContentPresenter x:Name="StreamingEntryPresenter"
+                                  Content="{Binding StreamingEntry, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  ContentTemplate="{StaticResource DialogEntryTemplate}"
+                                  IsVisible="{Binding HasStreamingEntry, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch" />
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
+</UserControl>

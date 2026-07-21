@@ -8,7 +8,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Localization;
 using DirectorPrompt.Services;
@@ -25,7 +24,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
     private readonly bool                isRemote;
     private readonly ILanSharingService? lanSharingService;
 
-    private ListBox       dialogList = null!;
+    private DialogMessageList dialogMessages = null!;
     private ScrollViewer? dialogScrollViewer;
 
     private int  dialogScrollRequestID;
@@ -72,7 +71,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         MobileSessionsToggle    = this.FindControl<ToggleButton>(nameof(MobileSessionsToggle))!;
         MobileDetailsToggle     = this.FindControl<ToggleButton>(nameof(MobileDetailsToggle))!;
         MobileMoreActionsButton = this.FindControl<ToggleButton>(nameof(MobileMoreActionsButton))!;
-        dialogList              = this.FindControl<ListBox>("DialogListBox")!;
+        dialogMessages          = this.FindControl<DialogMessageList>("DialogMessageList")!;
         remoteOverlay           = this.FindControl<Panel>(nameof(RemoteOverlay));
         remoteImportMenu        = this.FindControl<Border>(nameof(RemoteImportMenu));
         remoteProjectMenu       = this.FindControl<Border>(nameof(RemoteProjectMenu));
@@ -170,7 +169,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
 
     private async void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        dialogScrollViewer = dialogList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+        dialogScrollViewer = dialogMessages.ScrollViewer;
 
         if (dialogScrollViewer is not null)
             dialogScrollViewer.ScrollChanged += OnDialogScrollChanged;
@@ -255,13 +254,13 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
             viewModel.IsLoadingDialog)
             return;
 
-        dialogScrollViewer ??= dialogList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+        dialogScrollViewer ??= dialogMessages.ScrollViewer;
 
         if (dialogScrollViewer is null)
             return;
 
         if (viewModel.Dialog.Entries.Count > 0)
-            dialogList.ScrollIntoView(viewModel.Dialog.Entries[^1]);
+            dialogMessages.ScrollIntoView(viewModel.Dialog.Entries[^1]);
 
         dialogScrollViewer.ScrollToEnd();
 

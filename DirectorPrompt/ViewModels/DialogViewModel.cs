@@ -230,9 +230,36 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
     }
 }
 
-public sealed class DialogViewModel
+public sealed class DialogViewModel : INotifyPropertyChanged
 {
+    private readonly HashSet<DialogEntryViewModel> trackedEntries = [];
+    private readonly ObservableCollection<DialogEntryViewModel> stableEntries = [];
+    private          DialogEntryViewModel?          streamingEntry;
+
     public ObservableCollection<DialogEntryViewModel> Entries { get; } = [];
+
+    public ReadOnlyObservableCollection<DialogEntryViewModel> StableEntries { get; }
+
+    public DialogEntryViewModel? StreamingEntry
+    {
+        get => streamingEntry;
+        private set
+        {
+            if (ReferenceEquals(streamingEntry, value))
+                return;
+
+            streamingEntry = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StreamingEntry)));
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public DialogViewModel()
+    {
+        StableEntries = new ReadOnlyObservableCollection<DialogEntryViewModel>(stableEntries);
+        Entries.CollectionChanged += OnEntriesChanged;
+    }
 
     public void Clear() =>
         Entries.Clear();
@@ -343,5 +370,69 @@ public sealed class DialogViewModel
     {
         if (Entries.Count > 0)
             Entries[^1].IsLast = false;
+    }
+
+    private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        SynchronizeTrackedEntries();
+        SynchronizePresentationEntries();
+    }
+
+    private void OnEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(e.PropertyName) && e.PropertyName != nameof(DialogEntryViewModel.IsStreaming))
+            return;
+
+        SynchronizePresentationEntries();
+    }
+
+    private void SynchronizeTrackedEntries()
+    {
+        var removedEntries = trackedEntries.Where(entry => !Entries.Contains(entry)).ToArray();
+
+        foreach (var entry in removedEntries)
+        {
+            entry.PropertyChanged -= OnEntryPropertyChanged;
+            trackedEntries.Remove(entry);
+        }
+
+        foreach (var entry in Entries)
+        {
+            if (trackedEntries.Add(entry))
+                entry.PropertyChanged += OnEntryPropertyChanged;
+        }
+    }
+
+    private void SynchronizePresentationEntries()
+    {
+        var currentStreamingEntry = Entries.LastOrDefault(entry => entry.IsStreaming);
+
+        StreamingEntry = currentStreamingEntry;
+
+        var stableIndex = 0;
+
+        foreach (var entry in Entries)
+        {
+            if (ReferenceEquals(entry, currentStreamingEntry))
+                continue;
+
+            if (stableIndex < stableEntries.Count && ReferenceEquals(stableEntries[stableIndex], entry))
+            {
+                stableIndex++;
+                continue;
+            }
+
+            var existingIndex = stableEntries.IndexOf(entry);
+
+            if (existingIndex >= 0)
+                stableEntries.Move(existingIndex, stableIndex);
+            else
+                stableEntries.Insert(stableIndex, entry);
+
+            stableIndex++;
+        }
+
+        while (stableEntries.Count > stableIndex)
+            stableEntries.RemoveAt(stableEntries.Count - 1);
     }
 }
