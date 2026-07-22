@@ -99,7 +99,7 @@ public sealed class ExternalMCPToolRegistry : IExternalMCPToolRegistry
         CancellationToken cancellationToken
     )
     {
-        var fingerprint = JsonSerializer.Serialize(config);
+        var fingerprint = CreateFingerprint(config);
 
         await gate.WaitAsync(cancellationToken);
 
@@ -176,6 +176,28 @@ public sealed class ExternalMCPToolRegistry : IExternalMCPToolRegistry
             ),
             _ => throw new ArgumentOutOfRangeException(nameof(config.Transport))
         };
+
+    private static string CreateFingerprint(MCPServerConfig config)
+    {
+        var serializedConfig = JsonSerializer.Serialize
+        (
+            new
+            {
+                config.ID,
+                config.DisplayName,
+                config.Enabled,
+                config.Transport,
+                config.Command,
+                config.Arguments,
+                config.WorkingDirectory,
+                config.Environment,
+                config.Endpoint,
+                config.Headers
+            }
+        );
+
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(serializedConfig)));
+    }
 
     private static string CreateFunctionName(string serverID, string toolName)
     {
