@@ -2,124 +2,221 @@ name: Build DirectorPrompt
 on: [push, pull_request]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  build-release:
-    name: Build Release on Windows
-    runs-on: windows-latest
-    if: "startsWith(github.ref, 'refs/tags/')"
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          submodules: recursive
+    build-release:
+        name: Build Release (${{ matrix.name }})
+        runs-on: ${{ matrix.os }}
+        if: startsWith(github.ref, 'refs/tags/')
+        permissions:
+            contents: read
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: Windows
+                      os: windows-latest
+                      runtime: win-x64
+                      framework: net10.0-windows10.0.18362.0
+                      channel: win
+                      main_exe: DirectorPrompt.exe
+                      icon_path: ./Assets/Images/Icon.ico
+                    - name: Linux
+                      os: ubuntu-latest
+                      runtime: linux-x64
+                      framework: net10.0
+                      channel: linux
+                      main_exe: DirectorPrompt
+                      icon_path: ./Assets/Images/Icon.png
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+                  fetch-tags: true
+                  submodules: recursive
 
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
+            - name: Setup .NET 10 SDK
+              uses: actions/setup-dotnet@v5
+              with:
+                  dotnet-version: 10.0.x
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: '22'
+            - name: Setup Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: "22"
 
-      - name: Restore Nuget Packages
-        run: dotnet restore DirectorPrompt.slnx
+            - name: Restore NuGet Packages
+              run: dotnet restore DirectorPrompt.slnx
 
-      - name: Define VERSION
-        run: |
-          $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
-          $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
-          $env:BRANCH = $env:GITHUB_REF -replace '.*/'
+            - name: Define VERSION
+              shell: pwsh
+              run: |
+                  $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
+                  $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
+                  $env:BRANCH = $env:GITHUB_REF_NAME
 
-          ($env:REPO_NAME) >> VERSION
-          ($env:BRANCH) >> VERSION
-          ($env:COMMIT) >> VERSION
+                  ($env:REPO_NAME) >> VERSION
+                  ($env:BRANCH) >> VERSION
+                  ($env:COMMIT) >> VERSION
 
-      - name: Publish Release
-        run: dotnet publish DirectorPrompt\DirectorPrompt.csproj -c Release -r win-x64 --self-contained false -o .\bin\publish
+            - name: Publish Release
+              run: dotnet publish DirectorPrompt/DirectorPrompt.csproj -c Release -f ${{ matrix.framework }} -r ${{ matrix.runtime }} --self-contained false -o ./bin/publish
 
-      - name: Generate Hashes File
-        run: .\scripts\CreateHashList.ps1 .\bin\publish
+            - name: Generate Hashes File
+              shell: pwsh
+              run: ./scripts/CreateHashList.ps1 ./bin/publish
 
-      - name: Velopack Build and Upload
-        id: build-velopack
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          $version = $env:GITHUB_REF -replace '.*/'
-          echo "version=$version" >> $env:GITHUB_OUTPUT
+            - name: Velopack Build and Upload
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+              shell: pwsh
+              run: |
+                  ./scripts/ci-velopack-upload.ps1 `
+                    -Channel '${{ matrix.channel }}' `
+                    -PackDir './bin/publish' `
+                    -OutputDir './Releases/${{ matrix.channel }}' `
+                    -MainExe '${{ matrix.main_exe }}' `
+                    -IconPath '${{ matrix.icon_path }}'
 
-          .\scripts\ci-velopack-upload.ps1
+            - name: Upload release assets
+              uses: actions/upload-artifact@v7
+              with:
+                  name: directorprompt-release-${{ matrix.channel }}
+                  path: Releases/${{ matrix.channel }}/
 
-      - name: Purge CF cache after R2 upload
-        if: success()
-        continue-on-error: true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        shell: pwsh
-        run: |
-          $body = '{"files":["https://dp-distribute.atmoomen.top/releases.win.json"]}'
-          try {
-            Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$env:CLOUDFLARE_ZONE_ID/purge_cache" `
-              -Method Post `
-              -Headers @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN" } `
-              -ContentType 'application/json' `
-              -Body $body
-            Write-Host "Purged: /releases.win.json"
-          }
-          catch {
-            Write-Warning "Purge failed: $_"
-          }
+            - name: Purge CF cache after R2 upload
+              if: success()
+              continue-on-error: true
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+              shell: pwsh
+              run: |
+                  $releaseFile = 'releases.${{ matrix.channel }}.json'
+                  $body = @{ files = @("https://dp-distribute.atmoomen.top/$releaseFile") } | ConvertTo-Json -Compress
+                  try {
+                    Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$env:CLOUDFLARE_ZONE_ID/purge_cache" `
+                      -Method Post `
+                      -Headers @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN" } `
+                      -ContentType 'application/json' `
+                      -Body $body
+                    Write-Host "Purged: /$releaseFile"
+                  }
+                  catch {
+                    Write-Warning "Purge failed: $_"
+                  }
 
-  build:
-    name: Build on Windows
-    runs-on: windows-latest
-    if: "!startsWith(github.ref, 'refs/tags/')"
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          submodules: recursive
+    create-release:
+        name: Create GitHub Release
+        needs: build-release
+        runs-on: ubuntu-latest
+        if: startsWith(github.ref, 'refs/tags/')
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 1
 
-      - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
+            - name: Download Windows release assets
+              uses: actions/download-artifact@v7
+              with:
+                  name: directorprompt-release-win
+                  path: Releases/win
 
-      - name: Restore Nuget Packages
-        run: dotnet restore DirectorPrompt.slnx
+            - name: Download Linux release assets
+              uses: actions/download-artifact@v7
+              with:
+                  name: directorprompt-release-linux
+                  path: Releases/linux
 
-      - name: Define VERSION
-        run: |
-          $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
-          $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
-          $env:BRANCH = $env:GITHUB_REF -replace '.*/'
+            - name: Create GitHub Release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              shell: pwsh
+              run: |
+                  $version = $env:GITHUB_REF_NAME
+                  $assets = @(
+                    Get-ChildItem -Path './Releases' -Recurse -File |
+                      Where-Object {
+                        $_.Extension -in @('.nupkg', '.zip', '.AppImage') -or
+                        $_.Name -in @('releases.win.json', 'releases.linux.json')
+                      }
+                  )
 
-          ($env:REPO_NAME) >> VERSION
-          ($env:BRANCH) >> VERSION
-          ($env:COMMIT) >> VERSION
+                  if ($assets.Count -eq 0) {
+                    throw 'No release assets were produced'
+                  }
 
-      - name: Publish Release
-        run: dotnet publish DirectorPrompt\DirectorPrompt.csproj -c Release -r win-x64 --self-contained false -o .\bin\publish
+                  $assetPaths = @($assets | Select-Object -ExpandProperty FullName)
+                  gh release create $version `
+                    --repo $env:GITHUB_REPOSITORY `
+                    --title "Release $version" `
+                    --notes-file './Assets/CHANGELOG.md' `
+                    @assetPaths
 
-      - name: Generate Hashes File
-        run: .\scripts\CreateHashList.ps1 .\bin\publish
+                  if ($LASTEXITCODE -ne 0) {
+                    throw "GitHub Release creation failed (exit=$LASTEXITCODE)"
+                  }
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: directorprompt-artifact
-          path: bin\publish\
+    build:
+        name: Build (${{ matrix.name }})
+        runs-on: ${{ matrix.os }}
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        permissions:
+            contents: read
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: Windows
+                      os: windows-latest
+                      runtime: win-x64
+                      framework: net10.0-windows10.0.18362.0
+                      channel: win
+                    - name: Linux
+                      os: ubuntu-latest
+                      runtime: linux-x64
+                      framework: net10.0
+                      channel: linux
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+                  fetch-tags: true
+                  submodules: recursive
+
+            - name: Setup .NET 10 SDK
+              uses: actions/setup-dotnet@v5
+              with:
+                  dotnet-version: 10.0.x
+
+            - name: Restore NuGet Packages
+              run: dotnet restore DirectorPrompt.slnx
+
+            - name: Define VERSION
+              shell: pwsh
+              run: |
+                  $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
+                  $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
+                  $env:BRANCH = $env:GITHUB_REF_NAME
+
+                  ($env:REPO_NAME) >> VERSION
+                  ($env:BRANCH) >> VERSION
+                  ($env:COMMIT) >> VERSION
+
+            - name: Publish Release
+              run: dotnet publish DirectorPrompt/DirectorPrompt.csproj -c Release -f ${{ matrix.framework }} -r ${{ matrix.runtime }} --self-contained false -o ./bin/publish
+
+            - name: Generate Hashes File
+              shell: pwsh
+              run: ./scripts/CreateHashList.ps1 ./bin/publish
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v7
+              with:
+                  name: directorprompt-artifact-${{ matrix.channel }}
+                  path: bin/publish/

@@ -1,31 +1,31 @@
 name: Purge Cloudflare Cache
 
 on:
-  workflow_dispatch:
+    workflow_dispatch:
 
 jobs:
-  purge:
-    name: Purge CF Cache
-    runs-on: ubuntu-latest
-    steps:
-      - name: Purge cache via Cloudflare API
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        shell: bash
-        run: |
-          FILES='["https://dp-distribute.atmoomen.top/releases.win.json"]'
-          echo "Purging: $FILES"
+    purge:
+        name: Purge CF Cache
+        runs-on: ubuntu-latest
+        steps:
+            - name: Purge cache via Cloudflare API
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+              shell: bash
+              run: |
+                  FILES='["https://dp-distribute.atmoomen.top/releases.win.json","https://dp-distribute.atmoomen.top/releases.linux.json"]'
+                  echo "Purging: $FILES"
 
-          RESP=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{ \"files\": $FILES }")
+                  RESP=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" \
+                    -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                    -H "Content-Type: application/json" \
+                    -d "{ \"files\": $FILES }")
 
-          echo "Response: $RESP"
-          SUCCESS=$(echo "$RESP" | jq -r '.success')
-          if [ "$SUCCESS" != "true" ]; then
-            echo "::error::Purge failed: $(echo "$RESP" | jq -r '.errors[0].message')"
-            exit 1
-          fi
-          echo "Purge completed successfully"
+                  echo "Response: $RESP"
+                  SUCCESS=$(echo "$RESP" | jq -r '.success')
+                  if [ "$SUCCESS" != "true" ]; then
+                    echo "::error::Purge failed: $(echo "$RESP" | jq -r '.errors[0].message')"
+                    exit 1
+                  fi
+                  echo "Purge completed successfully"

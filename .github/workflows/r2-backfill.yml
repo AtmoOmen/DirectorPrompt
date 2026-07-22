@@ -1,41 +1,46 @@
 name: Backfill R2 from GitHub Releases
 on:
-  workflow_dispatch:
+    workflow_dispatch:
 
 jobs:
-  backfill:
-    name: Backfill last 10 releases to R2
-    runs-on: windows-latest
-    permissions:
-      contents: read
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@v5
+    backfill:
+        name: Backfill ${{ matrix.channel }} releases to R2
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        defaults:
+            run:
+                shell: pwsh
+        strategy:
+            fail-fast: false
+            matrix:
+                channel: [win, linux]
+        steps:
+            - uses: actions/checkout@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: '22'
+            - name: Setup Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: "22"
 
-      - name: Run backfill script
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: .\scripts\r2-backfill.ps1
+            - name: Run backfill script
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+              run: ./scripts/r2-backfill.ps1 -Channel ${{ matrix.channel }}
 
-      - name: Purge CF cache after backfill
-        if: success()
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        run: |
-          $body = '{"files":["https://dp-distribute.atmoomen.top/releases.win.json"]}'
-          Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$env:CLOUDFLARE_ZONE_ID/purge_cache" `
-            -Method Post `
-            -Headers @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN" } `
-            -ContentType 'application/json' `
-            -Body $body
-          Write-Host "Purged: /releases.win.json"
+            - name: Purge CF cache after backfill
+              if: success()
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+              run: |
+                  $releaseFile = 'releases.${{ matrix.channel }}.json'
+                  $body = @{ files = @("https://dp-distribute.atmoomen.top/$releaseFile") } | ConvertTo-Json -Compress
+                  Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$env:CLOUDFLARE_ZONE_ID/purge_cache" `
+                    -Method Post `
+                    -Headers @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN" } `
+                    -ContentType 'application/json' `
+                    -Body $body
+                  Write-Host "Purged: /$releaseFile"

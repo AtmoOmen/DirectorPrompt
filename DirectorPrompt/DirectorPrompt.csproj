@@ -3,10 +3,12 @@
     <PropertyGroup>
         <Version>1.3.2</Version>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net10.0-windows10.0.18362.0</TargetFramework>
+        <TargetFrameworks>net10.0;net10.0-windows10.0.18362.0</TargetFrameworks>
         <RootNamespace>DirectorPrompt</RootNamespace>
         <ApplicationIcon>..\Assets\Images\Icon-NoBackground.ico</ApplicationIcon>
         <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+        <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+        <EnableWindowsTargeting>true</EnableWindowsTargeting>
     </PropertyGroup>
 
     <ItemGroup>
@@ -24,7 +26,6 @@
         <PackageReference Include="Avalonia"/>
         <PackageReference Include="Avalonia.Desktop"/>
         <PackageReference Include="CommunityToolkit.Mvvm"/>
-        <PackageReference Include="CommunityToolkit.WinUI.Notifications"/>
         <PackageReference Include="DailyRoutines.CodeAnalysis">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -32,8 +33,18 @@
         <PackageReference Include="FluentAvaloniaUI"/>
         <PackageReference Include="Serilog"/>
         <PackageReference Include="Serilog.Extensions.Hosting"/>
-        <PackageReference Include="System.Drawing.Common"/>
         <PackageReference Include="Velopack"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.18362.0'">
+        <PackageReference Include="CommunityToolkit.WinUI.Notifications"/>
+        <PackageReference Include="System.Drawing.Common"/>
+        <Compile Remove="Services\LinuxNotificationService.cs"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+        <PackageReference Include="DesktopNotifications.FreeDesktop"/>
+        <Compile Remove="Services\WindowsNotificationService.cs"/>
     </ItemGroup>
 
     <ItemGroup>

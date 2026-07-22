@@ -7,7 +7,7 @@
     1. Fetch latest N GitHub Releases
     2. For each release, download *.nupkg, compute SHA1/SHA256/Size
     3. Upload nupkgs to R2 (1yr immutable)
-    4. Build releases.win.json and upload
+    4. Build the requested channel feed and upload
     5. Clean up stale nupkgs in R2 not in the backfill set
 
 .ENVIRONMENT
@@ -18,15 +18,23 @@
 #>
 
 param(
+    [ValidateSet('win', 'linux')]
+    [string]$Channel    = 'win',
     [string]$BucketName = 'directorprompt-distribute',
     [string]$PackId     = 'DirectorPrompt',
     [int]$Limit         = 10
 )
 
 $ErrorActionPreference = 'Stop'
+$releaseFileName = "releases.$Channel.json"
 
 function Write-Step([string]$Msg) {
     Write-Host ">>> $Msg"
+}
+
+function Test-ChannelPackageFileName([string]$FileName) {
+    $isLinuxPackage = $FileName -match '-linux-(full|delta)\.nupkg$'
+    return $Channel -eq 'linux' ? $isLinuxPackage : -not $isLinuxPackage
 }
 
 if (-not (Get-Command wrangler -ErrorAction SilentlyContinue)) {
@@ -66,11 +74,20 @@ foreach ($tag in $releaseArray) {
 
     foreach ($file in $nupkgFiles) {
         $fileName = $file.Name
+
+        if (-not (Test-ChannelPackageFileName $fileName)) {
+            continue
+        }
+
         $fileSize = $file.Length
         $sha1     = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA1).Hash.ToUpperInvariant()
         $sha256   = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToUpperInvariant()
 
-        if ($fileName -match '^DirectorPrompt-(.+)-(full|delta)\.nupkg$') {
+        $fileNamePattern = $Channel -eq 'linux' ?
+                               '^DirectorPrompt-(.+)-linux-(full|delta)\.nupkg$' :
+                               '^DirectorPrompt-(.+)-(full|delta)\.nupkg$'
+
+        if ($fileName -match $fileNamePattern) {
             $version = $Matches[1]
             $type    = if ($Matches[2] -eq 'full') { 'Full' } else { 'Delta' }
         }
@@ -101,25 +118,25 @@ foreach ($tag in $releaseArray) {
         }
     }
 
-    Remove-Item "$workDir\*.nupkg" -Force
+    Get-ChildItem -LiteralPath $workDir -Filter '*.nupkg' -File | Remove-Item -Force
 }
 
 # ---- 3. Sort, build and upload release feeds ----
 $sortedAssets = $allAssets | Sort-Object { [Version]$_.Version } -Descending
 
 $releaseJson = @{ Assets = @($sortedAssets) } | ConvertTo-Json -Depth 3
-$releaseJsonPath = Join-Path $workDir 'releases.win.json'
+$releaseJsonPath = Join-Path $workDir $releaseFileName
 $releaseJson | Set-Content -LiteralPath $releaseJsonPath -Encoding utf8NoBOM
 
-Write-Host "`n=== releases.win.json ==="
+Write-Host "`n=== $releaseFileName ==="
 Write-Host $releaseJson
 
 Write-Step 'Uploading release feeds...'
-npx wrangler r2 object put "$BucketName/releases.win.json" `
+npx wrangler r2 object put "$BucketName/$releaseFileName" `
     --remote --file $releaseJsonPath `
     --content-type 'application/json; charset=utf-8'
 
-if ($LASTEXITCODE -ne 0) { throw 'Upload of releases.win.json failed' }
+if ($LASTEXITCODE -ne 0) { throw "Upload of $releaseFileName failed" }
 
 Write-Host "`nUpload complete: $($sortedAssets.Count) nupkgs from $($releaseArray.Count) releases."
 
@@ -131,7 +148,7 @@ foreach ($a in $sortedAssets) { $keepFileNames[$a.FileName] = $true }
 $apiUrl = "https://api.cloudflare.com/client/v4/accounts/$env:CLOUDFLARE_ACCOUNT_ID/r2/buckets/$BucketName/objects?limit=1000"
 try {
     $response = Invoke-RestMethod -Uri $apiUrl -Headers @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN" } -ErrorAction Stop
-    $allKeys = @($response.result | Where-Object { $_.key -match '\.nupkg$' } | ForEach-Object { $_.key })
+    $allKeys = @($response.result | Where-Object { Test-ChannelPackageFileName $_.key } | ForEach-Object { $_.key })
     Write-Host "  $($allKeys.Count) nupkgs in R2"
 
     $deleted = 0

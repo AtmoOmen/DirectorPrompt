@@ -19,11 +19,19 @@ internal class UpdateOrchestrator
     {
         try
         {
+            var channel = GetUpdateChannel();
+
+            if (channel is null)
+            {
+                Log.Information("当前平台暂不支持自动更新");
+                return (true, null);
+            }
+
             var updateSource = new SimpleWebSource(DISTRIBUTE_BASE_URL);
 
             var updateOptions = new UpdateOptions
             {
-                ExplicitChannel       = "win",
+                ExplicitChannel       = channel,
                 AllowVersionDowngrade = false
             };
 
@@ -82,5 +90,10 @@ internal class UpdateOrchestrator
             OperationCanceledException => Loc.Get("Update.FailedCancelled"),
             _                          => exception.Message
         };
+
+    private static string? GetUpdateChannel() =>
+        OperatingSystem.IsWindows() ? "win" :
+        OperatingSystem.IsLinux()   ? "linux" :
+        null;
 }
 #endif

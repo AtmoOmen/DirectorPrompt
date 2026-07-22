@@ -1,35 +1,33 @@
 using System.Runtime.InteropServices;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using CommunityToolkit.WinUI.Notifications;
 using Serilog;
 
 namespace DirectorPrompt.Services;
 
-public sealed class NotificationService : IDisposable
+public sealed class WindowsNotificationService : INotificationService
 {
-    private Action<ActivationArgs>? activationHandler;
+    private Action<NotificationActivationArgs>? activationHandler;
 
     private bool disposed;
 
-    public NotificationService() =>
+    public WindowsNotificationService() =>
         ToastNotificationManagerCompat.OnActivated += OnNotificationActivated;
 
-    public void NotifyInBackground(string title, string message, Level level = Level.Info) =>
+    public void NotifyInBackground(string title, string message, NotificationLevel level = NotificationLevel.Info) =>
         NotifyCore(title, message, level, null, null, true);
 
-    public void NotifyInBackground(string title, string message, Level level, string? context, params Button[] buttons) =>
+    public void NotifyInBackground(string title, string message, NotificationLevel level, string? context, params NotificationButton[] buttons) =>
         NotifyCore(title, message, level, context, buttons, true);
 
-    public void Notify(string title, string message, Level level = Level.Info) =>
+    public void Notify(string title, string message, NotificationLevel level = NotificationLevel.Info) =>
         NotifyCore(title, message, level, null, null, false);
 
-    public void Notify(string title, string message, Level level, string? context, params Button[] buttons) =>
+    public void Notify(string title, string message, NotificationLevel level, string? context, params NotificationButton[] buttons) =>
         NotifyCore(title, message, level, context, buttons, false);
 
-    public void RegisterActivationHandler(Action<ActivationArgs> handler) =>
+    public void RegisterActivationHandler(Action<NotificationActivationArgs> handler) =>
         activationHandler = handler;
 
     public void Dispose()
@@ -39,34 +37,36 @@ public sealed class NotificationService : IDisposable
 
         disposed                                   =  true;
         ToastNotificationManagerCompat.OnActivated -= OnNotificationActivated;
-        Log.Information("通知服务已释放");
+        Log.Information("Windows 通知服务已释放");
     }
 
     private void NotifyCore
     (
-        string    title,
-        string    message,
-        Level     level,
-        string?   context,
-        Button[]? buttons,
-        bool      backgroundOnly
+        string                title,
+        string                message,
+        NotificationLevel     level,
+        string?               context,
+        NotificationButton[]? buttons,
+        bool                  backgroundOnly
     )
     {
-        if (disposed || (backgroundOnly && IsAnyWindowActive()))
+        var hasActiveWindow = DesktopWindowActivator.IsAnyWindowActive();
+
+        if (disposed || (backgroundOnly && hasActiveWindow))
         {
             Log.Debug
             (
                 "通知已跳过: 服务已释放={Disposed}, 仅后台={BackgroundOnly}, 存在活动窗口={HasActiveWindow}",
                 disposed,
                 backgroundOnly,
-                IsAnyWindowActive()
+                hasActiveWindow
             );
             return;
         }
 
         Log.Information
         (
-            "发送系统通知: 级别={Level}, 标题长度={TitleLength}, 内容长度={MessageLength}, 按钮数={ButtonCount}",
+            "发送 Windows 系统通知: 级别={Level}, 标题长度={TitleLength}, 内容长度={MessageLength}, 按钮数={ButtonCount}",
             level,
             title.Length,
             message.Length,
@@ -77,7 +77,7 @@ public sealed class NotificationService : IDisposable
                       .AddText(title)
                       .AddText(message);
 
-        if (level is Level.Warning or Level.Error)
+        if (level is NotificationLevel.Warning or NotificationLevel.Error)
             builder.SetToastDuration(ToastDuration.Long);
 
         if (!string.IsNullOrEmpty(context))
@@ -97,12 +97,8 @@ public sealed class NotificationService : IDisposable
         }
 
         builder.Show();
-        Log.Debug("系统通知已提交");
+        Log.Debug("Windows 系统通知已提交");
     }
-
-    private static bool IsAnyWindowActive() =>
-        Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
-        desktop.Windows.Any(window => window.IsActive);
 
     private void OnNotificationActivated(ToastNotificationActivatedEventArgsCompat args)
     {
@@ -114,39 +110,36 @@ public sealed class NotificationService : IDisposable
                          parsed["action"] :
                          null;
 
-        Log.Information("收到系统通知激活: 有上下文={HasContext}, 有操作={HasAction}", context is not null, action is not null);
+        Log.Information("收到 Windows 通知激活: 有上下文={HasContext}, 有操作={HasAction}", context is not null, action is not null);
 
         Dispatcher.UIThread.Post
         (() =>
             {
-                BringMainWindowToFront();
-                activationHandler?.Invoke(new ActivationArgs(context, action));
+                var window = DesktopWindowActivator.ActivateMainWindow();
+
+                if (window is not null)
+                    BringWindowToForeground(window);
+
+                activationHandler?.Invoke(new NotificationActivationArgs(context, action));
             }
         );
     }
 
-    private static void BringMainWindowToFront()
+    private static void BringWindowToForeground(Window window)
     {
-        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
-            return;
-
-        var window = desktop.MainWindow;
-
-        if (window is null)
-            return;
-
-        if (window.WindowState == WindowState.Minimized)
-            window.WindowState = WindowState.Normal;
-
-        window.Show();
-        window.Activate();
-
         var hwnd = window.TryGetPlatformHandle()?.Handle ?? nint.Zero;
 
         if (hwnd == nint.Zero)
             return;
 
-        var foregroundHwnd     = GetForegroundWindow();
+        var foregroundHwnd = GetForegroundWindow();
+
+        if (foregroundHwnd == nint.Zero)
+        {
+            SetForegroundWindow(hwnd);
+            return;
+        }
+
         var foregroundThreadID = GetWindowThreadProcessID(foregroundHwnd, nint.Zero);
         var currentThreadID    = GetCurrentThreadID();
 
@@ -155,9 +148,10 @@ public sealed class NotificationService : IDisposable
             AttachThreadInput(currentThreadID, foregroundThreadID, true);
             SetForegroundWindow(hwnd);
             AttachThreadInput(currentThreadID, foregroundThreadID, false);
+            return;
         }
-        else
-            SetForegroundWindow(hwnd);
+
+        SetForegroundWindow(hwnd);
     }
 
     [DllImport("user32.dll", EntryPoint = "GetForegroundWindow")]
@@ -174,24 +168,4 @@ public sealed class NotificationService : IDisposable
 
     [DllImport("kernel32.dll", EntryPoint = "GetCurrentThreadId")]
     private static extern uint GetCurrentThreadID();
-
-    public enum Level
-    {
-        Info,
-        Success,
-        Warning,
-        Error
-    }
-
-    public sealed record Button
-    (
-        string Content,
-        string Arguments
-    );
-
-    public sealed record ActivationArgs
-    (
-        string? Context,
-        string? Action
-    );
 }

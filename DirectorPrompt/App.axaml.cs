@@ -316,7 +316,7 @@ public class App : Application
         services.AddSingleton<Orchestrator>();
         services.AddSingleton<DialogHistoryService>();
         services.AddSingleton<SidebarQueryService>();
-        services.AddSingleton<NotificationService>();
+        RegisterNotificationService(services);
         services.AddSingleton<RemoteInteractionRouter>();
         services.AddSingleton<IProjectContentService, ProjectContentService>();
         services.AddSingleton<IProjectEditWindowCoordinator, ProjectEditWindowCoordinator>();
@@ -368,5 +368,28 @@ public class App : Application
 
         services.AddSingleton<ILocalizationService>
             (_ => new LocalizationService(options, preferredLanguage, preferredLanguage));
+    }
+
+    private static void RegisterNotificationService(IServiceCollection services)
+    {
+#if WINDOWS
+        if (OperatingSystem.IsWindows())
+        {
+            services.AddSingleton<INotificationService, WindowsNotificationService>();
+            return;
+        }
+#else
+        if (OperatingSystem.IsLinux())
+        {
+            services.AddSingleton<LinuxNotificationService>();
+            services.AddSingleton<INotificationService>
+            (serviceProvider => serviceProvider.GetRequiredService<LinuxNotificationService>());
+            services.AddHostedService
+            (serviceProvider => serviceProvider.GetRequiredService<LinuxNotificationService>());
+            return;
+        }
+#endif
+
+        services.AddSingleton<INotificationService, UnsupportedNotificationService>();
     }
 }

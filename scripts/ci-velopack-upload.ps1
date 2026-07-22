@@ -6,9 +6,9 @@
 .DESCRIPTION
     1. Download previous release via Worker (for delta generation)
     2. Pack new release via vpk
-    3. Pull remote releases.win.json from Worker, merge with local
+    3. Pull the remote channel feed from Worker, merge with local
     4. Trim to latest N versions, delete stale nupkgs
-    5. Upload new nupkgs + releases.win.json to R2
+    5. Upload new nupkgs and the channel feed to R2
 
 .ENVIRONMENT
     CLOUDFLARE_API_TOKEN  - Cloudflare API Token (R2 read/write)
@@ -17,21 +17,23 @@
 #>
 
 param(
+    [ValidateSet('win', 'linux')]
     [string]$Channel    = 'win',
     [string]$WorkerUrl  = 'https://dp-distribute.atmoomen.top',
     [string]$BucketName = 'directorprompt-distribute',
     [string]$PackId     = 'DirectorPrompt',
-    [string]$PackDir    = '.\bin\publish',
-    [string]$OutputDir  = '.\Releases',
+    [string]$PackDir    = './bin/publish',
+    [string]$OutputDir  = './Releases',
     [string]$MainExe    = 'DirectorPrompt.exe',
     [string]$PackAuthors     = 'OmenCorp',
-    [string]$IconPath        = '.\Assets\Images\Icon.ico',
-    [string]$ReleaseNotesPath = '.\Assets\CHANGELOG.md',
+    [string]$IconPath        = './Assets/Images/Icon.ico',
+    [string]$ReleaseNotesPath = './Assets/CHANGELOG.md',
     [string]$Framework       = 'net10.0-x64-desktop',
     [int]$MaxVersions        = 10
 )
 
 $ErrorActionPreference = 'Stop'
+$releaseFileName = "releases.$Channel.json"
 
 function Write-Step([string]$Msg) {
     Write-Host ">>> $Msg"
@@ -70,26 +72,34 @@ $packArgs = @(
     '--packAuthors', $PackAuthors,
     '--releaseNotes', $ReleaseNotesPath,
     '--icon', $IconPath,
-    '--framework', $Framework,
-    '--noInst'
+    '--framework', $Framework
 )
+
+if ($Channel -eq 'win') {
+    $packArgs += '--noInst'
+}
+
 & vpk pack @packArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "Velopack packaging failed (exit=$LASTEXITCODE)"
+}
 
 # ---- 3. Read local generated entries ----
-$localJson   = Get-Content -LiteralPath "$OutputDir\releases.win.json" -Encoding utf8 | ConvertFrom-Json
+$localReleasePath = Join-Path $OutputDir $releaseFileName
+$localJson   = Get-Content -LiteralPath $localReleasePath -Encoding utf8 | ConvertFrom-Json
 $localAssets = @($localJson.Assets)
 Write-Step "Local new entries: $($localAssets.Count)"
 
-# ---- 4. Pull remote releases.win.json from Worker ----
+# ---- 4. Pull remote channel feed from Worker ----
 $remoteAssets = @()
 try {
     $cacheBust = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    $remoteObj = Invoke-RestMethod -Uri "$WorkerUrl/releases.win.json?t=$cacheBust" -ErrorAction Stop
+    $remoteObj = Invoke-RestMethod -Uri "$WorkerUrl/$releaseFileName?t=$cacheBust" -ErrorAction Stop
     $remoteAssets = @($remoteObj.Assets)
     Write-Step "Remote existing entries: $($remoteAssets.Count)"
 }
 catch {
-    Write-Host "  No remote releases.win.json yet (first release). ($_)"
+    Write-Host "  No remote $releaseFileName yet (first release). ($_)"
 }
 
 # ---- 5. Merge (dedup by FileName, local wins) ----
@@ -121,10 +131,11 @@ $deleteAssets = @($mergedList | Where-Object { -not $keepSetFileNames.ContainsKe
 foreach ($a in $deleteAssets) {
     Write-Host "  Deleting stale nupkg: $($a.FileName)"
     npx wrangler r2 object delete "$BucketName/$($a.FileName)" --remote
+    if ($LASTEXITCODE -ne 0) { throw "Delete failed: $($a.FileName)" }
 }
 
 # ---- 8. Upload new nupkgs (1yr immutable) ----
-Get-ChildItem "$OutputDir\*.nupkg" -File | ForEach-Object {
+Get-ChildItem -Path (Join-Path $OutputDir '*.nupkg') -File | ForEach-Object {
     Write-Host "  Uploading nupkg: $($_.Name)"
     npx wrangler r2 object put "$BucketName/$($_.Name)" `
         --remote --file $_.FullName `
@@ -132,45 +143,15 @@ Get-ChildItem "$OutputDir\*.nupkg" -File | ForEach-Object {
     if ($LASTEXITCODE -ne 0) { throw "Upload failed: $($_.Name)" }
 }
 
-# ---- 9. Build and upload releases.win.json ----
-Write-Step 'Uploading releases.win.json...'
+# ---- 9. Build and upload the channel feed ----
+Write-Step "Uploading $releaseFileName..."
 $sortedKeep = $keepAssets | Sort-Object { [Version]$_.Version } -Descending
 $releaseJson = @{ Assets = @($sortedKeep) } | ConvertTo-Json -Depth 3
-$releaseJsonPath = "$OutputDir\releases.win.merged.json"
+$releaseJsonPath = $localReleasePath
 $releaseJson | Set-Content -LiteralPath $releaseJsonPath -Encoding utf8NoBOM
-npx wrangler r2 object put "$BucketName/releases.win.json" `
+npx wrangler r2 object put "$BucketName/$releaseFileName" `
     --remote --file $releaseJsonPath `
     --content-type 'application/json; charset=utf-8'
-if ($LASTEXITCODE -ne 0) { throw 'Upload of releases.win.json failed' }
+if ($LASTEXITCODE -ne 0) { throw "Upload of $releaseFileName failed" }
 
 Write-Host "Done: $($keepAssets.Count) nupkgs, $($keepVersions.Count) versions."
-
-# ---- 10. Create GitHub Release ----
-Write-Step 'Creating GitHub Release...'
-$portableZip = Get-ChildItem "$OutputDir\*-Portable.zip" -File | Select-Object -First 1
-
-$releaseNotes = Get-Content -LiteralPath $ReleaseNotesPath -Encoding utf8 -Raw
-
-$ghArgs = @(
-    'release', 'create', $version,
-    '--title', "Release $version",
-    '--notes', $releaseNotes
-)
-if ($portableZip) {
-    $ghArgs += $portableZip.FullName
-}
-Get-ChildItem "$OutputDir\*$version*.nupkg" -File | ForEach-Object {
-    $ghArgs += $_.FullName
-}
-
-gh @ghArgs --repo $env:GITHUB_REPOSITORY
-if ($LASTEXITCODE -ne 0) {
-    Write-Warning "GitHub Release creation failed (exit=$LASTEXITCODE), continuing."
-}
-else {
-    Write-Host "  GitHub Release created: $version"
-
-    Write-Host "  Uploading releases.win.json..."
-    gh release upload $version "$OutputDir\releases.win.json" --repo $env:GITHUB_REPOSITORY
-    if ($LASTEXITCODE -ne 0) { Write-Warning "Upload of releases.win.json to GitHub Release failed (exit=$LASTEXITCODE)" }
-}

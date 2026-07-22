@@ -34,7 +34,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly SidebarQueryService     sidebarQueryService;
     private readonly UserSettings            userSettings;
     private readonly IProjectPortService     projectPortService;
-    private readonly NotificationService     notificationService;
+    private readonly INotificationService    notificationService;
     private readonly IUserSettingsStore      userSettingsStore;
     private readonly IWindowService          windowService;
     private readonly IFilePickerService      filePickerService;
@@ -67,7 +67,7 @@ public sealed partial class MainViewModel : ObservableObject
         SidebarQueryService     sidebarQueryService,
         UserSettings            userSettings,
         IProjectPortService     projectPortService,
-        NotificationService     notificationService,
+        INotificationService    notificationService,
         IUserSettingsStore      userSettingsStore,
         IWindowService          windowService,
         IFilePickerService      filePickerService,
