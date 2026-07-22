@@ -4,9 +4,9 @@
     Called by CI workflow on tag push.
 
 .DESCRIPTION
-    1. Download previous release via Worker (for delta generation)
+    1. Fetch the remote channel feed and download the previous release when available
     2. Pack new release via vpk
-    3. Pull the remote channel feed from Worker, merge with local
+    3. Merge the remote feed with local assets
     4. Trim to latest N versions, delete stale nupkgs
     5. Upload new nupkgs and the channel feed to R2
 
@@ -25,10 +25,10 @@ param(
     [string]$PackDir    = './bin/publish',
     [string]$OutputDir  = './Releases',
     [string]$MainExe    = 'DirectorPrompt.exe',
+    [string]$Framework  = 'net10.0-x64-desktop',
     [string]$PackAuthors     = 'OmenCorp',
     [string]$IconPath        = './Assets/Images/Icon.ico',
     [string]$ReleaseNotesPath = './Assets/CHANGELOG.md',
-    [string]$Framework       = 'net10.0-x64-desktop',
     [int]$MaxVersions        = 10
 )
 
@@ -53,11 +53,31 @@ if (-not (Get-Command wrangler -ErrorAction SilentlyContinue)) {
 
 New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 
-# ---- 1. Download previous release from Worker (for delta) ----
-Write-Step 'Downloading previous release feed...'
-vpk download http --url $WorkerUrl --channel $Channel --timeout 30
-if ($LASTEXITCODE -ne 0) {
-    Write-Host '  No previous release found (first release), skipping delta generation.'
+# ---- 1. Fetch remote feed and download the previous release for delta generation ----
+$remoteAssets = @()
+try {
+    $cacheBust = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $remoteObj = Invoke-RestMethod -Uri "$WorkerUrl/$releaseFileName?t=$cacheBust" -ErrorAction Stop
+    $remoteAssets = @($remoteObj.Assets)
+    Write-Step "Remote existing entries: $($remoteAssets.Count)"
+}
+catch {
+    $statusCode = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
+
+    if ($statusCode -ne 404) {
+        throw
+    }
+
+    Write-Step "No remote $releaseFileName found, skipping delta generation"
+}
+
+if ($remoteAssets.Count -gt 0) {
+    Write-Step 'Downloading previous release for delta generation...'
+    vpk download http --url $WorkerUrl --channel $Channel --timeout 30
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Download of previous release failed (exit=$LASTEXITCODE)"
+    }
 }
 
 # ---- 2. Pack new release ----
@@ -71,12 +91,12 @@ $packArgs = @(
     '--channel', $Channel,
     '--packAuthors', $PackAuthors,
     '--releaseNotes', $ReleaseNotesPath,
-    '--icon', $IconPath,
-    '--framework', $Framework
+    '--icon', $IconPath
 )
 
 if ($Channel -eq 'win') {
     $packArgs += '--noInst'
+    $packArgs += '--framework', $Framework
 }
 
 & vpk pack @packArgs
@@ -90,26 +110,14 @@ $localJson   = Get-Content -LiteralPath $localReleasePath -Encoding utf8 | Conve
 $localAssets = @($localJson.Assets)
 Write-Step "Local new entries: $($localAssets.Count)"
 
-# ---- 4. Pull remote channel feed from Worker ----
-$remoteAssets = @()
-try {
-    $cacheBust = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    $remoteObj = Invoke-RestMethod -Uri "$WorkerUrl/$releaseFileName?t=$cacheBust" -ErrorAction Stop
-    $remoteAssets = @($remoteObj.Assets)
-    Write-Step "Remote existing entries: $($remoteAssets.Count)"
-}
-catch {
-    Write-Host "  No remote $releaseFileName yet (first release). ($_)"
-}
-
-# ---- 5. Merge (dedup by FileName, local wins) ----
+# ---- 4. Merge (dedup by FileName, local wins) ----
 $merged = @{}
 foreach ($a in ($remoteAssets + $localAssets)) {
     $merged[$a.FileName] = $a
 }
 $mergedList = @($merged.Values)
 
-# ---- 6. Keep latest N versions ----
+# ---- 5. Keep latest N versions ----
 $versionMap = @{}
 foreach ($a in $mergedList) {
     if (-not $versionMap.ContainsKey($a.Version)) { $versionMap[$a.Version] = @() }
@@ -126,7 +134,7 @@ $keepAssets       = @($mergedList | Where-Object { $keepSet.ContainsKey($_.Versi
 $keepSetFileNames = @{}
 foreach ($a in $keepAssets) { $keepSetFileNames[$a.FileName] = $true }
 
-# ---- 7. Delete stale nupkgs ----
+# ---- 6. Delete stale nupkgs ----
 $deleteAssets = @($mergedList | Where-Object { -not $keepSetFileNames.ContainsKey($_.FileName) })
 foreach ($a in $deleteAssets) {
     Write-Host "  Deleting stale nupkg: $($a.FileName)"
@@ -134,7 +142,7 @@ foreach ($a in $deleteAssets) {
     if ($LASTEXITCODE -ne 0) { throw "Delete failed: $($a.FileName)" }
 }
 
-# ---- 8. Upload new nupkgs (1yr immutable) ----
+# ---- 7. Upload new nupkgs (1yr immutable) ----
 Get-ChildItem -Path (Join-Path $OutputDir '*.nupkg') -File | ForEach-Object {
     Write-Host "  Uploading nupkg: $($_.Name)"
     npx wrangler r2 object put "$BucketName/$($_.Name)" `
@@ -143,7 +151,7 @@ Get-ChildItem -Path (Join-Path $OutputDir '*.nupkg') -File | ForEach-Object {
     if ($LASTEXITCODE -ne 0) { throw "Upload failed: $($_.Name)" }
 }
 
-# ---- 9. Build and upload the channel feed ----
+# ---- 8. Build and upload the channel feed ----
 Write-Step "Uploading $releaseFileName..."
 $sortedKeep = $keepAssets | Sort-Object { [Version]$_.Version } -Descending
 $releaseJson = @{ Assets = @($sortedKeep) } | ConvertTo-Json -Depth 3
