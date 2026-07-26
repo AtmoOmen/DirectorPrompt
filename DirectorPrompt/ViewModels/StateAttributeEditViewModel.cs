@@ -81,7 +81,11 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
 
     public ObservableCollection<NumericStateChangeRuleEditViewModel> NumericChanges { get; } = [];
 
-    public ObservableCollection<string> AvailableNumericAttributes { get; } = [];
+    public ObservableCollection<string> AvailableGlobalStateNames { get; } = [];
+
+    public ObservableCollection<string> AvailableCharacterStateNames { get; } = [];
+
+    public IReadOnlyList<string> ExpressionReferences { get; private set; } = ["val"];
 
     public bool IsNumericConfig => ValueType == StateValueType.Numeric;
 
@@ -98,6 +102,17 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     public bool IsSystemEnumConfig => ValueType == StateValueType.Enum && Driver == Driver.System;
 
     public bool IsNarrativeEnumConfig => ValueType == StateValueType.Enum && Driver == Driver.Narrative;
+
+    public void SetExpressionReferences(IEnumerable<string> references)
+    {
+        ExpressionReferences = references.Prepend("val").Distinct().ToList();
+
+        foreach (var change in NumericChanges)
+            change.SetExpressionReferences(ExpressionReferences);
+
+        foreach (var transition in Transitions)
+            transition.SetExpressionReferences(ExpressionReferences);
+    }
 
     partial void OnValueTypeChanged(StateValueType value)
     {
@@ -133,7 +148,11 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
         foreach (var opt in options)
         {
             if (!existing.Contains(opt))
-                Transitions.Add(new EnumTransitionEditViewModel { Option = opt });
+            {
+                var transition = new EnumTransitionEditViewModel { Option = opt, Trigger = Trigger };
+                transition.SetExpressionReferences(ExpressionReferences);
+                Transitions.Add(transition);
+            }
         }
     }
 
@@ -180,15 +199,26 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
         var transitions = Transitions.Select
         (t => new EnumTransitionConfig
             {
+                ID     = t.ID,
                 Option = t.Option,
+                Remarks = t.Remarks,
                 ChangeRules = Driver == Driver.Narrative && !string.IsNullOrWhiteSpace(t.ChangeRules) ?
                                   t.ChangeRules :
                                   null,
-                Method        = t.Method,
                 Weight        = t.Weight,
-                AttributeName = t.AttributeName,
-                Expression    = t.Expression,
-                SwitchMode    = t.SwitchMode
+                Trigger       = Driver == Driver.System ? t.Trigger ?? Trigger : null,
+                Conditions = t.Conditions.Select
+                (condition => new StateRuleConditionConfig
+                    {
+                        Source        = condition.Source,
+                        StateName     = condition.StateName,
+                        Comparison    = condition.Comparison,
+                        ExpectedValue = condition.ExpectedValue
+                    }
+                ).ToList(),
+                ConditionMatch = t.ConditionMatch,
+                RepeatPolicy   = t.RepeatPolicy,
+                Priority       = t.Priority
             }
         ).ToList();
 
@@ -197,11 +227,21 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
             {
                 ID               = change.ID,
                 Remarks          = change.Remarks,
-                AttributeName    = change.AttributeName,
-                Expression       = change.Expression,
-                ChangeExpression = change.ChangeExpression,
                 Trigger          = change.Trigger,
-                SwitchMode       = change.SwitchMode
+                Conditions = change.Conditions.Select
+                (condition => new StateRuleConditionConfig
+                    {
+                        Source        = condition.Source,
+                        StateName     = condition.StateName,
+                        Comparison    = condition.Comparison,
+                        ExpectedValue = condition.ExpectedValue
+                    }
+                ).ToList(),
+                ConditionMatch = change.ConditionMatch,
+                Operation      = change.Operation,
+                ValueExpression = change.ValueExpression,
+                RepeatPolicy   = change.RepeatPolicy,
+                Priority       = change.Priority
             }
         ).ToList();
 

@@ -1,4 +1,4 @@
-<UserControl x:Class="DirectorPrompt.Views.Components.NumericChangeEditControl"
+<UserControl x:Class="DirectorPrompt.Views.Components.StateRuleTransitionEditControl"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:fa="using:FluentAvalonia.UI.Controls"
@@ -6,37 +6,14 @@
              xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
              xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
              x:Name="Root">
-    <StackPanel DataContext="{Binding Source, ElementName=Root}"
-                Margin="0,12,0,0">
-        <Grid Margin="0,0,0,4" ColumnDefinitions="*,Auto">
-            <TextBlock Grid.Column="0"
-                       Text="{Binding [State.NumericChange.Title], Source={x:Static loc:Loc.Instance}}"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center" />
-            <Button Grid.Column="1"
-                    Padding="8,4"
-                    Click="OnAdd">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <fa:FASymbolIcon Symbol="Add" />
-                    <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
-                </StackPanel>
-            </Button>
-        </Grid>
-        <ItemsControl ItemsSource="{Binding NumericChanges}">
+    <StackPanel DataContext="{Binding Source, ElementName=Root}" Margin="0,8,0,0">
+        <ItemsControl ItemsSource="{Binding Transitions}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="vm:NumericStateChangeRuleEditViewModel">
-                    <Expander Margin="0,0,0,6" IsExpanded="False">
+                <DataTemplate DataType="vm:EnumTransitionEditViewModel">
+                    <Expander Margin="0,0,0,6">
                         <Expander.Header>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0"
-                                           Text="{Binding Header}"
-                                           FontWeight="SemiBold"
-                                           VerticalAlignment="Center" />
-                                <components:RemoveButton Grid.Column="1"
-                                                         Margin="0,0,-16,0"
-                                                         Click="OnDelete"
-                                                         Tag="{Binding}" />
-                            </Grid>
+                            <TextBlock Text="{Binding Header}"
+                                       FontWeight="SemiBold" />
                         </Expander.Header>
                         <StackPanel Margin="0,4,0,0">
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
@@ -62,13 +39,11 @@
                             <Grid Margin="0,10,0,4" ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                                     <TextBlock Text="{Binding [State.Rule.Condition], Source={x:Static loc:Loc.Instance}}"
-                                               FontWeight="SemiBold" VerticalAlignment="Center" />
+                                               FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
                                                Foreground="Gray" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0" />
                                 </StackPanel>
-                                <Button Grid.Column="1"
-                                        Padding="8,4"
-                                        Command="{Binding AddConditionCommand}">
+                                <Button Grid.Column="1" Padding="8,4" Command="{Binding AddConditionCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <fa:FASymbolIcon Symbol="Add" />
                                         <TextBlock Text="{Binding [State.Rule.AddCondition], Source={x:Static loc:Loc.Instance}}" />
@@ -84,12 +59,10 @@
                             <ItemsControl ItemsSource="{Binding Conditions}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:StateRuleConditionEditViewModel">
-                                        <Border Margin="0,0,0,5"
-                                                Padding="8"
+                                        <Border Margin="0,0,0,5" Padding="8"
                                                 Background="{DynamicResource ControlFillColorSecondaryBrush}"
                                                 BorderBrush="{DynamicResource ControlElevationBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="4">
+                                                BorderThickness="1" CornerRadius="4">
                                             <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
                                                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
                                                     <TextBlock Grid.Column="0"
@@ -144,12 +117,10 @@
                                                     <TextBlock Text="{Binding ExpressionReferencesText}"
                                                                Margin="0,3,0,0" Foreground="Gray" TextWrapping="Wrap" />
                                                     <TextBlock Text="{Binding ExpressionValidationMessage}"
-                                                               Margin="0,3,0,0"
-                                                               Foreground="MediumSeaGreen"
+                                                               Margin="0,3,0,0" Foreground="MediumSeaGreen"
                                                                IsVisible="{Binding IsExpressionValid}" />
                                                     <TextBlock Text="{Binding ExpressionValidationMessage}"
-                                                               Margin="0,3,0,0"
-                                                               Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                               Margin="0,3,0,0" Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                                                                IsVisible="{Binding IsExpressionValid, Converter={StaticResource InverseBool}}" />
                                                 </StackPanel>
                                             </Grid>
@@ -157,33 +128,6 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-
-                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-                                <TextBlock Text="{Binding [State.Rule.Effect], Source={x:Static loc:Loc.Instance}}"
-                                           FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
-                                           Foreground="Gray" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0" />
-                            </StackPanel>
-                            <components:PathComboBox
-                                    ItemsSource="{Binding NumericOperations, Source={x:Static vm:EnumOptions.Instance}}"
-                                    SelectedValue="{Binding Operation}"
-                                    SelectedValuePath="Value"
-                                    DisplayMemberPath="Display"
-                                    HorizontalAlignment="Stretch" />
-                            <TextBox Margin="0,6,0,0"
-                                     Text="{Binding ValueExpression}"
-                                     HorizontalAlignment="Stretch"
-                                     PlaceholderText="{Binding ValuePlaceholder}" />
-                            <TextBlock Text="{Binding [State.Rule.ExpressionGuide], Source={x:Static loc:Loc.Instance}}"
-                                       Margin="0,6,0,0" Foreground="Gray" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding ExpressionReferencesText}"
-                                       Margin="0,3,0,0" Foreground="Gray" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding ExpressionValidationMessage}"
-                                       Margin="0,3,0,0" Foreground="MediumSeaGreen"
-                                       IsVisible="{Binding IsExpressionValid}" />
-                            <TextBlock Text="{Binding ExpressionValidationMessage}"
-                                       Margin="0,3,0,0" Foreground="{DynamicResource SystemFillColorCriticalBrush}"
-                                       IsVisible="{Binding IsExpressionValid, Converter={StaticResource InverseBool}}" />
 
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
                                 <TextBlock Text="{Binding [State.Rule.RepeatPolicy], Source={x:Static loc:Loc.Instance}}" />
@@ -204,6 +148,15 @@
                             </StackPanel>
                             <fa:FANumberBox Value="{Binding Priority}"
                                             SimpleNumberFormat="F0"
+                                            HorizontalAlignment="Stretch" />
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                <TextBlock Text="{Binding [State.TransitionMethod.Probability], Source={x:Static loc:Loc.Instance}}" />
+                                <TextBlock Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            </StackPanel>
+                            <fa:FANumberBox Value="{Binding Weight, Converter={StaticResource NumberBoxValue}}"
+                                            SimpleNumberFormat="F2"
+                                            Minimum="0"
                                             HorizontalAlignment="Stretch" />
                         </StackPanel>
                     </Expander>

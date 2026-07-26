@@ -63,10 +63,4 @@ public partial class NumericChangeEditControl : UserControl
         if (confirmed)
             DeleteNumericChangeCommand?.Execute(change);
     }
-
-    private void OnClearAttribute(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Control { Tag: NumericStateChangeRuleEditViewModel change })
-            change.AttributeName = null;
-    }
 }

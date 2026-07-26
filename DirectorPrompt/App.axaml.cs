@@ -270,6 +270,7 @@ public class App : Application
         services.AddSingleton<ISessionRepository, SessionRepository>();
         services.AddSingleton<ISceneRepository, SceneRepository>();
         services.AddSingleton<IStateRepository, StateRepository>();
+        services.AddSingleton<IStateRuleExecutionRepository, StateRuleExecutionRepository>();
         services.AddSingleton<IKnowledgeRepository, KnowledgeRepository>();
         services.AddSingleton<IMemoryRepository, MemoryRepository>();
         services.AddSingleton<ICharacterRepository, CharacterRepository>();
@@ -284,6 +285,7 @@ public class App : Application
         services.AddSingleton<IExpressionEngine, ExpressionEngine>();
         services.AddSingleton<ICharacterCategoryResolver, CharacterCategoryResolver>();
         services.AddSingleton<ISystemStateTransformer, SystemStateTransformer>();
+        services.AddSingleton<StateRuleEvaluator>();
         services.AddSingleton<IChatClientFactory, ChatClientFactory>();
         services.AddSingleton<IModelConnectionTester, ModelConnectionTester>();
 

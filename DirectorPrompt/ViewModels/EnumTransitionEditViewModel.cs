@@ -1,41 +1,72 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Localization;
+using System.Collections.ObjectModel;
 
 namespace DirectorPrompt.ViewModels;
 
 public sealed partial class EnumTransitionEditViewModel : ObservableObject
 {
+    private IReadOnlyList<string> expressionReferences = ["val"];
+
+    public string ID { get; set; } = Guid.NewGuid().ToString("N");
+
     public string Option { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Header))]
+    public partial string Remarks { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string ChangeRules { get; set; } = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsRandom))]
-    [NotifyPropertyChangedFor(nameof(IsExpression))]
-    [NotifyPropertyChangedFor(nameof(IsAlways))]
-    [NotifyPropertyChangedFor(nameof(IsOnce))]
-    public partial EnumTransitionMethod Method { get; set; } = EnumTransitionMethod.Random;
-
-    [ObservableProperty]
     public partial float Weight { get; set; } = 1f;
 
     [ObservableProperty]
-    public partial string? AttributeName { get; set; }
+    public partial SystemTrigger? Trigger { get; set; }
 
     [ObservableProperty]
-    public partial string? Expression { get; set; }
+    public partial StateRuleConditionMatch ConditionMatch { get; set; } = StateRuleConditionMatch.All;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAlways))]
-    [NotifyPropertyChangedFor(nameof(IsOnce))]
-    public partial EnumSwitchMode SwitchMode { get; set; } = EnumSwitchMode.Always;
+    public partial StateRuleRepeatPolicy? RepeatPolicy { get; set; } = StateRuleRepeatPolicy.EveryEvent;
 
-    public bool IsRandom => Method == EnumTransitionMethod.Random;
+    [ObservableProperty]
+    public partial int Priority { get; set; }
 
-    public bool IsExpression => Method == EnumTransitionMethod.Expression;
+    public ObservableCollection<StateRuleConditionEditViewModel> Conditions { get; } = [];
 
-    public bool IsAlways => IsExpression && SwitchMode == EnumSwitchMode.Always;
+    public string Header => string.IsNullOrWhiteSpace(Remarks) ?
+                                $"{Loc.Get("State.Rule.SwitchTo")} {Option}" :
+                                Remarks;
 
-    public bool IsOnce => IsExpression && SwitchMode == EnumSwitchMode.Once;
+    public void SetExpressionReferences(IEnumerable<string> references)
+    {
+        expressionReferences = references.Prepend("val").Distinct().ToList();
+
+        foreach (var condition in Conditions)
+            condition.SetExpressionReferences(expressionReferences);
+    }
+
+    [RelayCommand]
+    private void AddCondition()
+    {
+        var condition = new StateRuleConditionEditViewModel
+        {
+            Source = Trigger == SystemTrigger.UserInput ?
+                         StateRuleConditionSource.InputContent :
+                         StateRuleConditionSource.CurrentValue
+        };
+        condition.SetExpressionReferences(expressionReferences);
+        Conditions.Add(condition);
+    }
+
+    [RelayCommand]
+    private void DeleteCondition(StateRuleConditionEditViewModel? condition)
+    {
+        if (condition is not null)
+            Conditions.Remove(condition);
+    }
 }

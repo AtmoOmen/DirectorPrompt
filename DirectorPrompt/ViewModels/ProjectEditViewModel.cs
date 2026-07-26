@@ -162,6 +162,8 @@ public sealed partial class ProjectEditViewModel
         if (config is null)
             return;
 
+        config = StateRuleConfigMigration.Normalize(config, vm.Scope);
+
         vm.MinValue     = config.Min;
         vm.MaxValue     = config.Max;
         vm.InitialValue = config.Initial;
@@ -175,21 +177,35 @@ public sealed partial class ProjectEditViewModel
 
         foreach (var change in config.NumericChanges)
         {
-            vm.NumericChanges.Add
-            (
-                new NumericStateChangeRuleEditViewModel
-                {
-                    ID = string.IsNullOrWhiteSpace(change.ID) ?
-                             Guid.NewGuid().ToString("N") :
-                             change.ID,
-                    Remarks          = change.Remarks,
-                    AttributeName    = change.AttributeName,
-                    Expression       = change.Expression,
-                    ChangeExpression = change.ChangeExpression,
-                    Trigger          = change.Trigger,
-                    SwitchMode       = change.SwitchMode
-                }
-            );
+            var changeVM = new NumericStateChangeRuleEditViewModel
+            {
+                ID = string.IsNullOrWhiteSpace(change.ID) ?
+                         Guid.NewGuid().ToString("N") :
+                         change.ID,
+                Remarks         = change.Remarks,
+                Trigger         = change.Trigger,
+                ConditionMatch  = change.ConditionMatch,
+                Operation       = change.Operation,
+                ValueExpression = change.ValueExpression ?? "1",
+                RepeatPolicy    = change.RepeatPolicy,
+                Priority        = change.Priority
+            };
+
+            foreach (var condition in change.Conditions)
+            {
+                changeVM.Conditions.Add
+                (
+                    new StateRuleConditionEditViewModel
+                    {
+                        Source        = condition.Source,
+                        StateName     = condition.StateName,
+                        Comparison    = condition.Comparison,
+                        ExpectedValue = condition.ExpectedValue
+                    }
+                );
+            }
+
+            vm.NumericChanges.Add(changeVM);
         }
 
         if (config.Options is not null)
@@ -206,12 +222,30 @@ public sealed partial class ProjectEditViewModel
 
                 if (existing is not null)
                 {
-                    existing.Method        = tr.Method;
+                    existing.ID = string.IsNullOrWhiteSpace(tr.ID) ?
+                                      existing.ID :
+                                      tr.ID;
+                    existing.Remarks       = tr.Remarks;
                     existing.ChangeRules   = tr.ChangeRules ?? string.Empty;
                     existing.Weight        = tr.Weight;
-                    existing.AttributeName = tr.AttributeName;
-                    existing.Expression    = tr.Expression;
-                    existing.SwitchMode    = tr.SwitchMode;
+                    existing.Trigger       = tr.Trigger ?? vm.Trigger;
+                    existing.ConditionMatch = tr.ConditionMatch;
+                    existing.RepeatPolicy   = tr.RepeatPolicy;
+                    existing.Priority       = tr.Priority;
+
+                    foreach (var condition in tr.Conditions)
+                    {
+                        existing.Conditions.Add
+                        (
+                            new StateRuleConditionEditViewModel
+                            {
+                                Source        = condition.Source,
+                                StateName     = condition.StateName,
+                                Comparison    = condition.Comparison,
+                                ExpectedValue = condition.ExpectedValue
+                            }
+                        );
+                    }
                 }
             }
         }
@@ -323,7 +357,7 @@ public sealed partial class ProjectEditViewModel
                 StateAttributes.Add(attrVM);
         }
 
-        RefreshAvailableNumericAttributes();
+        RefreshAvailableStateAttributes();
 
         Log.Debug
         (
@@ -335,40 +369,49 @@ public sealed partial class ProjectEditViewModel
         );
     }
 
-    private void RefreshAvailableNumericAttributes()
+    private void RefreshAvailableStateAttributes()
     {
-        var globalNumericNames = StateAttributes
-                                 .Where(a => a.ValueType == StateValueType.Numeric)
-                                 .Select(a => a.Name)
-                                 .ToList();
+        var globalStateNames = StateAttributes.Select(attribute => attribute.Name).ToList();
+        var globalExpressionReferences = globalStateNames.Select(name => $"global.{name}").ToList();
+        var characterStateNames = CharacterCategories.SelectMany
+                                  (
+                                      category => category.StateAttributes.Select
+                                      (
+                                          attribute => $"{category.Name}.{attribute.Name}"
+                                      )
+                                  ).ToList();
 
         foreach (var attr in StateAttributes)
         {
             if (attr.ValueType != StateValueType.Enum && attr.ValueType != StateValueType.Numeric)
                 continue;
 
-            attr.AvailableNumericAttributes.Clear();
+            attr.AvailableGlobalStateNames.Clear();
+            attr.AvailableCharacterStateNames.Clear();
 
-            foreach (var name in globalNumericNames.Where(n => n != attr.Name))
-                attr.AvailableNumericAttributes.Add(name);
+            foreach (var name in globalStateNames)
+                attr.AvailableGlobalStateNames.Add(name);
+
+            attr.SetExpressionReferences(globalExpressionReferences);
         }
 
         foreach (var cat in CharacterCategories)
         {
-            var categoryNumericNames = cat.StateAttributes
-                                          .Where(a => a.ValueType == StateValueType.Numeric)
-                                          .Select(a => a.Name)
-                                          .ToList();
-
             foreach (var attr in cat.StateAttributes)
             {
                 if (attr.ValueType != StateValueType.Enum && attr.ValueType != StateValueType.Numeric)
                     continue;
 
-                attr.AvailableNumericAttributes.Clear();
+                attr.AvailableGlobalStateNames.Clear();
+                attr.AvailableCharacterStateNames.Clear();
 
-                foreach (var name in categoryNumericNames.Where(n => n != attr.Name))
-                    attr.AvailableNumericAttributes.Add(name);
+                foreach (var name in globalStateNames)
+                    attr.AvailableGlobalStateNames.Add(name);
+
+                foreach (var name in characterStateNames)
+                    attr.AvailableCharacterStateNames.Add(name);
+
+                attr.SetExpressionReferences(globalExpressionReferences.Concat(characterStateNames));
             }
         }
     }
@@ -850,7 +893,7 @@ public sealed partial class ProjectEditViewModel
             }
         );
 
-        RefreshAvailableNumericAttributes();
+        RefreshAvailableStateAttributes();
         Log.Information("已新增全局状态属性: 项目={ProjectID}, 属性={StateAttributeID}, 名称={StateAttributeName}", projectID, created.ID, created.Name);
     }
 
@@ -858,6 +901,8 @@ public sealed partial class ProjectEditViewModel
     {
         try
         {
+            RefreshAvailableStateAttributes();
+
             if (attribute.ValueType == StateValueType.Numeric &&
                 attribute.MinValue is not null &&
                 attribute.MaxValue is not null &&
@@ -876,10 +921,63 @@ public sealed partial class ProjectEditViewModel
                 return false;
             }
 
-            if (attribute.ValueType == StateValueType.Numeric &&
-                attribute.NumericChanges.Any(change => string.IsNullOrWhiteSpace(change.Expression) || string.IsNullOrWhiteSpace(change.ChangeExpression)))
+            var numericRulesInvalid = attribute.ValueType == StateValueType.Numeric &&
+                                      attribute.Driver == Driver.System &&
+                                      attribute.NumericChanges.Any
+                                      (
+                                          change =>
+                                              change.Operation is null || string.IsNullOrWhiteSpace(change.ValueExpression) ||
+                                              change.Conditions.Any
+                                              (
+                                                  condition => string.IsNullOrWhiteSpace(condition.ExpectedValue) ||
+                                                               condition.Source is StateRuleConditionSource.GlobalState or StateRuleConditionSource.CharacterState &&
+                                                               string.IsNullOrWhiteSpace(condition.StateName)
+                                              )
+                                      );
+
+            var enumRulesInvalid = attribute.ValueType == StateValueType.Enum &&
+                                    attribute.Driver == Driver.System &&
+                                    attribute.Transitions.Any
+                                    (
+                                        transition => transition.Conditions.Any
+                                        (
+                                            condition => string.IsNullOrWhiteSpace(condition.ExpectedValue) ||
+                                                         condition.Source is StateRuleConditionSource.GlobalState or StateRuleConditionSource.CharacterState &&
+                                                         string.IsNullOrWhiteSpace(condition.StateName)
+                                        )
+                                    );
+
+            if (numericRulesInvalid || enumRulesInvalid)
             {
-                ValidationMessage = Loc.Get("State.NumericChange.Required");
+                ValidationMessage = Loc.Get("State.Rule.ConditionRequired");
+                return false;
+            }
+
+            var numericExpressionsInvalid = attribute.ValueType == StateValueType.Numeric &&
+                                            attribute.Driver == Driver.System &&
+                                            attribute.NumericChanges.Any
+                                            (
+                                                change => !change.IsExpressionValid ||
+                                                          change.Conditions.Any
+                                                          (
+                                                              condition => condition.IsExpressionComparison &&
+                                                                           !condition.IsExpressionValid
+                                                          )
+                                            );
+            var enumExpressionsInvalid = attribute.ValueType == StateValueType.Enum &&
+                                         attribute.Driver == Driver.System &&
+                                         attribute.Transitions.Any
+                                         (
+                                             transition => transition.Conditions.Any
+                                             (
+                                                 condition => condition.IsExpressionComparison &&
+                                                              !condition.IsExpressionValid
+                                             )
+                                         );
+
+            if (numericExpressionsInvalid || enumExpressionsInvalid)
+            {
+                ValidationMessage = Loc.Get("State.Rule.ExpressionRequired");
                 return false;
             }
 
@@ -899,6 +997,7 @@ public sealed partial class ProjectEditViewModel
             };
 
             await stateRepository.UpdateAttributeAsync(model);
+            RefreshAvailableStateAttributes();
             ValidationMessage = string.Empty;
             Log.Information
             (
@@ -1003,6 +1102,7 @@ public sealed partial class ProjectEditViewModel
         {
             var model = category.ToModel(projectID);
             await characterRepository.UpdateCategoryAsync(model);
+            RefreshAvailableStateAttributes();
             ValidationMessage = string.Empty;
             Log.Information("人物分类已保存: 项目={ProjectID}, 分类={CategoryID}, 父分类数={ParentCategoryCount}", projectID, model.ID, model.ParentCategoryIDs.Length);
         }
@@ -1035,7 +1135,7 @@ public sealed partial class ProjectEditViewModel
             CharacterCategories.Remove(category);
 
             RefreshAvailableParentCategories();
-            RefreshAvailableNumericAttributes();
+            RefreshAvailableStateAttributes();
             Log.Information("人物分类已删除: 项目={ProjectID}, 分类={CategoryID}", projectID, category.ID);
         }
         catch (Exception ex)
@@ -1088,7 +1188,7 @@ public sealed partial class ProjectEditViewModel
 
         category.StateAttributes.Add(attrVM);
 
-        RefreshAvailableNumericAttributes();
+        RefreshAvailableStateAttributes();
         Log.Information("已新增分类状态属性: 项目={ProjectID}, 分类={CategoryID}, 属性={StateAttributeID}, 名称={StateAttributeName}", projectID, category.ID, created.ID, created.Name);
     }
 
@@ -1128,8 +1228,18 @@ public sealed partial class ProjectEditViewModel
     [RelayCommand]
     private void AddNumericChange(StateAttributeEditViewModel? attribute)
     {
-        if (attribute is not null)
-            attribute.NumericChanges.Add(new NumericStateChangeRuleEditViewModel());
+        if (attribute is null)
+            return;
+
+        var rule = new NumericStateChangeRuleEditViewModel
+        {
+            Trigger         = SystemTrigger.RoundEnd,
+            Operation       = NumericStateOperation.Add,
+            ValueExpression = "1",
+            RepeatPolicy    = StateRuleRepeatPolicy.EveryEvent
+        };
+        rule.SetExpressionReferences(attribute.ExpressionReferences);
+        attribute.NumericChanges.Add(rule);
     }
 
     [RelayCommand]

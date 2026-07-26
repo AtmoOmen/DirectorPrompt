@@ -22,6 +22,7 @@ public sealed class Orchestrator
     IDirectiveRepository     directiveRepository,
     IRoundChangeRepository   roundChangeRepository,
     IStateRepository         stateRepository,
+    IStateRuleExecutionRepository stateRuleExecutionRepository,
     ISystemStateTransformer  systemStateTransformer,
     PhaseEvaluator           phaseEvaluator,
     DirectiveProcessingStage directiveProcessingStage,
@@ -81,6 +82,45 @@ public sealed class Orchestrator
             Log.Debug("指令元数据: 顺序={Order}, 类型={Type}, 长度={Length}", d.Order, d.Type, d.Content.Length);
 
         var embeddingConfig = ResolveEmbeddingConfig();
+
+        await systemStateTransformer.ExecuteAsync
+        (
+            batch.ProjectID,
+            sessionID,
+            activeScene?.ID,
+            roundID,
+            new StateRuleEvent
+            (
+                SystemTrigger.RoundStart,
+                $"round-start:{roundID}",
+                roundID,
+                activeScene?.ID,
+                null,
+                null
+            ),
+            cancellationToken
+        );
+
+        foreach (var directive in batch.Directives)
+        {
+            await systemStateTransformer.ExecuteAsync
+            (
+                batch.ProjectID,
+                sessionID,
+                activeScene?.ID,
+                roundID,
+                new StateRuleEvent
+                (
+                    SystemTrigger.UserInput,
+                    $"input:{roundID}:{directive.Order}",
+                    roundID,
+                    activeScene?.ID,
+                    directive.Content,
+                    directive.Type
+                ),
+                cancellationToken
+            );
+        }
 
         var transitionResults = await EvaluateTransitionsAsync(batch.ProjectID, sessionID, roundID, cancellationToken);
 
@@ -197,6 +237,7 @@ public sealed class Orchestrator
 
         await roundChangeRepository.RollbackRoundAsync(sessionID, roundID, cancellationToken);
         await stateRepository.RollbackByRoundAsync(sessionID, roundID, cancellationToken);
+        await stateRuleExecutionRepository.DeleteByRoundAsync(sessionID, roundID, cancellationToken);
         await roundChangeRepository.RemoveByRoundAsync(sessionID, roundID, cancellationToken);
         await eventRepository.RemoveByRoundAsync(sessionID, roundID, cancellationToken);
 
@@ -246,14 +287,6 @@ public sealed class Orchestrator
         if (roundID <= 0)
         {
             Log.Debug("忽略无效轮次删除请求: 对话={SessionID}, 轮次={RoundID}", sessionID, roundID);
-            return;
-        }
-
-        var events = await eventRepository.GetByRoundAsync(sessionID, roundID, cancellationToken);
-
-        if (events.Count == 0)
-        {
-            Log.Debug("轮次无需删除: 对话={SessionID}, 轮次={RoundID}", sessionID, roundID);
             return;
         }
 
@@ -441,6 +474,24 @@ public sealed class Orchestrator
             context,
             PipelineStageKind.PostProcessing,
             () => postProcessingStage.ExecuteAsync(context, cancellationToken)
+        );
+
+        await systemStateTransformer.ExecuteAsync
+        (
+            context.DirectiveBatch.ProjectID,
+            context.SessionID,
+            context.CurrentSceneID,
+            context.RoundID,
+            new StateRuleEvent
+            (
+                SystemTrigger.NarrativeCompleted,
+                $"narrative-completed:{context.RoundID}",
+                context.RoundID,
+                context.CurrentSceneID,
+                null,
+                null
+            ),
+            cancellationToken
         );
 
         await RunStageAsync

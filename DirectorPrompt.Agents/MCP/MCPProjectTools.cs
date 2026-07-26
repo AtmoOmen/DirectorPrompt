@@ -696,10 +696,7 @@ public sealed class MCPProjectTools
                 (
                     enumTransitions,
                     snapshot.StateAttributes,
-                    name,
-                    scope,
-                    categoryID,
-                    null
+                    snapshot.CharacterCategories
                 );
 
                 return await CreateStateAttributeAsync
@@ -966,10 +963,7 @@ public sealed class MCPProjectTools
                 (
                     enumTransitions,
                     snapshot.StateAttributes,
-                    attribute.Name,
-                    attribute.Scope,
-                    attribute.CategoryID,
-                    attribute.ID
+                    snapshot.CharacterCategories
                 );
 
                 return await PatchStateAttributeAsync
@@ -1025,10 +1019,7 @@ public sealed class MCPProjectTools
                 (
                     enumTransitions,
                     snapshot.StateAttributes,
-                    attribute.Name,
-                    attribute.Scope,
-                    attribute.CategoryID,
-                    attribute.ID
+                    snapshot.CharacterCategories
                 );
 
                 return await PatchStateAttributeAsync
@@ -1294,31 +1285,26 @@ public sealed class MCPProjectTools
     (
         IEnumerable<EnumTransitionConfig>    transitions,
         IReadOnlyList<ProjectStateAttribute> attributes,
-        string                               attributeName,
-        StateScope                           scope,
-        long?                                categoryID,
-        long?                                attributeID
+        IReadOnlyList<CharacterCategory>     categories
     )
     {
-        foreach (var transition in transitions.Where(transition => transition.Method == EnumTransitionMethod.Expression))
-        {
-            var referencedAttribute = attributes.FirstOrDefault
-            (candidate =>
-                 candidate.ID         != attributeID              &&
-                 candidate.Name       == transition.AttributeName &&
-                 candidate.Name       != attributeName            &&
-                 candidate.ValueType  == StateValueType.Numeric   &&
-                 candidate.Scope      == scope                    &&
-                 candidate.CategoryID == categoryID
-            );
+        var categoryNames = categories.ToDictionary(category => category.ID, category => category.Name);
 
-            if (referencedAttribute is null)
+        foreach (var transition in transitions)
+        {
+            foreach (var condition in transition.Conditions.Where
+                     (condition => condition.Source is StateRuleConditionSource.GlobalState or StateRuleConditionSource.CharacterState))
             {
-                throw new ArgumentException
-                (
-                    $"表达式转移关联属性 {transition.AttributeName} 不存在或不属于同一作用域",
-                    nameof(transitions)
+                var referencedAttribute = attributes.FirstOrDefault
+                (candidate =>
+                     (condition.Source == StateRuleConditionSource.GlobalState ?
+                          candidate.Scope == StateScope.Global && candidate.Name == condition.StateName :
+                          candidate is { Scope: StateScope.Category, CategoryID: not null } &&
+                          $"{categoryNames.GetValueOrDefault(candidate.CategoryID.Value)}.{candidate.Name}" == condition.StateName)
                 );
+
+                if (referencedAttribute is null)
+                    throw new ArgumentException($"状态条件引用的属性 {condition.StateName} 不存在或作用域不匹配", nameof(transitions));
             }
         }
     }
@@ -1343,41 +1329,57 @@ public sealed class MCPProjectTools
             };
         }
 
-        if (!Enum.IsDefined(transition.Method) || !Enum.IsDefined(transition.SwitchMode))
-            throw new ArgumentOutOfRangeException(nameof(transition));
-
         if (!float.IsFinite(transition.Weight) || transition.Weight < 0)
             throw new ArgumentException("枚举转移规则的 weight 必须为大于或等于 0 的有限数", nameof(transition));
 
-        if (transition.Method == EnumTransitionMethod.Expression &&
-            (string.IsNullOrWhiteSpace(transition.AttributeName) || string.IsNullOrWhiteSpace(transition.Expression)))
-            throw new ArgumentException("表达式枚举转移规则必须指定 attributeName 和 expression", nameof(transition));
-
         return new EnumTransitionConfig
         {
+            ID            = Guid.NewGuid().ToString("N"),
             Option        = option,
-            Method        = transition.Method,
+            Remarks       = transition.Remarks,
             Weight        = transition.Weight,
-            AttributeName = transition.AttributeName?.Trim(),
-            Expression    = transition.Expression?.Trim(),
-            SwitchMode    = transition.SwitchMode
+            Trigger       = transition.Trigger,
+            Conditions    = transition.Conditions.Select(ToStateRuleCondition).ToList(),
+            ConditionMatch = transition.ConditionMatch,
+            RepeatPolicy   = transition.RepeatPolicy,
+            Priority       = transition.Priority
         };
     }
 
     private static NumericStateChangeRuleConfig ToNumericStateChange(MCPNumericStateChange change)
     {
-        if (string.IsNullOrWhiteSpace(change.Expression) || string.IsNullOrWhiteSpace(change.ChangeExpression))
-            throw new ArgumentException("数值变更条件必须指定 expression 和 changeExpression", nameof(change));
+        if (!Enum.IsDefined(change.Operation) || string.IsNullOrWhiteSpace(change.ValueExpression))
+            throw new ArgumentException("数值变更规则必须指定有效的 operation 和 valueExpression", nameof(change));
 
         return new NumericStateChangeRuleConfig
         {
             ID               = Guid.NewGuid().ToString("N"),
             Remarks          = change.Remarks,
-            AttributeName    = change.AttributeName,
-            Expression       = change.Expression,
-            ChangeExpression = change.ChangeExpression,
             Trigger          = change.Trigger,
-            SwitchMode       = change.SwitchMode
+            Conditions       = change.Conditions.Select(ToStateRuleCondition).ToList(),
+            ConditionMatch   = change.ConditionMatch,
+            Operation        = change.Operation,
+            ValueExpression  = change.ValueExpression,
+            RepeatPolicy     = change.RepeatPolicy,
+            Priority         = change.Priority
+        };
+    }
+
+    private static StateRuleConditionConfig ToStateRuleCondition(MCPStateRuleCondition condition)
+    {
+        if (!Enum.IsDefined(condition.Source) || !Enum.IsDefined(condition.Comparison))
+            throw new ArgumentOutOfRangeException(nameof(condition));
+
+        if (condition.Source is StateRuleConditionSource.GlobalState or StateRuleConditionSource.CharacterState &&
+            string.IsNullOrWhiteSpace(condition.StateName))
+            throw new ArgumentException("状态条件必须指定 stateName", nameof(condition));
+
+        return new StateRuleConditionConfig
+        {
+            Source        = condition.Source,
+            StateName     = condition.StateName?.Trim(),
+            Comparison    = condition.Comparison,
+            ExpectedValue = condition.ExpectedValue.Trim()
         };
     }
 

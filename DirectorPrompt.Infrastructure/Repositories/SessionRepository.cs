@@ -144,6 +144,7 @@ public sealed class SessionRepository
                         DELETE FROM memory_entries WHERE session_id = @id;
                         DELETE FROM active_directives WHERE session_id = @id;
                         DELETE FROM playthrough_events WHERE session_id = @id;
+                        DELETE FROM state_rule_executions WHERE session_id = @id;
                         DELETE FROM state_change_logs WHERE session_id = @id;
                         DELETE FROM state_values WHERE session_id = @id;
 

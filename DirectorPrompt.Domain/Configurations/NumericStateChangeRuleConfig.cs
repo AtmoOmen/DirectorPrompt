@@ -10,11 +10,23 @@ public sealed record NumericStateChangeRuleConfig
 
     public string? AttributeName { get; init; }
 
-    public string Expression { get; init; } = "true == true";
+    public string? Expression { get; init; }
 
-    public string ChangeExpression { get; init; } = "{val} += 0";
+    public string? ChangeExpression { get; init; }
 
     public SystemTrigger Trigger { get; init; } = SystemTrigger.RoundEnd;
 
-    public EnumSwitchMode SwitchMode { get; init; } = EnumSwitchMode.Always;
+    public EnumSwitchMode? SwitchMode { get; init; }
+
+    public List<StateRuleConditionConfig> Conditions { get; init; } = [];
+
+    public StateRuleConditionMatch ConditionMatch { get; init; } = StateRuleConditionMatch.All;
+
+    public NumericStateOperation? Operation { get; init; }
+
+    public string? ValueExpression { get; init; }
+
+    public StateRuleRepeatPolicy? RepeatPolicy { get; init; }
+
+    public int Priority { get; init; }
 }

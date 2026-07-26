@@ -8,18 +8,24 @@ public sealed class MCPNumericStateChange
     [Description("规则备注")]
     public string Remarks { get; set; } = string.Empty;
 
-    [Description("关联数值属性标识；留空时条件不关联其他属性")]
-    public string? AttributeName { get; set; }
-
-    [Description("生效条件，{val} 代表关联属性值；默认 true == true")]
-    public string Expression { get; set; } = "true == true";
-
-    [Description("数值变更式，{val} 代表当前属性值，例如 {val} += 10")]
-    public string ChangeExpression { get; set; } = "{val} += 0";
-
     [Description("触发时机")]
     public SystemTrigger Trigger { get; set; } = SystemTrigger.RoundEnd;
 
-    [Description("Always 每次满足时生效，Once 仅首次满足时生效")]
-    public EnumSwitchMode SwitchMode { get; set; } = EnumSwitchMode.Always;
+    [Description("普通条件列表；提供后不再要求手写 expression")]
+    public List<MCPStateRuleCondition> Conditions { get; set; } = [];
+
+    [Description("多个普通条件的组合方式")]
+    public StateRuleConditionMatch ConditionMatch { get; set; } = StateRuleConditionMatch.All;
+
+    [Description("数值操作；Add 增加、Set 设为、Multiply 乘以、Expression 表达式计算")]
+    public NumericStateOperation Operation { get; set; } = NumericStateOperation.Add;
+
+    [Description("数值操作使用的数值或表达式；可使用 {val}、{global.状态名}、{角色分类名.状态名}")]
+    public string ValueExpression { get; set; } = "1";
+
+    [Description("重复生效方式")]
+    public StateRuleRepeatPolicy? RepeatPolicy { get; set; }
+
+    [Description("优先级")]
+    public int Priority { get; set; }
 }

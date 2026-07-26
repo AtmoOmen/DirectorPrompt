@@ -1,14 +1,24 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using DirectorPrompt.Domain.Services;
 using NCalc;
 
 namespace DirectorPrompt.Agents;
 
-public sealed class ExpressionEngine : IExpressionEngine
+public sealed partial class ExpressionEngine : IExpressionEngine
 {
     public bool Evaluate(string expression, string currentValue)
     {
         var result = EvaluateExpression(expression, currentValue);
+
+        return result is bool value ?
+                   value :
+                   throw new ArgumentException("表达式结果必须为布尔值", nameof(expression));
+    }
+
+    public bool Evaluate(string expression, IReadOnlyDictionary<string, object?> parameters)
+    {
+        var result = EvaluateExpression(expression, parameters);
 
         return result is bool value ?
                    value :
@@ -44,18 +54,82 @@ public sealed class ExpressionEngine : IExpressionEngine
         };
     }
 
+    public float EvaluateNumeric(string expression, IReadOnlyDictionary<string, object?> parameters)
+    {
+        var assignment = FindAssignment(expression);
+
+        if (assignment is null)
+            return ToFiniteFloat(EvaluateExpression(expression, parameters), expression);
+
+        var (index, operation) = assignment.Value;
+        var left = expression[..(index - 1)].Trim();
+
+        if (left != "{val}")
+            throw new ArgumentException("赋值表达式左侧必须为 {val}", nameof(expression));
+
+        if (!parameters.TryGetValue("val", out var currentValue))
+            throw new ArgumentException("表达式上下文缺少 val", nameof(parameters));
+
+        var current = ToFiniteFloat(currentValue, expression);
+        var right   = ToFiniteFloat(EvaluateExpression(expression[(index + 1)..], parameters), expression);
+
+        return operation switch
+        {
+            '+' => ToFiniteFloat(current + right, expression),
+            '-' => ToFiniteFloat(current - right, expression),
+            '*' => ToFiniteFloat(current * right, expression),
+            '/' => ToFiniteFloat(current / right, expression),
+            '%' => ToFiniteFloat(current % right, expression),
+            _   => throw new ArgumentOutOfRangeException(nameof(expression))
+        };
+    }
+
     private static object? EvaluateExpression(string expression, object currentValue)
     {
-        var evaluator = new Expression
+        return EvaluateExpression
         (
-            expression.Replace("{val}", "[val]")
-                      .Replace(" AND ", " && ")
-                      .Replace(" OR ",  " || ")
+            expression,
+            new Dictionary<string, object?>
+            {
+                ["val"] = currentValue
+            }
         );
-        evaluator.Parameters["val"] = currentValue;
+    }
+
+    private static object? EvaluateExpression
+    (
+        string                              expression,
+        IReadOnlyDictionary<string, object?> parameters
+    )
+    {
+        if (string.IsNullOrWhiteSpace(expression))
+            throw new ArgumentException("表达式不能为空", nameof(expression));
+
+        var normalizedExpression = ReferencePattern().Replace
+        (
+            expression,
+            match =>
+            {
+                var name = match.Groups[1].Value;
+
+                if (!parameters.ContainsKey(name))
+                    throw new ArgumentException($"未找到状态属性引用: {{{name}}}", nameof(expression));
+
+                return $"[{name}]";
+            }
+        ).Replace(" AND ", " && ")
+         .Replace(" OR ",  " || ");
+
+        var evaluator = new Expression(normalizedExpression);
+
+        foreach (var (name, value) in parameters)
+            evaluator.Parameters[name] = value;
 
         return evaluator.Evaluate();
     }
+
+    [GeneratedRegex(@"\{([^{}]+)\}", RegexOptions.CultureInvariant)]
+    private static partial Regex ReferencePattern();
 
     private static (int Index, char Operation)? FindAssignment(string expression)
     {

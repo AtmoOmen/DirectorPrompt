@@ -144,6 +144,9 @@ public sealed class ProjectRepository
                         DELETE FROM state_change_logs
                         WHERE attribute_id IN (SELECT id FROM state_attributes WHERE project_id = @id);
 
+                        DELETE FROM state_rule_executions
+                        WHERE attribute_id IN (SELECT id FROM state_attributes WHERE project_id = @id);
+
                         DELETE FROM knowledge_entity_index
                         WHERE entry_id IN (SELECT id FROM knowledge_entries WHERE project_id = @id);
 

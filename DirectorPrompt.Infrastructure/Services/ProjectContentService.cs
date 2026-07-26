@@ -1551,7 +1551,7 @@ public sealed class ProjectContentService
             if (excluded.Contains(attribute.ID))
                 continue;
 
-            var config = ParseConfig(attribute.Config);
+            var config = ParseConfig(attribute.Config, attribute.Scope);
             var phases = config.Phases.Select
             (phase => phase with
                 {
@@ -1559,8 +1559,26 @@ public sealed class ProjectContentService
                     KnowledgeGroupIDs = phase.KnowledgeGroupIDs.Where(id => !groupSet.Contains(id)).ToList()
                 }
             ).ToList();
-            var transitions = config.Transitions?.Where(transition => !attributeNames.Contains(transition.AttributeName ?? string.Empty)).ToList();
-            var updated     = config with { Phases = phases, Transitions = transitions };
+            var transitions = config.Transitions?.Where
+                              (
+                                  transition => !transition.Conditions.Any
+                                  (
+                                      condition => attributeNames.Contains(condition.StateName ?? string.Empty)
+                                  )
+                              ).ToList();
+            var numericChanges = config.NumericChanges.Where
+                                 (
+                                     change => !change.Conditions.Any
+                                     (
+                                         condition => attributeNames.Contains(condition.StateName ?? string.Empty)
+                                     )
+                                 ).ToList();
+            var updated = config with
+            {
+                Phases = phases,
+                Transitions = transitions,
+                NumericChanges = numericChanges
+            };
 
             if (JsonSerializer.Serialize(updated, JsonOptions.Compact) == JsonSerializer.Serialize(config, JsonOptions.Compact))
                 continue;
@@ -1692,7 +1710,7 @@ public sealed class ProjectContentService
 
     private static ProjectStateAttribute ToProjectStateAttribute(StateAttribute attribute)
     {
-        var config = ParseConfig(attribute.Config);
+        var config = ParseConfig(attribute.Config, attribute.Scope);
 
         return new ProjectStateAttribute
         (
@@ -1708,10 +1726,14 @@ public sealed class ProjectContentService
         );
     }
 
-    private static StateAttributeConfig ParseConfig(string json) =>
+    private static StateAttributeConfig ParseConfig(string json, StateScope scope) =>
         string.IsNullOrWhiteSpace(json) ?
             new StateAttributeConfig() :
-            JsonSerializer.Deserialize<StateAttributeConfig>(json, JsonOptions.Compact) ?? new StateAttributeConfig();
+            StateRuleConfigMigration.Normalize
+            (
+                JsonSerializer.Deserialize<StateAttributeConfig>(json, JsonOptions.Compact) ?? new StateAttributeConfig(),
+                scope
+            );
 
     private static (int Transitions, int PhaseReferences) CountDependencies
     (
@@ -1724,7 +1746,20 @@ public sealed class ProjectContentService
 
         foreach (var attribute in snapshot.StateAttributes)
         {
-            transitions     += attribute.Configuration.Transitions?.Count(transition => attributeNames.Contains(transition.AttributeName ?? string.Empty)) ?? 0;
+            transitions += attribute.Configuration.Transitions?.Sum
+                           (
+                               transition => transition.Conditions.Count
+                               (
+                                   condition => attributeNames.Contains(condition.StateName ?? string.Empty)
+                               )
+                           ) ?? 0;
+            transitions += attribute.Configuration.NumericChanges.Sum
+                           (
+                               change => change.Conditions.Count
+                               (
+                                   condition => attributeNames.Contains(condition.StateName ?? string.Empty)
+                               )
+                           );
             phaseReferences += attribute.Configuration.Phases.Sum(phase => phase.KnowledgeIDs.Count + phase.KnowledgeGroupIDs.Count);
         }
 
@@ -1813,8 +1848,18 @@ public sealed class ProjectContentService
                  (numeric.Max is not null && numeric.Initial > numeric.Max)))
                 throw new ArgumentException("状态属性初始值必须位于最小值和最大值之间", nameof(definition));
 
-            if (numeric.Changes.Any(change => string.IsNullOrWhiteSpace(change.Expression) || string.IsNullOrWhiteSpace(change.ChangeExpression)))
-                throw new ArgumentException("数值变更条件必须指定条件和数值变更式", nameof(definition));
+            if (numeric.Changes.Any
+                (
+                    change => change.Operation is null ||
+                              string.IsNullOrWhiteSpace(change.ValueExpression) ||
+                              change.Conditions.Any
+                              (
+                                  condition => string.IsNullOrWhiteSpace(condition.ExpectedValue) ||
+                                               condition.Source is StateRuleConditionSource.GlobalState or StateRuleConditionSource.CharacterState &&
+                                               string.IsNullOrWhiteSpace(condition.StateName)
+                              )
+                ))
+                throw new ArgumentException("数值变更规则必须指定有效的条件和变化表达式", nameof(definition));
         }
 
         foreach (var phase in definition.Phases)
