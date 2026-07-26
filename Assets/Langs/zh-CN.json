@@ -277,7 +277,7 @@
     "State.Rule.ConditionRequired": "请补全规则中的条件和状态属性",
     "State.Rule.Effect": "产生变化",
     "State.Rule.ExpressionEmpty": "请填写表达式",
-    "State.Rule.ExpressionGuide": "{val} 当前属性值 / {global.状态名} 是全局状态 / {角色分类名.状态名} 是人物状态",
+    "State.Rule.ExpressionGuide": "{val} 当前属性值 / {global.状态名} 全局状态 / {角色分类名.状态名} 人物状态",
     "State.Rule.ExpressionInvalid": "表达式无效: {0}",
     "State.Rule.ExpressionPlaceholder": "表达式, 如: {val} >= {global.目标值}",
     "State.Rule.ExpressionReferences": "可用: {0}",
