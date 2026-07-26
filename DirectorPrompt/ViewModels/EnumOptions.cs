@@ -14,7 +14,8 @@ public sealed class EnumOptions : INotifyPropertyChanged
     public IReadOnlyList<EnumOption<StateValueType>> ValueTypes =>
     [
         new(StateValueType.Numeric, Loc.Get("State.ValueType.Numeric")),
-        new(StateValueType.Enum, Loc.Get("State.ValueType.Enum"))
+        new(StateValueType.Enum, Loc.Get("State.ValueType.Enum")),
+        new(StateValueType.Text, Loc.Get("State.ValueType.Text"))
     ];
 
     public IReadOnlyList<EnumOption<Driver>> Drivers =>

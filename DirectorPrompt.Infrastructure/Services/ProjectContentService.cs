@@ -867,6 +867,11 @@ public sealed class ProjectContentService
                                          Trigger     = trigger,
                                          Transitions = config.Transitions ?? []
                                      },
+                       Text = patch.Text ??
+                              new TextStateDefinition
+                              {
+                                  NarrativeGuidance = config.NarrativeGuidance
+                              },
                        Phases = patch.Phases ??
                                 config.Phases.Select
                                 (phase => new PhaseDefinition
@@ -1646,13 +1651,16 @@ public sealed class ProjectContentService
         );
     }
 
-    private static StateAttributeConfig BuildConfig
+    private static object BuildConfig
     (
         StateAttributeDefinition          definition,
         IReadOnlyDictionary<string, long> groupIDs,
         IReadOnlyDictionary<string, long> entryIDs
     )
     {
+        if (definition.ValueType == StateValueType.Text)
+            return definition.Text ?? new TextStateDefinition();
+
         var numeric     = definition.Numeric;
         var enumeration = definition.Enumeration;
         var phases = definition.Phases.Select
@@ -1784,6 +1792,9 @@ public sealed class ProjectContentService
         if (string.IsNullOrWhiteSpace(definition.Name) || string.IsNullOrWhiteSpace(definition.DisplayName))
             throw new ArgumentException("状态属性名称和显示名称不能为空", nameof(definition));
 
+        if (definition.ValueType == StateValueType.Text && definition.Driver != Driver.Narrative)
+            throw new ArgumentException("文本状态属性只能使用叙事驱动", nameof(definition));
+
         if (definition.Scope == StateScope.Category)
         {
             if (definition.CategoryID is null)
@@ -1840,6 +1851,9 @@ public sealed class ProjectContentService
 
         foreach (var definition in blueprint.StateAttributes.Concat(blueprint.CharacterCategories.SelectMany(category => category.StateAttributes)))
         {
+            if (definition.ValueType == StateValueType.Text && definition.Driver != Driver.Narrative)
+                throw new ArgumentException("文本状态属性只能使用叙事驱动", nameof(blueprint));
+
             foreach (var phase in definition.Phases)
             {
                 if (phase.KnowledgeGroupKeys.Any(key => !groupKeys.Contains(key)) ||

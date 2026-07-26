@@ -4,5 +4,7 @@ public enum StateValueType
 {
     Numeric,
 
-    Enum
+    Enum,
+
+    Text
 }

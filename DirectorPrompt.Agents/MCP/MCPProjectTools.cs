@@ -727,6 +727,51 @@ public sealed class MCPProjectTools
 
     [McpServerTool
     (
+        Name = "create_text_state_attribute",
+        Title = "创建文本状态属性",
+        ReadOnly = false,
+        Destructive = false,
+        Idempotent = false,
+        OpenWorld = false,
+        UseStructuredContent = true
+    )]
+    [Description("创建叙事驱动的文本状态属性")]
+    public Task<ProjectStateAttribute> CreateTextStateAttributeAsync
+    (
+        [Description("项目 ID")]            long   projectID,
+        [Description("属性标识")]             string name,
+        [Description("显示名")]              string displayName,
+        [Description("自然语言叙事生成指引")]       string? narrativeGuidance = null,
+        [Description("所属分类 ID；留空则为全局属性")] long?  categoryID        = null,
+        CancellationToken                          cancellationToken = default
+    ) =>
+        ExecuteAsync
+        (
+            new { projectID, name, displayName, narrativeGuidance, categoryID },
+            () => CreateStateAttributeAsync
+            (
+                projectID,
+                new StateAttributeDefinition
+                {
+                    Name        = name,
+                    DisplayName = displayName,
+                    Scope = categoryID is null ?
+                                StateScope.Global :
+                                StateScope.Category,
+                    CategoryID = categoryID,
+                    ValueType  = StateValueType.Text,
+                    Driver     = Driver.Narrative,
+                    Text = new TextStateDefinition
+                    {
+                        NarrativeGuidance = narrativeGuidance
+                    }
+                },
+                cancellationToken
+            )
+        );
+
+    [McpServerTool
+    (
         Name = "update_state_attribute",
         Title = "更新状态属性",
         ReadOnly = false,
@@ -822,6 +867,48 @@ public sealed class MCPProjectTools
                                    Unit        = unit,
                                    ChangeRules = changeRules,
                                    Changes     = changes?.Select(ToNumericStateChange).ToList() ?? []
+                               }
+                           },
+                           cancellationToken
+                       );
+            }
+        );
+
+    [McpServerTool
+    (
+        Name = "configure_text_state_attribute",
+        Title = "配置文本状态属性",
+        ReadOnly = false,
+        Destructive = true,
+        Idempotent = true,
+        OpenWorld = false,
+        UseStructuredContent = true
+    )]
+    [Description("替换文本状态属性的叙事生成指引")]
+    public Task<ProjectStateAttribute> ConfigureTextStateAttributeAsync
+    (
+        [Description("项目 ID")]       long   projectID,
+        [Description("文本状态属性 ID")]   long   attributeID,
+        [Description("自然语言叙事生成指引")] string? narrativeGuidance = null,
+        CancellationToken                    cancellationToken = default
+    ) =>
+        ExecuteAsync
+        (
+            new { projectID, attributeID, narrativeGuidance },
+            async () =>
+            {
+                var attribute = await GetProjectStateAttributeAsync(projectID, attributeID, cancellationToken);
+                EnsureStateValueType(attribute, StateValueType.Text);
+
+                return await PatchStateAttributeAsync
+                       (
+                           projectID,
+                           attributeID,
+                           new StateAttributePatch
+                           {
+                               Text = new TextStateDefinition
+                               {
+                                   NarrativeGuidance = narrativeGuidance
                                }
                            },
                            cancellationToken

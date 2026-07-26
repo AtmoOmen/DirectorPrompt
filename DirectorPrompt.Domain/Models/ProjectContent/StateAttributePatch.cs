@@ -20,5 +20,7 @@ public sealed class StateAttributePatch
 
     public EnumStateDefinition? Enumeration { get; set; }
 
+    public TextStateDefinition? Text { get; set; }
+
     public List<PhaseDefinition>? Phases { get; set; }
 }

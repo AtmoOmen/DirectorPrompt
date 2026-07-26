@@ -184,6 +184,26 @@
                 </StackPanel>
 
                 <StackPanel Margin="0,8,0,0"
+                            IsVisible="{Binding IsTextConfig, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock
+                            Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
+                        <TextBlock
+                            Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                            Foreground="Gray"
+                            FontSize="12"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0" />
+                    </StackPanel>
+                    <TextBox
+                        Text="{Binding NarrativeGuidance}"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        MinHeight="80"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                </StackPanel>
+
+                <StackPanel Margin="0,8,0,0"
                             IsVisible="{Binding IsEnumConfig, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock
@@ -389,6 +409,7 @@
 
                 <views:PhaseEditControl
                     PhaseSource="{Binding}"
+                    IsVisible="{Binding IsDriverVisible, Converter={StaticResource BoolToVisibility}}"
                     AddPhaseCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).AddPhaseCommand}"
                     DeletePhaseCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).DeletePhaseCommand}" />
 

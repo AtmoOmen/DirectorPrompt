@@ -625,8 +625,8 @@ public sealed class CharacterTools
         if (attr is null)
             return error;
 
-        if (attr.Driver == Driver.System || attr.ValueType == StateValueType.Enum)
-            return ToolResult.Error($"状态属性 {attribute} 为系统驱动或枚举类型, AI 不可直接修改");
+        if (attr.Driver == Driver.System || attr.ValueType != StateValueType.Numeric)
+            return ToolResult.Error($"状态属性 {attribute} 不是可由 AI 修改的数值类型");
 
         var values       = await characterRepository.GetCharacterStateValuesAsync(character.ID);
         var currentValue = values.FirstOrDefault(v => v.AttributeID == attr.ID);

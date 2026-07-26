@@ -227,6 +227,7 @@ public sealed class PostProcessingStage
         attr.ValueType switch
         {
             StateValueType.Enum => $"Enum({FormatEnumOptions(attr.Config)})",
+            StateValueType.Text => "Text",
             _                   => "Numeric"
         };
 
@@ -273,6 +274,13 @@ public sealed class PostProcessingStage
                                       .Select(transition => $"{transition.Option}: {transition.ChangeRules}")
                        ) :
                        string.Empty;
+        }
+
+        if (attr.ValueType == StateValueType.Text)
+        {
+            return string.IsNullOrWhiteSpace(config?.NarrativeGuidance) ?
+                       string.Empty :
+                       config.NarrativeGuidance;
         }
 
         return string.IsNullOrWhiteSpace(config?.ChangeRules) ?

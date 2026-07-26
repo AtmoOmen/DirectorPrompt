@@ -114,8 +114,8 @@ public sealed class StateTools
         if (attr is null)
             return ToolResult.Error($"状态属性 {attribute} 不存在");
 
-        if (attr.Driver == Driver.System || attr.ValueType == StateValueType.Enum)
-            return ToolResult.Error($"状态属性 {attribute} 为系统驱动或枚举类型, AI 不可直接修改");
+        if (attr.Driver == Driver.System || attr.ValueType != StateValueType.Numeric)
+            return ToolResult.Error($"状态属性 {attribute} 不是可由 AI 修改的数值类型");
 
         var currentValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
         var currentNum   = double.Parse(currentValue?.Value ?? "0");

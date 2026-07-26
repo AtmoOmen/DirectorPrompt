@@ -169,6 +169,9 @@ public sealed partial class ProjectEditViewModel
         vm.ChangeRules = vm.ValueType == StateValueType.Numeric ?
                              config.ChangeRules ?? string.Empty :
                              string.Empty;
+        vm.NarrativeGuidance = vm.ValueType == StateValueType.Text ?
+                                   config.NarrativeGuidance ?? string.Empty :
+                                   string.Empty;
 
         foreach (var change in config.NumericChanges)
         {
@@ -855,13 +858,17 @@ public sealed partial class ProjectEditViewModel
     {
         try
         {
-            if (attribute.MinValue is not null && attribute.MaxValue is not null && attribute.MinValue > attribute.MaxValue)
+            if (attribute.ValueType == StateValueType.Numeric &&
+                attribute.MinValue is not null &&
+                attribute.MaxValue is not null &&
+                attribute.MinValue > attribute.MaxValue)
             {
                 ValidationMessage = Loc.Get("State.Attribute.InvalidRange");
                 return false;
             }
 
-            if (attribute.InitialValue is not null &&
+            if (attribute.ValueType == StateValueType.Numeric &&
+                attribute.InitialValue is not null &&
                 ((attribute.MinValue is not null && attribute.InitialValue < attribute.MinValue) ||
                  (attribute.MaxValue is not null && attribute.InitialValue > attribute.MaxValue)))
             {
@@ -869,7 +876,8 @@ public sealed partial class ProjectEditViewModel
                 return false;
             }
 
-            if (attribute.NumericChanges.Any(change => string.IsNullOrWhiteSpace(change.Expression) || string.IsNullOrWhiteSpace(change.ChangeExpression)))
+            if (attribute.ValueType == StateValueType.Numeric &&
+                attribute.NumericChanges.Any(change => string.IsNullOrWhiteSpace(change.Expression) || string.IsNullOrWhiteSpace(change.ChangeExpression)))
             {
                 ValidationMessage = Loc.Get("State.NumericChange.Required");
                 return false;

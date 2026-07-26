@@ -274,6 +274,8 @@
     "State.ValueType.Numeric.Help": "可增长/减少的数字, 如: 金钱、声望",
     "State.ValueType.Enum": "枚举",
     "State.ValueType.Enum.Help": "一组离散选项, 如: 天气、季节",
+    "State.ValueType.Text": "文本",
+    "State.ValueType.Text.Help": "由 AI 根据叙事生成指引填入任意文本",
     "State.Driver.Narrative": "叙事驱动",
     "State.Driver.Narrative.Help": "AI 从叙事中提取变更",
     "State.Driver.System": "系统驱动",

@@ -21,6 +21,7 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNumericConfig))]
     [NotifyPropertyChangedFor(nameof(IsEnumConfig))]
+    [NotifyPropertyChangedFor(nameof(IsTextConfig))]
     [NotifyPropertyChangedFor(nameof(IsDriverVisible))]
     [NotifyPropertyChangedFor(nameof(IsSystemNumericConfig))]
     [NotifyPropertyChangedFor(nameof(IsNarrativeNumericConfig))]
@@ -66,6 +67,9 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     public partial string ChangeRules { get; set; } = string.Empty;
 
     [ObservableProperty]
+    public partial string NarrativeGuidance { get; set; } = string.Empty;
+
+    [ObservableProperty]
     public partial string Options { get; set; } = string.Empty;
 
     [ObservableProperty]
@@ -83,6 +87,8 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
 
     public bool IsEnumConfig => ValueType == StateValueType.Enum;
 
+    public bool IsTextConfig => ValueType == StateValueType.Text;
+
     public bool IsDriverVisible => ValueType is StateValueType.Numeric or StateValueType.Enum;
 
     public bool IsSystemNumericConfig => ValueType == StateValueType.Numeric && Driver == Driver.System;
@@ -92,6 +98,18 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     public bool IsSystemEnumConfig => ValueType == StateValueType.Enum && Driver == Driver.System;
 
     public bool IsNarrativeEnumConfig => ValueType == StateValueType.Enum && Driver == Driver.Narrative;
+
+    partial void OnValueTypeChanged(StateValueType value)
+    {
+        if (value == StateValueType.Text)
+            Driver = Driver.Narrative;
+    }
+
+    partial void OnDriverChanged(Driver value)
+    {
+        if (ValueType == StateValueType.Text && value != Driver.Narrative)
+            Driver = Driver.Narrative;
+    }
 
     partial void OnOptionsChanged(string value) =>
         SyncTransitions();
@@ -121,6 +139,18 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
 
     public string BuildConfig()
     {
+        if (ValueType == StateValueType.Text)
+        {
+            return JsonSerializer.Serialize
+            (
+                new TextStateDefinition
+                {
+                    NarrativeGuidance = NarrativeGuidance
+                },
+                JsonOptions.Compact
+            );
+        }
+
         var phases = Phases.Select
         (p => new Phase
             {
