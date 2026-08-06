@@ -18,6 +18,7 @@ public sealed class UserSettingsStore : IUserSettingsStore
 
     private readonly ISecretStore secretStore;
     private readonly string userSettingsPath;
+    private readonly SemaphoreSlim saveLock = new(1, 1);
 
     public UserSettingsStore(string? userSettingsPath = null, ISecretStore? secretStore = null)
     {
@@ -58,13 +59,15 @@ public sealed class UserSettingsStore : IUserSettingsStore
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        var directory = Path.GetDirectoryName(userSettingsPath);
-
-        if (!string.IsNullOrWhiteSpace(directory))
-            Directory.CreateDirectory(directory);
+        await saveLock.WaitAsync(cancellationToken);
 
         try
         {
+            var directory = Path.GetDirectoryName(userSettingsPath);
+
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+
             await Task.Run(() => SynchronizeSecrets(settings), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -87,6 +90,10 @@ public sealed class UserSettingsStore : IUserSettingsStore
         {
             Log.Error(exception, "保存用户设置失败: 路径={UserSettingsPath}", userSettingsPath);
             throw;
+        }
+        finally
+        {
+            saveLock.Release();
         }
     }
 
