@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Dapper;
 using DirectorPrompt.Domain;
@@ -19,7 +20,7 @@ public sealed class ProjectPortService
 {
     private const string PACKAGE_FORMAT = "DirectorPrompt-Project-Package";
 
-    private const int PACKAGE_VERSION = 1;
+    private const int PACKAGE_VERSION = 2;
 
     public async Task ExportAsync(long projectID, string filePath, CancellationToken cancellationToken = default)
     {
@@ -145,6 +146,18 @@ public sealed class ProjectPortService
 
             if (data.Project is null)
                 throw new InvalidDataException("无效的项目包: 缺少项目数据");
+
+            if (manifest.Version < PACKAGE_VERSION)
+            {
+                data.StateAttributes = (data.StateAttributes ?? [])
+                                       .Select
+                                       (attribute => attribute with
+                                            {
+                                                Config = NormalizeLegacyDirectiveTypes(attribute.Config)
+                                            }
+                                       )
+                                       .ToList();
+            }
 
             if (requireKnowledgeGroups)
                 ValidateKnowledgeEntryGroups(data.KnowledgeGroups ?? [], data.KnowledgeEntries ?? []);
@@ -782,6 +795,48 @@ public sealed class ProjectPortService
                             0;
 
         return result;
+    }
+
+    private static string NormalizeLegacyDirectiveTypes(string config)
+    {
+        if (!config.Contains("\"Tone\"", StringComparison.Ordinal) &&
+            !config.Contains("\"TemporaryConstraint\"", StringComparison.Ordinal))
+        {
+            return config;
+        }
+
+        var root = JsonNode.Parse(config)?.AsObject() ??
+                   throw new JsonException("状态属性配置必须是 JSON 对象");
+        var changed = false;
+
+        if (root["phases"] is JsonArray phases)
+        {
+            foreach (var phase in phases.OfType<JsonObject>())
+            {
+                foreach (var propertyName in new[] { "enterDirectives", "exitDirectives" })
+                {
+                    if (phase[propertyName] is not JsonArray directives)
+                        continue;
+
+                    foreach (var directive in directives.OfType<JsonObject>())
+                    {
+                        if (directive["type"] is not JsonValue typeNode ||
+                            !typeNode.TryGetValue<string>(out var type) ||
+                            type is not ("Tone" or "TemporaryConstraint"))
+                        {
+                            continue;
+                        }
+
+                        directive["type"] = "Constraint";
+                        changed            = true;
+                    }
+                }
+            }
+        }
+
+        return changed ?
+                   root.ToJsonString(JsonOptions.Compact) :
+                   config;
     }
 
     private sealed class PackageManifest

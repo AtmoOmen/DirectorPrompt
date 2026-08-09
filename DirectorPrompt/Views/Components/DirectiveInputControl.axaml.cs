@@ -63,9 +63,8 @@ public partial class DirectiveInputControl : UserControl
 
         DirectiveInput.SelectedType = comboBox.SelectedIndex switch
         {
-            1 => DirectiveType.Tone,
-            2 => DirectiveType.TemporaryConstraint,
-            3 => DirectiveType.SceneChange,
+            1 => DirectiveType.Constraint,
+            2 => DirectiveType.SceneChange,
             _ => DirectiveType.Plot
         };
     }

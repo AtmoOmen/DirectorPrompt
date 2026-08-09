@@ -16,10 +16,9 @@ public sealed partial class DirectorContentBlockViewModel : ObservableObject
 
     public string TypeDisplay => Type switch
     {
-        DirectiveType.Plot                => Loc.Get("Directive.Type.Plot"),
-        DirectiveType.Tone                => Loc.Get("Directive.Type.Tone"),
-        DirectiveType.TemporaryConstraint => Loc.Get("Directive.Type.TemporaryConstraint"),
-        DirectiveType.SceneChange         => Loc.Get("Directive.Type.SceneChange"),
-        _                                 => Type.ToString()
+        DirectiveType.Plot        => Loc.Get("Directive.Type.Plot"),
+        DirectiveType.Constraint  => Loc.Get("Directive.Type.Constraint"),
+        DirectiveType.SceneChange => Loc.Get("Directive.Type.SceneChange"),
+        _                         => Type.ToString()
     };
 }

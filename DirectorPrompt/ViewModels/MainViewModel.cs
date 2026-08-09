@@ -1361,7 +1361,6 @@ public sealed partial class MainViewModel : ObservableObject
                 new DirectivePanelItemViewModel
                 {
                     ID      = d.ID,
-                    Type    = d.Type,
                     Content = d.Content,
                     TTL     = d.TTL
                 }
@@ -1390,12 +1389,12 @@ public sealed partial class MainViewModel : ObservableObject
             await directiveRepository.UpdateAsync(item.ID, content, ttl, sessionID, 0);
 
             item.CommitEdit();
-            Log.Information("生效指令编辑已保存: ID={DirectiveID}", item.ID);
+            Log.Information("叙事约束编辑已保存: ID={DirectiveID}", item.ID);
             StatusMessage = Loc.Get("Status.DirectiveSaved");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "保存生效指令编辑失败: ID={DirectiveID}", item.ID);
+            Log.Error(ex, "保存叙事约束编辑失败: ID={DirectiveID}", item.ID);
             StatusMessage = Loc.Get("Status.SaveDirectiveFailed", ex.Message);
         }
     }
@@ -1415,12 +1414,12 @@ public sealed partial class MainViewModel : ObservableObject
             await directiveRepository.RemoveAsync(item.ID, CurrentSession.ID, 0);
 
             DirectivesPanel.RemoveItem(item);
-            Log.Information("生效指令已删除: ID={DirectiveID}", item.ID);
+            Log.Information("叙事约束已删除: ID={DirectiveID}", item.ID);
             StatusMessage = Loc.Get("Status.DirectiveDeleted");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "删除生效指令失败: ID={DirectiveID}", item.ID);
+            Log.Error(ex, "删除叙事约束失败: ID={DirectiveID}", item.ID);
             StatusMessage = Loc.Get("Status.DeleteDirectiveFailed", ex.Message);
         }
     }

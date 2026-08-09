@@ -1,5 +1,3 @@
-using DirectorPrompt.Domain.Enums;
-
 namespace DirectorPrompt.Agents;
 
 public sealed record SidebarQueryResult
@@ -30,11 +28,9 @@ public sealed record SidebarQueryResult
 
     public sealed record DirectivesPanelItem
     (
-        long          ID,
-        DirectiveType Type,
-        string        Content,
-        bool          HasTTL,
-        int?          TTL
+        long   ID,
+        string Content,
+        int?   TTL
     );
 
     public sealed record CharacterPanelData

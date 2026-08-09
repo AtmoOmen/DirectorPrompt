@@ -61,9 +61,7 @@ public sealed class SidebarQueryService
                      (d => new SidebarQueryResult.DirectivesPanelItem
                      (
                          d.ID,
-                         d.Type,
                          d.Content,
-                         d.TTL.HasValue,
                          d.TTL
                      )
                     )

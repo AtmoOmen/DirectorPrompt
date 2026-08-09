@@ -170,7 +170,7 @@ public sealed class RetrievalStage
 
         if (snapshot.ActiveDirectives.Count > 0)
         {
-            sb.AppendLine("## 生效指令");
+            sb.AppendLine("## 叙事约束");
 
             foreach (var directive in snapshot.ActiveDirectives)
             {

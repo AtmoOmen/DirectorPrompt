@@ -24,14 +24,13 @@ public sealed partial class DirectiveItemViewModel : ObservableObject
 
     public string TypeDisplay => Type switch
     {
-        DirectiveType.Plot                => Loc.Get("Directive.Type.Plot"),
-        DirectiveType.Tone                => Loc.Get("Directive.Type.Tone"),
-        DirectiveType.TemporaryConstraint => Loc.Get("Directive.Type.TemporaryConstraint"),
-        DirectiveType.SceneChange         => Loc.Get("Directive.Type.SceneChange"),
-        _                                 => Type.ToString()
+        DirectiveType.Plot        => Loc.Get("Directive.Type.Plot"),
+        DirectiveType.Constraint  => Loc.Get("Directive.Type.Constraint"),
+        DirectiveType.SceneChange => Loc.Get("Directive.Type.SceneChange"),
+        _                         => Type.ToString()
     };
 
-    public bool HasTTL => Type is DirectiveType.Tone or DirectiveType.TemporaryConstraint;
+    public bool HasTTL => Type == DirectiveType.Constraint;
 
     public bool IsPermanent
     {
@@ -73,8 +72,7 @@ public sealed partial class DirectiveInputViewModel : ObservableObject
 
     public ObservableCollection<DirectiveItemViewModel> Directives { get; } = [];
 
-    public bool InputHasTTL =>
-        SelectedType is DirectiveType.Tone or DirectiveType.TemporaryConstraint;
+    public bool InputHasTTL => SelectedType == DirectiveType.Constraint;
 
     partial void OnSelectedTypeChanged(DirectiveType value)
     {

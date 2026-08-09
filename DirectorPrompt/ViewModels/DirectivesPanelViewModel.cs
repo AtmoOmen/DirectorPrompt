@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Localization;
 
 namespace DirectorPrompt.ViewModels;
@@ -11,13 +10,9 @@ public sealed partial class DirectivePanelItemViewModel : ObservableObject
     public partial long ID { get; set; }
 
     [ObservableProperty]
-    public partial DirectiveType Type { get; set; }
-
-    [ObservableProperty]
     public partial string Content { get; set; } = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasTTL))]
     [NotifyPropertyChangedFor(nameof(TTLLabel))]
     public partial int? TTL { get; set; }
 
@@ -32,16 +27,6 @@ public sealed partial class DirectivePanelItemViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool EditingIsPermanent { get; set; }
-
-    public string TypeIcon => Type switch
-    {
-        DirectiveType.Tone                => "🎭",
-        DirectiveType.TemporaryConstraint => "🚫",
-        DirectiveType.SceneChange         => "🎬",
-        _                                 => "📝"
-    };
-
-    public bool HasTTL => TTL.HasValue;
 
     public string TTLLabel => TTL.HasValue ?
                                   Loc.Get("Directive.Panel.RemainingRounds", TTL) :

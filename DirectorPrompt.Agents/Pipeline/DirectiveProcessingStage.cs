@@ -78,10 +78,10 @@ public sealed class DirectiveProcessingStage
         {
             switch (directive.Type)
             {
-                case DirectiveType.Tone or DirectiveType.TemporaryConstraint:
+                case DirectiveType.Constraint:
                     Log.Information
                     (
-                        "添加生效指令: 类型={Type}, 长度={Length}, TTL={TTL}",
+                        "添加叙事约束: 类型={Type}, 长度={Length}, TTL={TTL}",
                         directive.Type,
                         directive.Content.Length,
                         directive.TTL?.ToString() ?? "永久"

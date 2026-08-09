@@ -57,9 +57,8 @@ public static class EventDataSerializer
     private static DirectiveType ParseDirectiveType(string typeStr) =>
         typeStr switch
         {
-            "Tone"                => DirectiveType.Tone,
-            "TemporaryConstraint" => DirectiveType.TemporaryConstraint,
-            "SceneChange"         => DirectiveType.SceneChange,
-            _                     => DirectiveType.Plot
+            "Constraint"  => DirectiveType.Constraint,
+            "SceneChange" => DirectiveType.SceneChange,
+            _              => DirectiveType.Plot
         };
 }
