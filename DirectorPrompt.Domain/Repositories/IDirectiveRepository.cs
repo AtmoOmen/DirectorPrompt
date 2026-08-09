@@ -8,6 +8,8 @@ public interface IDirectiveRepository
 
     Task<ActiveDirective> AddAsync(ActiveDirective directive, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
+    Task UpdateAsync(long id, string content, int? ttl, long sessionID, long roundID, CancellationToken cancellationToken = default);
+
     Task RemoveAsync(long id, long sessionID, long roundID, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ActiveDirective>> DecrementTTLAsync(long sessionID, long roundID, CancellationToken cancellationToken = default);

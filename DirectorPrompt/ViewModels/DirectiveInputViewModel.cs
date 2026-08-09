@@ -8,6 +8,8 @@ namespace DirectorPrompt.ViewModels;
 
 public sealed partial class DirectiveItemViewModel : ObservableObject
 {
+    private int finiteTTL = 5;
+
     [ObservableProperty]
     public partial DirectiveType Type { get; set; }
 
@@ -30,6 +32,26 @@ public sealed partial class DirectiveItemViewModel : ObservableObject
     };
 
     public bool HasTTL => Type is DirectiveType.Tone or DirectiveType.TemporaryConstraint;
+
+    public bool IsPermanent
+    {
+        get => TTL is null;
+        set
+        {
+            if (value == IsPermanent)
+                return;
+
+            TTL = value ? null : finiteTTL;
+        }
+    }
+
+    partial void OnTTLChanged(int? value)
+    {
+        if (value is > 0)
+            finiteTTL = value.Value;
+
+        OnPropertyChanged(nameof(IsPermanent));
+    }
 }
 
 public sealed partial class DirectiveInputViewModel : ObservableObject
@@ -44,6 +66,9 @@ public sealed partial class DirectiveInputViewModel : ObservableObject
     public partial int? InputTTL { get; set; }
 
     [ObservableProperty]
+    public partial bool InputIsPermanent { get; set; }
+
+    [ObservableProperty]
     public partial bool IsSending { get; set; }
 
     public ObservableCollection<DirectiveItemViewModel> Directives { get; } = [];
@@ -55,9 +80,7 @@ public sealed partial class DirectiveInputViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(InputHasTTL));
 
-        if (!InputHasTTL)
-            InputTTL = null;
-        else if (InputTTL is null)
+        if (InputHasTTL && InputTTL is null)
             InputTTL = 5;
     }
 
@@ -74,8 +97,8 @@ public sealed partial class DirectiveInputViewModel : ObservableObject
                 Type    = SelectedType,
                 Content = InputContent.Trim(),
                 Order   = Directives.Count + 1,
-                TTL = InputHasTTL ?
-                          InputTTL :
+                TTL = InputHasTTL && !InputIsPermanent ?
+                          InputTTL ?? 5 :
                           null
             }
         );

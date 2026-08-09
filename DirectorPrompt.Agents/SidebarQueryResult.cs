@@ -30,6 +30,7 @@ public sealed record SidebarQueryResult
 
     public sealed record DirectivesPanelItem
     (
+        long          ID,
         DirectiveType Type,
         string        Content,
         bool          HasTTL,

@@ -58,8 +58,9 @@ public sealed class SidebarQueryService
 
         var items = directives
                     .Select
-                    (d => new SidebarQueryResult.DirectivesPanelItem
+                     (d => new SidebarQueryResult.DirectivesPanelItem
                      (
+                         d.ID,
                          d.Type,
                          d.Content,
                          d.TTL.HasValue,

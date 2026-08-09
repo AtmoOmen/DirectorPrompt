@@ -18,7 +18,7 @@
                         <StackPanel>
                             <!-- 有 TTL 指令: 两行布局, 第一行类型+TTL+按钮, 第二行内容 -->
                             <StackPanel IsVisible="{Binding HasTTL, Converter={StaticResource BoolToVisibility}}">
-                                <Grid Margin="0,0,0,4" ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+                                <Grid Margin="0,0,0,4" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
                                     <TextBlock Grid.Column="0"
                                                Text="{Binding TypeDisplay}"
                                                FontWeight="SemiBold"
@@ -27,19 +27,24 @@
                                                VerticalAlignment="Center" />
                                     <fa:FANumberBox Grid.Column="1"
                                                     Width="180"
-                                                    Value="{Binding TTL, TargetNullValue=5}"
+                                                    Value="{Binding TTL, Converter={StaticResource NumberBoxValue}}"
                                                     Minimum="1"
-                                                    Maximum="999"
                                                     SmallChange="1"
                                                     LargeChange="5"
                                                     Margin="0,0,4,0"
+                                                    IsEnabled="{Binding IsPermanent, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"
                                                     VerticalAlignment="Center" />
                                     <TextBlock Grid.Column="2"
                                                Text="{Binding [Directive.Input.TTLUnit], Source={x:Static loc:Loc.Instance}}"
                                                FontSize="12"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                VerticalAlignment="Center" />
-                                    <StackPanel Grid.Column="4" Orientation="Horizontal">
+                                    <CheckBox Grid.Column="3"
+                                              Content="{Binding [Directive.Permanent], Source={x:Static loc:Loc.Instance}}"
+                                              IsChecked="{Binding IsPermanent}"
+                                              VerticalAlignment="Center"
+                                              Margin="8,0,0,0" />
+                                    <StackPanel Grid.Column="5" Orientation="Horizontal">
                                         <Button Padding="12,8"
                                                 MinWidth="36"
                                                 Margin="2,0"
@@ -140,15 +145,19 @@
                     <Border Width="1"
                             Margin="8,2"
                             Background="{DynamicResource ControlElevationBorderBrush}" />
-                    <TextBlock Text="{Binding [Navigation.InputTTL], Source={x:Static loc:Loc.Instance}}"
+                    <TextBlock Text="{Binding [Directive.TTL], Source={x:Static loc:Loc.Instance}}"
                                VerticalAlignment="Center"
                                Margin="0,0,6,0" />
                     <fa:FANumberBox Width="150"
-                                    Value="{Binding InputTTL, TargetNullValue=5}"
+                                    Value="{Binding InputTTL, Converter={StaticResource NumberBoxValue}}"
                                     Minimum="1"
-                                    Maximum="999"
                                     SmallChange="1"
-                                    LargeChange="5" />
+                                    LargeChange="5"
+                                    IsEnabled="{Binding InputIsPermanent, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" />
+                    <CheckBox Content="{Binding [Directive.Permanent], Source={x:Static loc:Loc.Instance}}"
+                              IsChecked="{Binding InputIsPermanent}"
+                              VerticalAlignment="Center"
+                              Margin="8,0,0,0" />
                 </StackPanel>
             </Grid>
 

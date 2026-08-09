@@ -30,6 +30,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IStateRepository        stateRepository;
     private readonly IEventRepository        eventRepository;
     private readonly IMemoryRepository       memoryRepository;
+    private readonly IDirectiveRepository    directiveRepository;
     private readonly DialogHistoryService    dialogHistoryService;
     private readonly SidebarQueryService     sidebarQueryService;
     private readonly UserSettings            userSettings;
@@ -63,6 +64,7 @@ public sealed partial class MainViewModel : ObservableObject
         IStateRepository        stateRepository,
         IEventRepository        eventRepository,
         IMemoryRepository       memoryRepository,
+        IDirectiveRepository    directiveRepository,
         DialogHistoryService    dialogHistoryService,
         SidebarQueryService     sidebarQueryService,
         UserSettings            userSettings,
@@ -81,6 +83,7 @@ public sealed partial class MainViewModel : ObservableObject
         this.stateRepository       = stateRepository;
         this.eventRepository       = eventRepository;
         this.memoryRepository      = memoryRepository;
+        this.directiveRepository   = directiveRepository;
         this.dialogHistoryService  = dialogHistoryService;
         this.sidebarQueryService   = sidebarQueryService;
         this.userSettings          = userSettings;
@@ -1357,20 +1360,68 @@ public sealed partial class MainViewModel : ObservableObject
             (
                 new DirectivePanelItemViewModel
                 {
-                    Type = d.Type switch
-                    {
-                        DirectiveType.Tone                => "🎭",
-                        DirectiveType.TemporaryConstraint => "🚫",
-                        DirectiveType.SceneChange         => "🎬",
-                        _                                 => "📝"
-                    },
+                    ID      = d.ID,
+                    Type    = d.Type,
                     Content = d.Content,
-                    HasTTL  = d.HasTTL,
-                    TTLLabel = d.HasTTL && d.TTL.HasValue ?
-                                   Loc.Get("Directive.Panel.RemainingRounds", d.TTL) :
-                                   Loc.Get("Directive.Panel.Permanent")
+                    TTL     = d.TTL
                 }
             );
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveDirectiveEditAsync(DirectivePanelItemViewModel item)
+    {
+        if (CurrentSession is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(item.EditingContent))
+        {
+            StatusMessage = Loc.Get("Status.DirectiveContentRequired");
+            return;
+        }
+
+        var sessionID = CurrentSession.ID;
+        var content   = item.EditingContent.Trim();
+        int? ttl      = item.EditingIsPermanent ? null : item.EditingTTL ?? 5;
+
+        try
+        {
+            await directiveRepository.UpdateAsync(item.ID, content, ttl, sessionID, 0);
+
+            item.CommitEdit();
+            Log.Information("生效指令编辑已保存: ID={DirectiveID}", item.ID);
+            StatusMessage = Loc.Get("Status.DirectiveSaved");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "保存生效指令编辑失败: ID={DirectiveID}", item.ID);
+            StatusMessage = Loc.Get("Status.SaveDirectiveFailed", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private void CancelDirectiveEdit(DirectivePanelItemViewModel item) =>
+        item.CancelEdit();
+
+    [RelayCommand]
+    private async Task DeleteDirectiveAsync(DirectivePanelItemViewModel item)
+    {
+        if (CurrentSession is null)
+            return;
+
+        try
+        {
+            await directiveRepository.RemoveAsync(item.ID, CurrentSession.ID, 0);
+
+            DirectivesPanel.RemoveItem(item);
+            Log.Information("生效指令已删除: ID={DirectiveID}", item.ID);
+            StatusMessage = Loc.Get("Status.DirectiveDeleted");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "删除生效指令失败: ID={DirectiveID}", item.ID);
+            StatusMessage = Loc.Get("Status.DeleteDirectiveFailed", ex.Message);
         }
     }
 

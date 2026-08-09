@@ -102,8 +102,8 @@ public sealed class DirectiveRepository
                 var oldRow = await RowReader.ReadRowAsync
                              (
                                  connection,
-                                 "SELECT * FROM active_directives WHERE id = @id",
-                                 new { id },
+                                 "SELECT * FROM active_directives WHERE id = @id AND session_id = @sessionID",
+                                 new { id, sessionID },
                                  transaction,
                                  token
                              );
@@ -115,8 +115,8 @@ public sealed class DirectiveRepository
                 (
                     new CommandDefinition
                     (
-                        "DELETE FROM active_directives WHERE id = @id",
-                        new { id },
+                        "DELETE FROM active_directives WHERE id = @id AND session_id = @sessionID",
+                        new { id, sessionID },
                         transaction,
                         cancellationToken: token
                     )
@@ -130,6 +130,59 @@ public sealed class DirectiveRepository
                     "active_directives",
                     id,
                     "delete",
+                    JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
+                    token
+                );
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken: cancellationToken
+        );
+
+    public Task UpdateAsync
+    (
+        long              id,
+        string            content,
+        int?              ttl,
+        long              sessionID,
+        long              roundID,
+        CancellationToken cancellationToken = default
+    ) =>
+        scheduler.ExecuteAsync
+        (
+            async (connection, token) =>
+            {
+                await using var transaction = await connection.BeginTransactionAsync(token);
+                var oldRow = await RowReader.ReadRowAsync
+                             (
+                                 connection,
+                                 "SELECT * FROM active_directives WHERE id = @id AND session_id = @sessionID",
+                                 new { id, sessionID },
+                                 transaction,
+                                 token
+                             );
+
+                if (oldRow is null)
+                    return;
+
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition
+                    (
+                        "UPDATE active_directives SET content = @content, ttl = @ttl WHERE id = @id AND session_id = @sessionID",
+                        new { id, content, ttl, sessionID },
+                        transaction,
+                        cancellationToken: token
+                    )
+                );
+                await RoundChangeRepository.RecordAsync
+                (
+                    connection,
+                    transaction,
+                    sessionID,
+                    roundID,
+                    "active_directives",
+                    id,
+                    "update",
                     JsonSerializer.Serialize(oldRow, JsonOptions.Compact),
                     token
                 );
