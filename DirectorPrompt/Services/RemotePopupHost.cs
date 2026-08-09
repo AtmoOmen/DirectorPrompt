@@ -86,26 +86,36 @@ public static class RemotePopupHost
         if (layerWidth <= 0 || layerHeight <= 0)
             return;
 
-        var point = currentPopup.Owner.TranslatePoint
-        (
-            new Point(0, currentPopup.Owner.Bounds.Height),
-            popupLayer
-        );
+        var ownerTopLeft = currentPopup.Owner.TranslatePoint(default, popupLayer);
 
-        if (point is null)
+        if (ownerTopLeft is null)
             return;
 
-        var left = Math.Max(8, point.Value.X);
-        var top  = Math.Max(8, point.Value.Y);
+        var availableSize = new Size(Math.Max(1, layerWidth - 16), Math.Max(1, layerHeight - 16));
 
-        if (currentPopup.Content.Width > layerWidth - 16)
-            currentPopup.Content.Width = Math.Max(1, layerWidth - 16);
+        if (currentPopup.Content.Width > availableSize.Width)
+            currentPopup.Content.Width = availableSize.Width;
+
+        currentPopup.Content.Measure(availableSize);
+
+        var popupWidth  = Math.Min(currentPopup.Content.DesiredSize.Width,  availableSize.Width);
+        var popupHeight = Math.Min(currentPopup.Content.DesiredSize.Height, availableSize.Height);
+        var ownerTop    = ownerTopLeft.Value.Y;
+        var ownerBottom = ownerTop + currentPopup.Owner.Bounds.Height;
+        var spaceAbove  = ownerTop - 8;
+        var spaceBelow  = layerHeight - ownerBottom - 8;
+        var left        = Math.Max(8, ownerTopLeft.Value.X);
+        var top         = popupHeight > spaceBelow && spaceAbove > spaceBelow ?
+                              ownerTop - popupHeight :
+                              ownerBottom;
 
         currentPopup.DismissLayer.Width  = layerWidth;
         currentPopup.DismissLayer.Height = layerHeight;
 
-        if (left + currentPopup.Content.Width > layerWidth - 8)
-            left = Math.Max(8, layerWidth - currentPopup.Content.Width - 8);
+        if (left + popupWidth > layerWidth - 8)
+            left = Math.Max(8, layerWidth - popupWidth - 8);
+
+        top = Math.Clamp(top, 8, Math.Max(8, layerHeight - popupHeight - 8));
 
         Canvas.SetLeft(currentPopup.Content, left);
         Canvas.SetTop(currentPopup.Content, top);

@@ -321,7 +321,6 @@
     let socket = null;
     let pendingFrame = null;
     let renderedFrame = null;
-    let buttons = 0;
     let touch = null;
     let composing = false;
     let deviceScale = 1;
@@ -452,15 +451,15 @@
     }
 
     // ===== 坐标映射 =====
-    function modifiers(event) {
+    function modifiers(event, pressedButtons = event.buttons) {
         const values = [];
         if (event.altKey) values.push('Alt');
         if (event.ctrlKey) values.push('Control');
         if (event.shiftKey) values.push('Shift');
         if (event.metaKey) values.push('Windows');
-        if (buttons & 1) values.push('LeftMouseButton');
-        if (buttons & 2) values.push('RightMouseButton');
-        if (buttons & 4) values.push('MiddleMouseButton');
+        if (pressedButtons & 1) values.push('LeftMouseButton');
+        if (pressedButtons & 2) values.push('RightMouseButton');
+        if (pressedButtons & 4) values.push('MiddleMouseButton');
         return values.join(',');
     }
 
@@ -515,7 +514,6 @@
             }, LONG_PRESS_DELAY);
             return;
         }
-        buttons = event.buttons;
         canvas.setPointerCapture(event.pointerId);
         pointerMessage('pointer-pressed', event);
         keyboard.focus({ preventScroll: true });
@@ -538,7 +536,6 @@
             touch.lastY = event.clientY;
             return;
         }
-        buttons = event.buttons;
         const [x, y] = point(event);
         send(`pointer-moved:${modifiers(event)}:${x}:${y}`);
     });
@@ -549,8 +546,10 @@
             if (!touch.moved) {
                 const [x, y] = point(event);
                 const btn = touch.longPress ? 'Right' : 'Left';
-                send(`pointer-pressed::${x}:${y}:${btn}`);
-                send(`pointer-released::${x}:${y}:${btn}`);
+                const pressedButtons = touch.longPress ? 2 : 1;
+                send(`pointer-moved:${modifiers(event, 0)}:${x}:${y}`);
+                send(`pointer-pressed:${modifiers(event, pressedButtons)}:${x}:${y}:${btn}`);
+                send(`pointer-released:${modifiers(event, 0)}:${x}:${y}:${btn}`);
                 const size = touch.longPress ? 36 : 28;
                 const color = touch.longPress ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.22)';
                 showTouchRipple(event.clientX, event.clientY, size, color);
@@ -560,7 +559,6 @@
             return;
         }
         pointerMessage('pointer-released', event);
-        buttons = event.buttons;
     });
 
     canvas.addEventListener('pointercancel', () => {
