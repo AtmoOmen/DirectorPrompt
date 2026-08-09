@@ -21,6 +21,57 @@ internal sealed class WindowsCredentialStore : ISecretStore
         if (metadata is null)
             return null;
 
+        return ReadValue(key, metadata);
+    }
+
+    public void Set(string key, string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(value);
+
+        var previous = ReadMetadata(key);
+
+        if (previous is not null && ReadValue(key, previous) == value)
+            return;
+
+        RemoveOrphanedChunks(key, previous);
+
+        var version           = Guid.NewGuid().ToString("N");
+        var chunks            = Split(value);
+        var writtenChunkCount = 0;
+
+        try
+        {
+            for (var index = 0; index < chunks.Count; index++)
+            {
+                Write(Target(key, version, index), chunks[index]);
+                writtenChunkCount++;
+            }
+
+            Write(Target(key, "metadata"), $"{version}:{chunks.Count.ToString(CultureInfo.InvariantCulture)}");
+        }
+        catch
+        {
+            for (var index = 0; index < writtenChunkCount; index++)
+                Delete(Target(key, version, index));
+
+            throw;
+        }
+
+        if (previous is not null)
+            RemoveChunks(key, previous);
+    }
+
+    public void Remove(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        foreach (var target in EnumerateTargets(key))
+            Delete(target);
+    }
+
+    private static string ReadValue(string key, CredentialMetadata metadata)
+    {
         var result = new StringBuilder();
 
         for (var index = 0; index < metadata.ChunkCount; index++)
@@ -34,36 +85,6 @@ internal sealed class WindowsCredentialStore : ISecretStore
         }
 
         return result.ToString();
-    }
-
-    public void Set(string key, string value)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        ArgumentNullException.ThrowIfNull(value);
-
-        var previous = ReadMetadata(key);
-        var version  = Guid.NewGuid().ToString("N");
-        var chunks   = Split(value);
-
-        for (var index = 0; index < chunks.Count; index++)
-            Write(Target(key, version, index), chunks[index]);
-
-        Write(Target(key, "metadata"), $"{version}:{chunks.Count.ToString(CultureInfo.InvariantCulture)}");
-
-        if (previous is not null)
-            RemoveChunks(key, previous);
-    }
-
-    public void Remove(string key)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
-
-        var metadata = ReadMetadata(key);
-
-        if (metadata is not null)
-            RemoveChunks(key, metadata);
-
-        Delete(Target(key, "metadata"));
     }
 
     private static CredentialMetadata? ReadMetadata(string key)
@@ -117,6 +138,37 @@ internal sealed class WindowsCredentialStore : ISecretStore
             Delete(Target(key, metadata.Version, index));
     }
 
+    private static void RemoveOrphanedChunks(string key, CredentialMetadata? active)
+    {
+        var metadataTarget = Target(key, "metadata");
+        var activePrefix   = active is null ?
+                                 null :
+                                 $"{Target(key, active.Version)}:";
+
+        foreach (var target in EnumerateTargets(key))
+        {
+            if (target == metadataTarget ||
+                activePrefix is not null && target.StartsWith(activePrefix, StringComparison.Ordinal))
+                continue;
+
+            Delete(target);
+        }
+    }
+
+    private static IReadOnlyList<string> EnumerateTargets(string key)
+    {
+        try
+        {
+            return CredentialManager.EnumerateCredentials($"{Prefix(key)}:*")
+                                    .Select(credential => credential.ApplicationName)
+                                    .ToList();
+        }
+        catch (Win32Exception exception) when (exception.NativeErrorCode == 1168)
+        {
+            return [];
+        }
+    }
+
     private static List<string> Split(string value)
     {
         var chunks = new List<string>();
@@ -141,11 +193,13 @@ internal sealed class WindowsCredentialStore : ISecretStore
 
     private static string Target(string key, params object[] parts)
     {
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key))).ToLowerInvariant();
         var suffix = string.Join(':', parts.Select(part => Convert.ToString(part, CultureInfo.InvariantCulture)));
 
-        return $"DirectorPrompt:{hash}:{suffix}";
+        return $"{Prefix(key)}:{suffix}";
     }
+
+    private static string Prefix(string key) =>
+        $"DirectorPrompt:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key))).ToLowerInvariant()}";
 
     private sealed record CredentialMetadata(string Version, int ChunkCount);
 }
