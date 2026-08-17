@@ -1,4 +1,3 @@
-using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -13,28 +12,10 @@ public partial class NumericChangeEditControl : UserControl
     public static readonly StyledProperty<StateAttributeEditViewModel?> SourceProperty =
         AvaloniaProperty.Register<NumericChangeEditControl, StateAttributeEditViewModel?>(nameof(Source));
 
-    public static readonly StyledProperty<ICommand?> AddNumericChangeCommandProperty =
-        AvaloniaProperty.Register<NumericChangeEditControl, ICommand?>(nameof(AddNumericChangeCommand));
-
-    public static readonly StyledProperty<ICommand?> DeleteNumericChangeCommandProperty =
-        AvaloniaProperty.Register<NumericChangeEditControl, ICommand?>(nameof(DeleteNumericChangeCommand));
-
     public StateAttributeEditViewModel? Source
     {
         get => GetValue(SourceProperty);
         set => SetValue(SourceProperty, value);
-    }
-
-    public ICommand? AddNumericChangeCommand
-    {
-        get => GetValue(AddNumericChangeCommandProperty);
-        set => SetValue(AddNumericChangeCommandProperty, value);
-    }
-
-    public ICommand? DeleteNumericChangeCommand
-    {
-        get => GetValue(DeleteNumericChangeCommandProperty);
-        set => SetValue(DeleteNumericChangeCommandProperty, value);
     }
 
     public NumericChangeEditControl() =>
@@ -42,8 +23,10 @@ public partial class NumericChangeEditControl : UserControl
 
     private void OnAdd(object? sender, RoutedEventArgs e)
     {
-        if (Source is not null)
-            AddNumericChangeCommand?.Execute(Source);
+        if (Source is null)
+            return;
+
+        ViewModelLocator.GetProjectEditViewModel(this)?.AddNumericChangeCommand.Execute(Source);
     }
 
     private async void OnDelete(object? sender, RoutedEventArgs e)
@@ -51,16 +34,11 @@ public partial class NumericChangeEditControl : UserControl
         if (sender is not Control { Tag: NumericStateChangeRuleEditViewModel change })
             return;
 
-        var owner = TopLevel.GetTopLevel(this) as Window;
-        var confirmed = await PromptDialog.ConfirmAsync
-                        (
-                            owner,
-                            Loc.Get("Common.Remove"),
-                            Loc.Get("Dialog.ConfirmDeleteNumericChange", change.Remarks),
-                            true
-                        );
+        var message = Loc.Get("Dialog.ConfirmDeleteNumericChange", change.Remarks);
 
-        if (confirmed)
-            DeleteNumericChangeCommand?.Execute(change);
+        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), message, true))
+            return;
+
+        ViewModelLocator.GetProjectEditViewModel(this)?.DeleteNumericChangeCommand.Execute(change);
     }
 }

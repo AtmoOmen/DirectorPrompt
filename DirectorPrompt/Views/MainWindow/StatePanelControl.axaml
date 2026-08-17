@@ -121,12 +121,12 @@
                                             <Button Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
                                                     Padding="12,6"
                                                     Margin="0,0,4,0"
-                                                    Command="{Binding $parent[Window].DataContext.SaveDirectiveEditCommand}"
-                                                    CommandParameter="{Binding}" />
+                                                    Click="OnSaveDirectiveEditClick"
+                                                    Tag="{Binding}" />
                                             <Button Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
                                                     Padding="12,6"
-                                                    Command="{Binding $parent[Window].DataContext.CancelDirectiveEditCommand}"
-                                                    CommandParameter="{Binding}" />
+                                                    Click="OnCancelDirectiveEditClick"
+                                                    Tag="{Binding}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>

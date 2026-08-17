@@ -33,6 +33,7 @@ public sealed class LanSharingService
     private Control?                remoteContent;
     private MainWindow?             remoteWindow;
     private RemoteWindowService?    remoteWindowService;
+    private MainViewModel?          remoteViewModel;
     private Uri?                    endpoint;
     private bool                    remoteRenderingStarted;
 
@@ -205,6 +206,13 @@ public sealed class LanSharingService
         remoteWindowService = null;
         remoteWindow?.DisposeRemoteVisual();
         remoteWindow = null;
+
+        if (remoteViewModel is not null)
+        {
+            remoteViewModel.RemoteDialogHost = null;
+            remoteViewModel                  = null;
+        }
+
         Log.Debug("局域网远程界面已释放");
     }
 
@@ -214,8 +222,10 @@ public sealed class LanSharingService
 
         var currentWindowService = new RemoteWindowService(serviceProvider, userSettings, this);
         var viewModel            = serviceProvider.GetRequiredService<MainViewModel>();
+        remoteViewModel               = viewModel;
         remoteWindow                  = new MainWindow(viewModel, false);
         remoteWindow.RemoteDialogHost = currentWindowService;
+        viewModel.RemoteDialogHost    = currentWindowService;
 
         if (remoteWindow.Content is not Control content)
             throw new InvalidOperationException("主界面内容无法用于远程控制");

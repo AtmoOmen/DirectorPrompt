@@ -18,17 +18,12 @@ public partial class ProjectCharacterEditView : UserControl
         if (sender is not Control { Tag: CharacterCategoryEditViewModel category } || ViewModel is null)
             return;
 
-        var owner = TopLevel.GetTopLevel(this) as Window;
-        var confirmed = await PromptDialog.ConfirmAsync
-                        (
-                            owner,
-                            Loc.Get("Common.Remove"),
-                            Loc.Get("Dialog.ConfirmDeleteCharacterCategory", category.Name),
-                            true
-                        );
+        var message = Loc.Get("Dialog.ConfirmDeleteCharacterCategory", category.Name);
 
-        if (confirmed)
-            ViewModel.DeleteCharacterCategoryCommand.Execute(category);
+        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), message, true))
+            return;
+
+        ViewModel.DeleteCharacterCategoryCommand.Execute(category);
     }
 
     private void OnAddCategoryStateAttribute(object sender, RoutedEventArgs e)

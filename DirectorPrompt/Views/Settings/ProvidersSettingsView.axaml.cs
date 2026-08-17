@@ -12,18 +12,23 @@ public partial class ProvidersSettingsView : UserControl
 
     private async void OnRemoveProvider(object sender, RoutedEventArgs e)
     {
-        if (sender is not Control { Tag: ProviderSettingViewModel provider })
+        if (sender is not Control { Tag: ProviderSettingViewModel provider } ||
+            DataContext is not SettingsViewModel viewModel)
+        {
             return;
+        }
 
-        var window = TopLevel.GetTopLevel(this) as Window;
-
-        if (window is null)
+        if (!await PromptDialog.ConfirmAsync
+            (
+                this,
+                Loc.Get("Common.Remove"),
+                Loc.Get("Dialog.ConfirmRemoveProvider", provider.DisplayName),
+                true
+            ))
+        {
             return;
+        }
 
-        if (!await PromptDialog.ConfirmAsync(window, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmRemoveProvider", provider.DisplayName), true))
-            return;
-
-        if (DataContext is SettingsViewModel viewModel)
-            viewModel.RemoveProviderCommand.Execute(provider);
+        viewModel.RemoveProviderCommand.Execute(provider);
     }
 }

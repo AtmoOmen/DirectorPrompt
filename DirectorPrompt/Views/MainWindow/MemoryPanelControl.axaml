@@ -178,13 +178,13 @@
                                                                 Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
                                                                 Padding="12,6"
                                                                 Margin="0,0,4,0"
-                                                                Command="{Binding $parent[Window].DataContext.SaveMemoryEditCommand}"
-                                                                CommandParameter="{Binding}" />
+                                                                Click="OnSaveMemoryEditClick"
+                                                                Tag="{Binding}" />
                                                             <Button
                                                                 Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
                                                                 Padding="12,6"
-                                                                Command="{Binding $parent[Window].DataContext.CancelMemoryEditCommand}"
-                                                                CommandParameter="{Binding}" />
+                                                                Click="OnCancelMemoryEditClick"
+                                                                Tag="{Binding}" />
                                                         </StackPanel>
                                                     </StackPanel>
                                                 </StackPanel>

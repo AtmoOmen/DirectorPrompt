@@ -12,18 +12,23 @@ public partial class PromptsSettingsView : UserControl
 
     private async void OnRemovePrompt(object sender, RoutedEventArgs e)
     {
-        if (sender is not Control { Tag: PromptSettingViewModel prompt })
+        if (sender is not Control { Tag: PromptSettingViewModel prompt } ||
+            DataContext is not SettingsViewModel viewModel)
+        {
             return;
+        }
 
-        var window = TopLevel.GetTopLevel(this) as Window;
-
-        if (window is null)
+        if (!await PromptDialog.ConfirmAsync
+            (
+                this,
+                Loc.Get("Common.Remove"),
+                Loc.Get("Dialog.ConfirmRemovePrompt", prompt.DisplayName),
+                true
+            ))
+        {
             return;
+        }
 
-        if (!await PromptDialog.ConfirmAsync(window, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmRemovePrompt", prompt.DisplayName), true))
-            return;
-
-        if (DataContext is SettingsViewModel viewModel)
-            viewModel.RemovePromptCommand.Execute(prompt);
+        viewModel.RemovePromptCommand.Execute(prompt);
     }
 }

@@ -178,9 +178,7 @@
                     </StackPanel>
                     <components:NumericChangeEditControl
                         Source="{Binding}"
-                        IsVisible="{Binding IsSystemNumericConfig, Converter={StaticResource BoolToVisibility}}"
-                        AddNumericChangeCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).AddNumericChangeCommand}"
-                        DeleteNumericChangeCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).DeleteNumericChangeCommand}" />
+                        IsVisible="{Binding IsSystemNumericConfig, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
 
                 <StackPanel Margin="0,8,0,0"
@@ -261,9 +259,7 @@
 
                 <views:PhaseEditControl
                     PhaseSource="{Binding}"
-                    IsVisible="{Binding IsDriverVisible, Converter={StaticResource BoolToVisibility}}"
-                    AddPhaseCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).AddPhaseCommand}"
-                    DeletePhaseCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).DeletePhaseCommand}" />
+                    IsVisible="{Binding IsDriverVisible, Converter={StaticResource BoolToVisibility}}" />
 
             </StackPanel>
         </StackPanel>

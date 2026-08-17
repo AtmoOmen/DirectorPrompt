@@ -89,8 +89,8 @@
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
                                         Padding="6,4"
-                                        Command="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).AddKnowledgeEntryCommand}"
-                                        CommandParameter="{Binding}">
+                                        Click="OnAddKnowledgeEntryClick"
+                                        Tag="{Binding}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <fa:FASymbolIcon Symbol="Add" />
                                         <TextBlock

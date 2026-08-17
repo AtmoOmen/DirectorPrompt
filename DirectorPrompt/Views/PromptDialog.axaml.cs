@@ -159,6 +159,39 @@ public partial class PromptDialog : FAAppWindow
     public static Task<bool> ConfirmAsync(Window? owner, string title, string message, bool danger = false) =>
         ConfirmAsync(owner, title, message, Loc.Get("Common.Remove"), Loc.Get("Common.Cancel"), danger);
 
+    public static Task<bool> ConfirmAsync(Control? control, string title, string message, bool danger = false) =>
+        ConfirmAsync(control, title, message, Loc.Get("Common.Remove"), Loc.Get("Common.Cancel"), danger);
+
+    public static async Task<bool> ConfirmAsync
+    (
+        Control? control,
+        string   title,
+        string   message,
+        string   primaryText,
+        string   secondaryText,
+        bool     danger = false
+    )
+    {
+        if (TopLevel.GetTopLevel(control) is Window window)
+            return await ConfirmAsync(window, title, message, primaryText, secondaryText, danger);
+
+        var remoteDialogHost = ViewModelLocator.GetMainViewModel(control)?.RemoteDialogHost;
+
+        if (remoteDialogHost is not null)
+        {
+            return await remoteDialogHost.ShowConfirmationAsync
+                   (
+                       title,
+                       message,
+                       primaryText,
+                       secondaryText,
+                       danger
+                   );
+        }
+
+        return false;
+    }
+
     public static async Task<bool> ConfirmAsync
     (
         Window? owner,

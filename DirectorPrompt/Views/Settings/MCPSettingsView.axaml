@@ -51,7 +51,8 @@
                            FontSize="12"
                            Margin="0,4,0,0" />
 
-                <Button Grid.Column="2" Grid.RowSpan="2"
+                <Button x:Name="CopyEndpointButton"
+                        Grid.Column="2" Grid.RowSpan="2"
                         VerticalAlignment="Center"
                         Click="OnCopyInternalEndpoint"
                         ToolTip.Tip="{Binding [Settings.MCP.CopyEndpoint], Source={x:Static loc:Loc.Instance}}">

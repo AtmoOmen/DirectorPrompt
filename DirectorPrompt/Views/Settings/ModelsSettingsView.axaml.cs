@@ -12,18 +12,23 @@ public partial class ModelsSettingsView : UserControl
 
     private async void OnRemoveModel(object sender, RoutedEventArgs e)
     {
-        if (sender is not Control { Tag: ModelSettingViewModel model })
+        if (sender is not Control { Tag: ModelSettingViewModel model } ||
+            DataContext is not SettingsViewModel viewModel)
+        {
             return;
+        }
 
-        var window = TopLevel.GetTopLevel(this) as Window;
-
-        if (window is null)
+        if (!await PromptDialog.ConfirmAsync
+            (
+                this,
+                Loc.Get("Common.Remove"),
+                Loc.Get("Dialog.ConfirmRemoveModel", model.DisplayName),
+                true
+            ))
+        {
             return;
+        }
 
-        if (!await PromptDialog.ConfirmAsync(window, Loc.Get("Common.Remove"), Loc.Get("Dialog.ConfirmRemoveModel", model.DisplayName), true))
-            return;
-
-        if (DataContext is SettingsViewModel viewModel)
-            viewModel.RemoveModelCommand.Execute(model);
+        viewModel.RemoveModelCommand.Execute(model);
     }
 }

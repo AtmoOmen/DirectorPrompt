@@ -157,7 +157,7 @@
                             <ItemsControl ItemsSource="{Binding StateAttributes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:StateAttributeEditViewModel">
-                                        <views:StateAttributeEditControl DeleteCommand="{Binding $parent[Window].((vm:ProjectEditViewModel)DataContext).DeleteStateAttributeCommand}" />
+                                        <views:StateAttributeEditControl />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

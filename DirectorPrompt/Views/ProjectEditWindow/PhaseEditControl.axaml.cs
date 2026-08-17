@@ -1,4 +1,3 @@
-using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -13,28 +12,10 @@ public partial class PhaseEditControl : UserControl
     public static readonly StyledProperty<StateAttributeEditViewModel?> PhaseSourceProperty =
         AvaloniaProperty.Register<PhaseEditControl, StateAttributeEditViewModel?>(nameof(PhaseSource));
 
-    public static readonly StyledProperty<ICommand?> AddPhaseCommandProperty =
-        AvaloniaProperty.Register<PhaseEditControl, ICommand?>(nameof(AddPhaseCommand));
-
-    public static readonly StyledProperty<ICommand?> DeletePhaseCommandProperty =
-        AvaloniaProperty.Register<PhaseEditControl, ICommand?>(nameof(DeletePhaseCommand));
-
     public StateAttributeEditViewModel? PhaseSource
     {
         get => GetValue(PhaseSourceProperty);
         set => SetValue(PhaseSourceProperty, value);
-    }
-
-    public ICommand? AddPhaseCommand
-    {
-        get => GetValue(AddPhaseCommandProperty);
-        set => SetValue(AddPhaseCommandProperty, value);
-    }
-
-    public ICommand? DeletePhaseCommand
-    {
-        get => GetValue(DeletePhaseCommandProperty);
-        set => SetValue(DeletePhaseCommandProperty, value);
     }
 
     public PhaseEditControl() =>
@@ -51,22 +32,19 @@ public partial class PhaseEditControl : UserControl
         if (sender is not Control { Tag: PhaseEditViewModel phase })
             return;
 
-        var owner = TopLevel.GetTopLevel(this) as Window;
-        var confirmed = await PromptDialog.ConfirmAsync
-                        (
-                            owner,
-                            Loc.Get("Common.Remove"),
-                            Loc.Get("Dialog.ConfirmDeletePhase", phase.Name),
-                            true
-                        );
+        var message = Loc.Get("Dialog.ConfirmDeletePhase", phase.Name);
 
-        if (confirmed)
-            DeletePhaseCommand?.Execute(phase);
+        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), message, true))
+            return;
+
+        ViewModelLocator.GetProjectEditViewModel(this)?.DeletePhaseCommand.Execute(phase);
     }
 
     private void OnAddPhase(object? sender, RoutedEventArgs e)
     {
-        if (PhaseSource is not null)
-            AddPhaseCommand?.Execute(PhaseSource);
+        if (PhaseSource is null)
+            return;
+
+        ViewModelLocator.GetProjectEditViewModel(this)?.AddPhaseCommand.Execute(PhaseSource);
     }
 }

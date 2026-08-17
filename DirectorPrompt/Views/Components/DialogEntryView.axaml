@@ -39,7 +39,8 @@
                                 Orientation="Horizontal"
                                 Spacing="6"
                                 IsVisible="{Binding IsMenuOpen}">
-                        <Button Tag="{Binding}"
+                        <Button x:Name="CopyEntryButton"
+                                Tag="{Binding}"
                                 Click="OnCopyEntry"
                                 ToolTip.Tip="{Binding [Common.Copy], Source={x:Static loc:Loc.Instance}}">
                             <fa:FASymbolIcon Symbol="Copy" />
@@ -140,21 +141,19 @@
                         MinHeight="100"
                         Margin="0,0,0,4" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button
-                            Padding="12,6"
-                            Margin="0,0,4,0"
-                            Command="{Binding $parent[Window].DataContext.SaveEditCommand}"
-                            CommandParameter="{Binding}">
+                        <Button Tag="{Binding}"
+                                Click="OnSaveEditClick"
+                                Padding="12,6"
+                                Margin="0,0,4,0">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <fa:FASymbolIcon Symbol="Save" />
                                 <TextBlock
                                     Text="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}" />
                             </StackPanel>
                         </Button>
-                        <Button
-                            Padding="12,6"
-                            Command="{Binding $parent[Window].DataContext.CancelEditCommand}"
-                            CommandParameter="{Binding}">
+                        <Button Tag="{Binding}"
+                                Click="OnCancelEditClick"
+                                Padding="12,6">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <fa:FASymbolIcon Symbol="Dismiss" />
                                 <TextBlock

@@ -2,41 +2,53 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using DirectorPrompt.Localization;
+using DirectorPrompt.Services;
 using DirectorPrompt.ViewModels;
 
 namespace DirectorPrompt.Views.Settings;
 
 public partial class MCPSettingsView : UserControl
 {
-    public MCPSettingsView() =>
+    public MCPSettingsView()
+    {
         InitializeComponent();
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object? sender, RoutedEventArgs e) =>
+        CopyEndpointButton.IsVisible = !RemotePopupHost.IsRemote(this);
 
     private async void OnRemoveMCPServer(object sender, RoutedEventArgs e)
     {
-        if (sender is not Control { Tag: MCPServerSettingViewModel server })
+        if (sender is not Control { Tag: MCPServerSettingViewModel server } ||
+            DataContext is not SettingsViewModel viewModel)
+        {
             return;
+        }
 
-        var window = TopLevel.GetTopLevel(this) as Window;
-
-        if (window is null)
+        if (!await PromptDialog.ConfirmAsync
+            (
+                this,
+                Loc.Get("Settings.MCP.Title"),
+                Loc.Get("Dialog.ConfirmRemoveMCPServer", server.DisplayName),
+                true
+            ))
+        {
             return;
+        }
 
-        if (!await PromptDialog.ConfirmAsync(window, Loc.Get("Settings.MCP.Title"), Loc.Get("Dialog.ConfirmRemoveMCPServer", server.DisplayName), true))
-            return;
-
-        if (DataContext is SettingsViewModel viewModel)
-            viewModel.RemoveMCPServerCommand.Execute(server);
+        viewModel.RemoveMCPServerCommand.Execute(server);
     }
 
     private async void OnCopyInternalEndpoint(object sender, RoutedEventArgs e)
     {
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
 
-        if (clipboard is not null && DataContext is SettingsViewModel viewModel)
-        {
-            var transfer = new DataTransfer();
-            transfer.Add(DataTransferItem.CreateText(viewModel.InternalMCPEndpoint));
-            await clipboard.SetDataAsync(transfer);
-        }
+        if (clipboard is null || DataContext is not SettingsViewModel viewModel)
+            return;
+
+        var transfer = new DataTransfer();
+        transfer.Add(DataTransferItem.CreateText(viewModel.InternalMCPEndpoint));
+        await clipboard.SetDataAsync(transfer);
     }
 }

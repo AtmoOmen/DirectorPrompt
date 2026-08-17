@@ -1,4 +1,3 @@
-using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -10,15 +9,6 @@ namespace DirectorPrompt.Views;
 
 public partial class StateAttributeEditControl : UserControl
 {
-    public static readonly StyledProperty<ICommand?> DeleteCommandProperty =
-        AvaloniaProperty.Register<StateAttributeEditControl, ICommand?>(nameof(DeleteCommand));
-
-    public ICommand? DeleteCommand
-    {
-        get => GetValue(DeleteCommandProperty);
-        set => SetValue(DeleteCommandProperty, value);
-    }
-
     public StateAttributeEditControl() =>
         AvaloniaXamlLoader.Load(this);
 
@@ -27,16 +17,11 @@ public partial class StateAttributeEditControl : UserControl
         if (DataContext is not StateAttributeEditViewModel attr)
             return;
 
-        var owner = TopLevel.GetTopLevel(this) as Window;
-        var confirmed = await PromptDialog.ConfirmAsync
-                        (
-                            owner,
-                            Loc.Get("Common.Remove"),
-                            Loc.Get("Dialog.ConfirmDeleteStateAttribute", attr.DisplayName),
-                            true
-                        );
+        var message = Loc.Get("Dialog.ConfirmDeleteStateAttribute", attr.DisplayName);
 
-        if (confirmed)
-            DeleteCommand?.Execute(attr);
+        if (!await PromptDialog.ConfirmAsync(this, Loc.Get("Common.Remove"), message, true))
+            return;
+
+        ViewModelLocator.GetProjectEditViewModel(this)?.DeleteStateAttributeCommand.Execute(attr);
     }
 }

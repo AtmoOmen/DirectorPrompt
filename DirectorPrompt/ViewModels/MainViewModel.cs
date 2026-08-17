@@ -146,6 +146,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     public ILanSharingService LanSharingService { get; }
 
+    public IRemoteDialogHost? RemoteDialogHost { get; set; }
+
     public DialogViewModel Dialog { get; } = new();
 
     public DirectiveInputViewModel DirectiveInput { get; } = new();
