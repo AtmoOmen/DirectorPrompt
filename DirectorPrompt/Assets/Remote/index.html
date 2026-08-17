@@ -179,7 +179,10 @@
             right: max(16px, env(safe-area-inset-right));
             bottom: max(16px, env(safe-area-inset-bottom));
             display: flex;
+            align-items: center;
             gap: 6px;
+            width: 102px;
+            height: 54px;
             padding: 6px;
             background: var(--surface);
             backdrop-filter: blur(16px) saturate(120%);
@@ -189,7 +192,8 @@
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
             z-index: 50;
             opacity: 0.55;
-            transition: opacity 0.25s ease, transform 0.25s ease;
+            transition: opacity 0.25s ease, transform 0.25s ease,
+                        width 0.22s ease, height 0.22s ease, padding 0.22s ease, gap 0.22s ease;
         }
 
         #toolbar:hover,
@@ -197,9 +201,35 @@
             opacity: 1;
         }
 
+        #toolbarHandle {
+            display: none;
+        }
+
         @media (pointer: coarse) {
             #toolbar {
                 opacity: 1;
+            }
+
+            #toolbar.collapsed {
+                width: 42px;
+                height: 42px;
+                padding: 0;
+                gap: 0;
+            }
+
+            #toolbar.collapsed .tool-button {
+                display: none;
+            }
+
+            #toolbar.collapsed #toolbarHandle {
+                display: flex;
+            }
+
+            #toolbar.keyboard-open,
+            #toolbar.hidden {
+                opacity: 0;
+                transform: translateY(calc(100% + 24px));
+                pointer-events: none;
             }
         }
 
@@ -287,6 +317,11 @@
 </div>
 
 <div id="toolbar">
+    <button class="tool-button" id="toolbarHandle" type="button" title="展开工具栏" aria-label="展开工具栏" aria-expanded="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 15l-6-6-6 6"/>
+        </svg>
+    </button>
     <button class="tool-button mobile-only" id="keyboardButton" type="button" title="键盘" aria-label="键盘">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="6" width="20" height="12" rx="2"/>
@@ -315,6 +350,7 @@
     const keyboardButton = document.getElementById('keyboardButton');
     const fullscreenButton = document.getElementById('fullscreenButton');
     const fullscreenPath = document.getElementById('fullscreenPath');
+    const toolbarHandle = document.getElementById('toolbarHandle');
     const context = canvas.getContext('2d');
 
     // ===== 状态 =====
@@ -324,12 +360,14 @@
     let touch = null;
     let composing = false;
     let deviceScale = 1;
+    let isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
     let hasConnected = false;
     let reconnectAttempts = 0;
     let reconnectTimer = null;
     let resizeTimer = null;
     let longPressTimer = null;
     let statusHideTimer = null;
+    let toolbarIdleTimer = null;
     let canvasWidth = 0;
     let canvasHeight = 0;
 
@@ -337,6 +375,8 @@
     const LONG_PRESS_DELAY = 500;
     const SCROLL_THRESHOLD = 6;
     const STATUS_VISIBLE_DURATION = 2000;
+    const TOOLBAR_IDLE_DELAY = 3000;
+    const TOOLBAR_HIDE_DELAY = 4000;
 
     // ===== 连接管理 =====
     function connect() {
@@ -579,6 +619,16 @@
         keyboard.focus({ preventScroll: true });
     });
 
+    keyboard.addEventListener('focus', () => {
+        toolbar.classList.add('keyboard-open');
+        clearTimeout(toolbarIdleTimer);
+    });
+
+    keyboard.addEventListener('blur', () => {
+        toolbar.classList.remove('keyboard-open');
+        scheduleToolbarHide();
+    });
+
     keyboard.addEventListener('keydown', (event) => {
         if (event.isComposing) return;
         send(`key:down:${modifiers(event)}:${event.key}:${event.code}`);
@@ -612,6 +662,51 @@
         if (keyboard.value) send(`text:${encodeURIComponent(keyboard.value)}`);
         keyboard.value = '';
     });
+
+    // ===== 浮动工具栏 =====
+    function expandToolbar() {
+        toolbar.classList.remove('collapsed', 'hidden');
+        toolbarHandle.setAttribute('aria-expanded', 'true');
+        scheduleToolbarHide();
+    }
+
+    function collapseToolbar() {
+        if (toolbar.classList.contains('keyboard-open')) return;
+        toolbar.classList.add('collapsed');
+        toolbarHandle.setAttribute('aria-expanded', 'false');
+    }
+
+    function handleToolbarIdle() {
+        if (!isCoarsePointer ||
+            document.activeElement === keyboard ||
+            toolbar.classList.contains('keyboard-open')) {
+            return;
+        }
+        if (toolbar.classList.contains('collapsed')) {
+            toolbar.classList.add('hidden');
+        } else {
+            collapseToolbar();
+            toolbarIdleTimer = setTimeout(handleToolbarIdle, TOOLBAR_HIDE_DELAY);
+        }
+    }
+
+    function scheduleToolbarHide() {
+        clearTimeout(toolbarIdleTimer);
+        toolbarIdleTimer = setTimeout(handleToolbarIdle, TOOLBAR_IDLE_DELAY);
+    }
+
+    toolbarHandle.addEventListener('click', () => {
+        expandToolbar();
+    });
+
+    document.addEventListener('pointerdown', () => {
+        if (!isCoarsePointer ||
+            document.activeElement === keyboard ||
+            toolbar.classList.contains('keyboard-open')) {
+            return;
+        }
+        expandToolbar();
+    }, true);
 
     // ===== 全屏 =====
     fullscreenButton.addEventListener('click', toggleFullscreen);
@@ -662,11 +757,11 @@
 
     // ===== 可见性 =====
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-            if (!socket || socket.readyState === WebSocket.CLOSED) {
-                clearTimeout(reconnectTimer);
-                connect();
-            }
+        if (document.hidden) return;
+        expandToolbar();
+        if (!socket || socket.readyState === WebSocket.CLOSED) {
+            clearTimeout(reconnectTimer);
+            connect();
         }
     });
 
@@ -724,6 +819,7 @@
     // ===== 启动 =====
     showOverlay('connecting');
     connect();
+    scheduleToolbarHide();
 })();
 </script>
 </body>
