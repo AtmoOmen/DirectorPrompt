@@ -201,6 +201,13 @@
             opacity: 1;
         }
 
+        /* 非移动端（鼠标 / 触控板）布局下不显示右下角浮动工具栏 */
+        @media (pointer: fine) {
+            #toolbar {
+                display: none;
+            }
+        }
+
         #toolbarHandle {
             display: none;
         }
