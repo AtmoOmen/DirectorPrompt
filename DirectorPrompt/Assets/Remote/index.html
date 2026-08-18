@@ -181,7 +181,7 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            width: 102px;
+            width: 54px;
             height: 54px;
             padding: 6px;
             background: var(--surface);
@@ -335,11 +335,6 @@
             <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>
         </svg>
     </button>
-    <button class="tool-button" id="fullscreenButton" type="button" title="全屏" aria-label="全屏">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path id="fullscreenPath" d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>
-        </svg>
-    </button>
 </div>
 
 <script>
@@ -355,8 +350,6 @@
     const statusText = document.getElementById('statusText');
     const toolbar = document.getElementById('toolbar');
     const keyboardButton = document.getElementById('keyboardButton');
-    const fullscreenButton = document.getElementById('fullscreenButton');
-    const fullscreenPath = document.getElementById('fullscreenPath');
     const toolbarHandle = document.getElementById('toolbarHandle');
     const context = canvas.getContext('2d');
 
@@ -714,39 +707,6 @@
         }
         expandToolbar();
     }, true);
-
-    // ===== 全屏 =====
-    fullscreenButton.addEventListener('click', toggleFullscreen);
-
-    function toggleFullscreen() {
-        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-        if (!isFullscreen) {
-            const el = document.documentElement;
-            if (el.requestFullscreen) el.requestFullscreen();
-            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        } else {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        }
-    }
-
-    function updateFullscreenIcon() {
-        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-        if (isFullscreen) {
-            fullscreenPath.setAttribute('d', 'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3');
-        } else {
-            fullscreenPath.setAttribute('d', 'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3');
-        }
-    }
-
-    document.addEventListener('fullscreenchange', () => {
-        updateFullscreenIcon();
-        debouncedResize();
-    });
-    document.addEventListener('webkitfullscreenchange', () => {
-        updateFullscreenIcon();
-        debouncedResize();
-    });
 
     // ===== 视口调整 =====
     function resize() {
