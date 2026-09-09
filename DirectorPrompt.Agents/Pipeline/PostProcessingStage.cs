@@ -215,7 +215,7 @@ public sealed class PostProcessingStage
             sb.AppendLine("## 可用分类 (add_character 时可选用)");
 
             foreach (var cat in categories)
-                sb.AppendLine($"- ID:{cat.ID} {cat.Name}: {cat.Description}");
+                sb.AppendLine($"- {cat.Name}: {cat.Description}");
 
             sb.AppendLine();
         }

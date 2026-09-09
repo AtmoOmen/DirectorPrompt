@@ -28,50 +28,49 @@ public sealed class MemoryTools
         ),
         AIFunctionFactory.Create
         (
-            (string characterIDs) => QueryMemoryByCharacterAsync(context, characterIDs),
+            (string characterNames) => QueryMemoryByCharacterAsync(context, characterNames),
             "query_memory_by_character",
             """
-            按人物 ID 查询相关记忆
-            characterIDs: 人物 ID 列表 (逗号分隔)
+            按人物查询相关记忆
+            characterNames: 人物名列表 (逗号分隔)
             """
         ),
         AIFunctionFactory.Create
         (
-            (long sceneID, string content, string tags, string? characterIDs = null) =>
-                CreateMemoryAsync(context, sceneID, content, tags, characterIDs),
+            (string content, string tags, string? characterNames = null) =>
+                CreateMemoryAsync(context, content, tags, characterNames),
             "create_memory",
             """
             创建新记忆
-            sceneID: 归属场景 ID
             content: 记忆正文
             tags: 标签 (逗号分隔)
-            characterIDs: 涉及人物 ID 列表 (逗号分隔, 可选)
+            characterNames: 涉及人物名列表 (逗号分隔, 可选)
             """
         ),
         AIFunctionFactory.Create
         (
-            (long memoryID, string content, string? tags = null, string? characterIDs = null) =>
-                UpdateMemoryAsync(context, memoryID, content, tags, characterIDs),
+            (long memoryID, string content, string? tags = null, string? characterNames = null) =>
+                UpdateMemoryAsync(context, memoryID, content, tags, characterNames),
             "update_memory",
             """
             改写已有记忆
-            memoryID: 记忆 ID
+            memoryID: 记忆 ID, 取自 query_memory 返回的 id
             content: 新内容
             tags: 新标签, 逗号分隔 (可选)
-            characterIDs: 涉及人物 ID 列表 (逗号分隔, 可选)
+            characterNames: 涉及人物名列表 (逗号分隔, 可选)
             """
         ),
         AIFunctionFactory.Create
         (
-            (string memoryIDs, string content, string tags, string? characterIDs = null) =>
-                MergeMemoriesAsync(context, memoryIDs, content, tags, characterIDs),
+            (string memoryIDs, string content, string tags, string? characterNames = null) =>
+                MergeMemoriesAsync(context, memoryIDs, content, tags, characterNames),
             "merge_memories",
             """
             合并多条记忆为一条
-            memoryIDs: 要合并的记忆 ID 列表 (逗号分隔)
+            memoryIDs: 要合并的记忆 ID 列表 (逗号分隔, 取自 query_memory 返回的 id)
             content: 合并后的内容
             tags: 标签 (逗号分隔)
-            characterIDs: 涉及人物 ID 列表 (逗号分隔, 可选)
+            characterNames: 涉及人物名列表 (逗号分隔, 可选)
             """
         )
     ];
@@ -107,15 +106,16 @@ public sealed class MemoryTools
     private async Task<string> QueryMemoryByCharacterAsync
     (
         ToolExecutionContext context,
-        string               characterIDs
+        string               characterNames
     )
     {
-        Log.Information("工具调用: query_memory_by_character(characterIDs={IDs})", characterIDs);
+        Log.Information("工具调用: query_memory_by_character(characterNames={Names})", characterNames);
 
-        var idList = characterIDs
-                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                     .Select(long.Parse)
-                     .ToList();
+        var (idList, error) = await ResolveCharacterIDsAsync(context, characterNames);
+
+        if (error is not null)
+            return error;
+
         var result = new List<object>();
 
         foreach (var characterID in idList)
@@ -156,25 +156,28 @@ public sealed class MemoryTools
     private async Task<string> CreateMemoryAsync
     (
         ToolExecutionContext context,
-        long                 sceneID,
         string               content,
         string               tags,
-        string?              characterIDs
+        string?              characterNames
     )
     {
         Log.Information
         (
             "工具调用: create_memory(sceneID={SceneID}, length={Length})",
-            sceneID,
+            context.SceneID,
             content.Length
         );
 
-        var characterList = ParseCharacterIDs(characterIDs);
+        var (characterList, error) = await ResolveCharacterIDsAsync(context, characterNames);
+
+        if (error is not null)
+            return error;
+
         var entry = new MemoryEntry
         {
             ProjectID           = context.ProjectID,
             SessionID           = context.SessionID,
-            SceneID             = sceneID,
+            SceneID             = context.SceneID ?? 0,
             TimelinePos         = context.TimelinePosition,
             Content             = content,
             Tags                = ParseTags(tags),
@@ -198,7 +201,7 @@ public sealed class MemoryTools
         long                 memoryID,
         string               content,
         string?              tags,
-        string?              characterIDs
+        string?              characterNames
     )
     {
         Log.Information("工具调用: update_memory(memoryID={MemoryID})", memoryID);
@@ -208,9 +211,18 @@ public sealed class MemoryTools
         if (existing is null)
             return ToolResult.Error($"记忆 {memoryID} 不存在");
 
-        var parsedCharacterIDs = string.IsNullOrWhiteSpace(characterIDs) ?
-                                     existing.RelatedCharacterIDs :
-                                     ParseCharacterIDs(characterIDs);
+        var parsedCharacterIDs = existing.RelatedCharacterIDs;
+
+        if (!string.IsNullOrWhiteSpace(characterNames))
+        {
+            var (characterList, error) = await ResolveCharacterIDsAsync(context, characterNames);
+
+            if (error is not null)
+                return error;
+
+            parsedCharacterIDs = characterList;
+        }
+
         var updated = existing with
         {
             Content = content,
@@ -235,14 +247,22 @@ public sealed class MemoryTools
         string               memoryIDs,
         string               content,
         string               tags,
-        string?              characterIDs
+        string?              characterNames
     )
     {
         Log.Information("工具调用: merge_memories(memoryIDs={MemoryIDs})", memoryIDs);
 
-        var idList   = memoryIDs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(long.Parse).ToList();
-        var charList = ParseCharacterIDs(characterIDs);
-        var merged   = await memoryRepository.MergeAsync(idList, context.SceneID ?? 0, content, ParseTags(tags), context.SessionID, context.RoundID);
+        var (charList, error) = await ResolveCharacterIDsAsync(context, characterNames);
+
+        if (error is not null)
+            return error;
+
+        var (idList, idError) = ParseMemoryIDs(memoryIDs);
+
+        if (idError is not null)
+            return idError;
+
+        var merged = await memoryRepository.MergeAsync(idList, context.SceneID ?? 0, content, ParseTags(tags), context.SessionID, context.RoundID);
 
         if (charList.Length > 0)
         {
@@ -264,14 +284,45 @@ public sealed class MemoryTools
     private static string[] ParseTags(string tags) =>
         tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static long[] ParseCharacterIDs(string? characterIDs)
+    private static (List<long> IDs, string? Error) ParseMemoryIDs(string memoryIDs)
     {
-        if (string.IsNullOrWhiteSpace(characterIDs))
-            return [];
+        var ids = new List<long>();
 
-        return characterIDs
-               .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-               .Select(long.Parse)
-               .ToArray();
+        foreach (var item in memoryIDs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!long.TryParse(item, out var memoryID))
+                return ([], ToolResult.Error($"记忆 ID {item} 不是数字"));
+
+            ids.Add(memoryID);
+        }
+
+        return ids.Count == 0 ?
+                   ([], ToolResult.Error("memoryIDs 不能为空")) :
+                   (ids, null);
+    }
+
+    private async Task<(long[] IDs, string? Error)> ResolveCharacterIDsAsync
+    (
+        ToolExecutionContext context,
+        string?              characterNames
+    )
+    {
+        if (string.IsNullOrWhiteSpace(characterNames))
+            return ([], null);
+
+        var names = characterNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var ids   = new long[names.Length];
+
+        for (var i = 0; i < names.Length; i++)
+        {
+            var character = await characterRepository.GetByNameAsync(context.SessionID, names[i]);
+
+            if (character is null)
+                return ([], ToolResult.Error($"人物 {names[i]} 不存在"));
+
+            ids[i] = character.ID;
+        }
+
+        return (ids, null);
     }
 }

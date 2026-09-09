@@ -12,7 +12,7 @@ public static class MemorySubAgentPrompt
 
         人物退场: 永久离开叙事 (死亡、搬走等) 时用 create_memory 记录退场原因, 不修改人物状态, 系统自动归档长期未触及的角色。
 
-        关系变化: 调用 set_relation 后同时用 create_memory 记录, characterIDs 填写相关人物。
+        关系变化: 调用 set_relation 后同时用 create_memory 记录, characterNames 填写相关人物名。
 
         别称: 叙事中对已有人物的称呼与建档名不同时调用 add_alias 补充。
         

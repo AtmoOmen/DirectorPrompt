@@ -67,28 +67,28 @@ public sealed class CharacterTools
         ),
         AIFunctionFactory.Create
         (
-            (string name, string description, string categoryIDs, string reason, string? aliases = null) =>
-                AddCharacterAsync(context, name, description, categoryIDs, aliases, reason),
+            (string name, string description, string categoryNames, string reason, string? aliases = null) =>
+                AddCharacterAsync(context, name, description, categoryNames, aliases, reason),
             "add_character",
             """
             新增人物
             name: 人物名
             description: 描述
-            categoryIDs: 分类 ID 列表 (逗号分隔)
+            categoryNames: 分类名列表 (逗号分隔, 无分类填空字符串)
             aliases: 别称列表 (逗号分隔, 可选)
             reason: 新增原因
             """
         ),
         AIFunctionFactory.Create
         (
-            (string name, string description, string reason, string? categoryIDs = null) =>
-                UpdateCharacterAsync(context, name, description, categoryIDs, reason),
+            (string name, string description, string reason, string? categoryNames = null) =>
+                UpdateCharacterAsync(context, name, description, categoryNames, reason),
             "update_character",
             """
             更新人物描述和分类
             name: 人物名
             description: 新描述
-            categoryIDs: 新分类 ID 列表 (逗号分隔, 可选)
+            categoryNames: 新分类名列表 (逗号分隔, 可选)
             reason: 原因
             """
         ),
@@ -403,7 +403,7 @@ public sealed class CharacterTools
         ToolExecutionContext context,
         string               name,
         string               description,
-        string               categoryIDs,
+        string               categoryNames,
         string?              aliases,
         string               reason
     )
@@ -415,11 +415,10 @@ public sealed class CharacterTools
         if (existing is not null)
             return ToolResult.Error($"人物 {name} 已存在");
 
-        var categoryIDList = string.IsNullOrWhiteSpace(categoryIDs) ?
-                                 [] :
-                                 categoryIDs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                            .Select(long.Parse)
-                                            .ToArray();
+        var (categoryIDList, categoryError) = await ResolveCategoryIDsAsync(context, categoryNames);
+
+        if (categoryError is not null)
+            return categoryError;
 
         var aliasList = string.IsNullOrWhiteSpace(aliases) ?
                             [] :
@@ -453,7 +452,7 @@ public sealed class CharacterTools
         ToolExecutionContext context,
         string               name,
         string               description,
-        string?              categoryIDs,
+        string?              categoryNames,
         string               reason
     )
     {
@@ -464,18 +463,21 @@ public sealed class CharacterTools
 
         var newCategoryIDs = character.CategoryIDs;
 
-        if (!string.IsNullOrWhiteSpace(categoryIDs))
+        if (!string.IsNullOrWhiteSpace(categoryNames))
         {
-            newCategoryIDs = categoryIDs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                        .Select(long.Parse)
-                                        .ToArray();
+            var (categoryIDList, categoryError) = await ResolveCategoryIDsAsync(context, categoryNames);
+
+            if (categoryError is not null)
+                return categoryError;
+
+            newCategoryIDs = categoryIDList;
         }
 
         var updated = character with { Description = description, CategoryIDs = newCategoryIDs };
 
         await characterRepository.UpdateAsync(updated, context.SessionID, context.RoundID);
 
-        if (!string.IsNullOrWhiteSpace(categoryIDs))
+        if (!string.IsNullOrWhiteSpace(categoryNames))
             await categoryResolver.ResolveAndPersistAsync(character.ID, context.SessionID, context.RoundID);
 
         await characterRepository.TouchAsync(character.ID, context.RoundID, context.SessionID);
@@ -630,8 +632,11 @@ public sealed class CharacterTools
 
         var values       = await characterRepository.GetCharacterStateValuesAsync(character.ID);
         var currentValue = values.FirstOrDefault(v => v.AttributeID == attr.ID);
-        var currentNum   = double.Parse(currentValue?.Value ?? "0", CultureInfo.InvariantCulture);
-        var newValue     = currentNum + delta;
+
+        if (!double.TryParse(currentValue?.Value ?? "0", NumberStyles.Float, CultureInfo.InvariantCulture, out var currentNum))
+            return ToolResult.Error($"状态属性 {attribute} 当前值 {currentValue?.Value} 不是数值");
+
+        var newValue = currentNum + delta;
 
         await characterRepository.SetCharacterStateValueAsync
             (character.ID, attr.ID, newValue.ToString(CultureInfo.InvariantCulture), context.SessionID, context.RoundID);
@@ -681,6 +686,10 @@ public sealed class CharacterTools
             if (config?.Options is not { Count: > 0 } options || !options.Contains(normalizedValue, StringComparer.Ordinal))
                 return ToolResult.Error($"状态属性 {attribute} 不包含枚举值 {normalizedValue}");
         }
+
+        if (attr.ValueType == StateValueType.Numeric &&
+            !double.TryParse(normalizedValue, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+            return ToolResult.Error($"状态属性 {attribute} 需要数值");
 
         await characterRepository.SetCharacterStateValueAsync(character.ID, attr.ID, normalizedValue, context.SessionID, context.RoundID);
 
@@ -788,6 +797,32 @@ public sealed class CharacterTools
         }
 
         return result;
+    }
+
+    private async Task<(long[] IDs, string? Error)> ResolveCategoryIDsAsync
+    (
+        ToolExecutionContext context,
+        string?              categoryNames
+    )
+    {
+        if (string.IsNullOrWhiteSpace(categoryNames))
+            return ([], null);
+
+        var names      = categoryNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var categories = await characterRepository.GetCategoriesAsync(context.ProjectID);
+        var ids        = new long[names.Length];
+
+        for (var i = 0; i < names.Length; i++)
+        {
+            var category = categories.FirstOrDefault(c => c.Name == names[i]);
+
+            if (category is null)
+                return ([], ToolResult.Error($"分类 {names[i]} 不存在"));
+
+            ids[i] = category.ID;
+        }
+
+        return (ids, null);
     }
 
     private async Task<(StateAttribute? Attr, string? Error)> ResolveCategoryAttributeAsync

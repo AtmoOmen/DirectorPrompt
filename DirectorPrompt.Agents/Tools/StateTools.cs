@@ -118,8 +118,11 @@ public sealed class StateTools
             return ToolResult.Error($"状态属性 {attribute} 不是可由 AI 修改的数值类型");
 
         var currentValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
-        var currentNum   = double.Parse(currentValue?.Value ?? "0");
-        var newValue     = currentNum + delta;
+
+        if (!double.TryParse(currentValue?.Value ?? "0", NumberStyles.Float, CultureInfo.InvariantCulture, out var currentNum))
+            return ToolResult.Error($"状态属性 {attribute} 当前值 {currentValue?.Value} 不是数值");
+
+        var newValue = currentNum + delta;
 
         await stateRepository.SetStateValueAsync
         (
@@ -178,6 +181,10 @@ public sealed class StateTools
             if (config?.Options is not { Count: > 0 } options || !options.Contains(normalizedValue, StringComparer.Ordinal))
                 return ToolResult.Error($"状态属性 {attribute} 不包含枚举值 {normalizedValue}");
         }
+
+        if (attr.ValueType == StateValueType.Numeric &&
+            !double.TryParse(normalizedValue, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+            return ToolResult.Error($"状态属性 {attribute} 需要数值");
 
         var oldValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
 

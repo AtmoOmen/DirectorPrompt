@@ -103,7 +103,7 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
             builder = builder.Use(next => new CacheControlChatClient(next));
 
         return builder
-               .UseFunctionInvocation()
+               .UseFunctionInvocation(configure: client => client.IncludeDetailedErrors = true)
                .Build();
     }
 
