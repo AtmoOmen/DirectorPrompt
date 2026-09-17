@@ -15,25 +15,25 @@ namespace DirectorPrompt.Agents;
 
 public sealed class Orchestrator
 (
-    IProjectRepository       projectRepository,
-    ISessionRepository       sessionRepository,
-    IEventRepository         eventRepository,
-    ISceneRepository         sceneRepository,
-    IDirectiveRepository     directiveRepository,
-    IRoundChangeRepository   roundChangeRepository,
-    IStateRepository         stateRepository,
+    IProjectRepository            projectRepository,
+    ISessionRepository            sessionRepository,
+    IEventRepository              eventRepository,
+    ISceneRepository              sceneRepository,
+    IDirectiveRepository          directiveRepository,
+    IRoundChangeRepository        roundChangeRepository,
+    IStateRepository              stateRepository,
     IStateRuleExecutionRepository stateRuleExecutionRepository,
-    ISystemStateTransformer  systemStateTransformer,
-    PhaseEvaluator           phaseEvaluator,
-    DirectiveProcessingStage directiveProcessingStage,
-    RetrievalStage           retrievalStage,
-    GenerationStage          generationStage,
-    PostProcessingStage      postProcessingStage,
-    SceneSummaryStage        sceneSummaryStage,
-    HistoryBuilder           historyBuilder,
-    AgentConfigResolver      agentConfigResolver,
-    OrchestratorConfig       orchestratorConfig,
-    UserSettings             userSettings
+    ISystemStateTransformer       systemStateTransformer,
+    PhaseEvaluator                phaseEvaluator,
+    DirectiveProcessingStage      directiveProcessingStage,
+    RetrievalStage                retrievalStage,
+    GenerationStage               generationStage,
+    PostProcessingStage           postProcessingStage,
+    SceneSummaryStage             sceneSummaryStage,
+    HistoryBuilder                historyBuilder,
+    AgentConfigResolver           agentConfigResolver,
+    OrchestratorConfig            orchestratorConfig,
+    UserSettings                  userSettings
 )
 {
     public async Task<NarrationResult> ProcessBatchAsync
@@ -62,10 +62,12 @@ public sealed class Orchestrator
         var batchStopwatch   = Stopwatch.StartNew();
         var pipelineID       = Guid.NewGuid().ToString("N");
 
+        using var sessionAffinity = SessionAffinityContext.Push(sessionID);
+
         using var pipelineContext = LogContext.PushProperty("PipelineID", pipelineID);
-        using var projectContext  = LogContext.PushProperty("ProjectID", batch.ProjectID);
-        using var sessionContext  = LogContext.PushProperty("SessionID", sessionID);
-        using var roundContext    = LogContext.PushProperty("RoundID", roundID);
+        using var projectContext  = LogContext.PushProperty("ProjectID",  batch.ProjectID);
+        using var sessionContext  = LogContext.PushProperty("SessionID",  sessionID);
+        using var roundContext    = LogContext.PushProperty("RoundID",    roundID);
 
         Log.Information
         (
@@ -222,14 +224,19 @@ public sealed class Orchestrator
             sessionID,
             roundID,
             context.NarrativeOutput?.Length ?? 0,
-            context.ThinkingOutput?.Length ?? 0,
+            context.ThinkingOutput?.Length  ?? 0,
             batchStopwatch.ElapsedMilliseconds
         );
 
         return result;
     }
 
-    public async Task DeleteRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
+    public async Task DeleteRoundAsync
+    (
+        long              sessionID,
+        long              roundID,
+        CancellationToken cancellationToken = default
+    )
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -250,7 +257,11 @@ public sealed class Orchestrator
         );
     }
 
-    public async Task<RollbackResult?> RollbackLastRoundAsync(long sessionID, CancellationToken cancellationToken = default)
+    public async Task<RollbackResult?> RollbackLastRoundAsync
+    (
+        long              sessionID,
+        CancellationToken cancellationToken = default
+    )
     {
         var latestRound = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken);
 
@@ -282,7 +293,12 @@ public sealed class Orchestrator
         return new RollbackResult(latestRound, directives);
     }
 
-    public async Task TryDeleteRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
+    public async Task TryDeleteRoundAsync
+    (
+        long              sessionID,
+        long              roundID,
+        CancellationToken cancellationToken = default
+    )
     {
         if (roundID <= 0)
         {
@@ -551,7 +567,7 @@ public sealed class Orchestrator
                 previousKeys?.Count ?? 0
             );
 
-            var result       = await source.EvaluateAsync(projectID, sessionID, previousKeys, cancellationToken);
+            var result = await source.EvaluateAsync(projectID, sessionID, previousKeys, cancellationToken);
             results.Add((source, result));
 
             Log.Information

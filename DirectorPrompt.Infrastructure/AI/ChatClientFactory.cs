@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Collections.Immutable;
 using Anthropic;
 using Anthropic.Core;
@@ -123,6 +124,7 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
             options.Endpoint = new Uri(endpoint);
 
         CustomHeaderPipelinePolicy.ApplyToOptions(options, provider.CustomHeaders);
+        options.AddPolicy(new OpenCodeSessionHeaderPolicy(), PipelinePosition.BeforeTransport);
 
         var apiKey = !string.IsNullOrWhiteSpace(provider.APIKey) ?
                          provider.APIKey :
@@ -155,6 +157,8 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
 
         if (customHeaders is not null)
             options.ExtraHeaders = customHeaders;
+
+        options.Handlers = [new OpenCodeSessionHeaderHandler()];
 
         return new AnthropicClient(options)
             .AsIChatClient(model.ModelName, 8192);
