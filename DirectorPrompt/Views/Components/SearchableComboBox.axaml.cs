@@ -41,6 +41,7 @@ public sealed partial class SearchableComboBox : UserControl
     private          Border?                   remotePopupContent;
     private          ListBox?                  remoteResults;
     private          bool                      isUpdatingText;
+    private          bool                      suppressDropDownOnFocus;
 
     private TextBox SearchInput =>
         this.GetLogicalDescendants().OfType<TextBox>().First(control => control.Name == "SearchBox");
@@ -92,7 +93,7 @@ public sealed partial class SearchableComboBox : UserControl
     static SearchableComboBox()
     {
         ItemsSourceProperty.Changed.AddClassHandler<SearchableComboBox>(static (control,       _) => control.ObserveItems());
-        DisplayMemberPathProperty.Changed.AddClassHandler<SearchableComboBox>(static (control, _) => control.RefreshItems());
+        DisplayMemberPathProperty.Changed.AddClassHandler<SearchableComboBox>(static (control, _) => control.UpdateDisplayMemberBinding());
         SelectedValueProperty.Changed.AddClassHandler<SearchableComboBox>(static (control,     _) => control.UpdateDisplayText());
         TextProperty.Changed.AddClassHandler<SearchableComboBox>(static (control,              _) => control.UpdateTextFromProperty());
         PlaceholderTextProperty.Changed.AddClassHandler<SearchableComboBox>(static (control,   _) => control.SearchInput.PlaceholderText = control.PlaceholderText);
@@ -117,7 +118,11 @@ public sealed partial class SearchableComboBox : UserControl
         RefreshItems();
     }
 
-    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+    private void OnCollectionChanged
+    (
+        object?                          sender,
+        NotifyCollectionChangedEventArgs e
+    ) =>
         RefreshItems();
 
     private void RefreshItems()
@@ -135,6 +140,12 @@ public sealed partial class SearchableComboBox : UserControl
 
         UpdateDisplayText();
         FilterItems();
+    }
+
+    private void UpdateDisplayMemberBinding()
+    {
+        Results.DisplayMemberBinding = new Binding(DisplayMemberPath);
+        RefreshItems();
     }
 
     private void UpdateTextFromProperty()
@@ -163,10 +174,17 @@ public sealed partial class SearchableComboBox : UserControl
         isUpdatingText   = false;
     }
 
-    private string GetDisplayValue(object item) =>
+    private string GetDisplayValue
+    (
+        object item
+    ) =>
         GetValue(item, DisplayMemberPath)?.ToString() ?? string.Empty;
 
-    private static object? GetValue(object item, string propertyName)
+    private static object? GetValue
+    (
+        object item,
+        string propertyName
+    )
     {
         if (string.IsNullOrEmpty(propertyName))
             return item;
@@ -174,7 +192,11 @@ public sealed partial class SearchableComboBox : UserControl
         return TypeDescriptor.GetProperties(item)[propertyName]?.GetValue(item);
     }
 
-    private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
+    private void OnSearchTextChanged
+    (
+        object?              sender,
+        TextChangedEventArgs e
+    )
     {
         if (isUpdatingText)
             return;
@@ -194,18 +216,38 @@ public sealed partial class SearchableComboBox : UserControl
             if (GetDisplayValue(item).Contains(searchText, StringComparison.OrdinalIgnoreCase))
                 FilteredItems.Add(item);
         }
-
-        Results.DisplayMemberBinding = new Binding(DisplayMemberPath);
     }
 
-    private void OnSearchBoxGotFocus(object? sender, RoutedEventArgs e)
+    private void SuppressDropDownOnFocus()
+    {
+        suppressDropDownOnFocus = true;
+        Dispatcher.UIThread.Post
+        (
+            () => suppressDropDownOnFocus = false,
+            DispatcherPriority.Background
+        );
+    }
+
+    private void OnSearchBoxGotFocus
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         SearchInput.SelectAll();
+
+        if (suppressDropDownOnFocus)
+            return;
+
         FilterItems();
         SetDropDownOpen(FilteredItems.Count > 0);
     }
 
-    private void OnResultSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void OnResultSelectionChanged
+    (
+        object?                   sender,
+        SelectionChangedEventArgs e
+    )
     {
         if (Results.SelectedItem is not { } selectedItem)
             return;
@@ -213,7 +255,10 @@ public sealed partial class SearchableComboBox : UserControl
         CommitSelection(selectedItem);
     }
 
-    private void CommitSelection(object selectedItem)
+    private void CommitSelection
+    (
+        object selectedItem
+    )
     {
         var display = GetDisplayValue(selectedItem);
         isUpdatingText   = true;
@@ -221,16 +266,20 @@ public sealed partial class SearchableComboBox : UserControl
         Text             = display;
         SelectedValue    = GetValue(selectedItem, SelectedValuePath);
         isUpdatingText   = false;
+        SuppressDropDownOnFocus();
+        SetDropDownOpen(false);
         Dispatcher.UIThread.Post
-        (() =>
-            {
-                Results.SelectedItem = null;
-                SetDropDownOpen(false);
-            }
+        (
+            () => Results.SelectedItem = null,
+            DispatcherPriority.Background
         );
     }
 
-    private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    private void OnSearchBoxKeyDown
+    (
+        object?      sender,
+        KeyEventArgs e
+    )
     {
         if (e.Key == Key.Down && IsDropDownOpen && FilteredItems.Count > 0)
         {
@@ -246,10 +295,15 @@ public sealed partial class SearchableComboBox : UserControl
         }
     }
 
-    private void OnResultKeyDown(object? sender, KeyEventArgs e)
+    private void OnResultKeyDown
+    (
+        object?      sender,
+        KeyEventArgs e
+    )
     {
         if (e.Key == Key.Escape)
         {
+            SuppressDropDownOnFocus();
             SetDropDownOpen(false);
             UpdateDisplayText();
             SearchInput.Focus();
@@ -269,8 +323,14 @@ public sealed partial class SearchableComboBox : UserControl
             remotePopupContent is not null :
             DropDownPopup.IsOpen;
 
-    private void SetDropDownOpen(bool value)
+    private void SetDropDownOpen
+    (
+        bool value
+    )
     {
+        if (IsDropDownOpen == value)
+            return;
+
         if (!RemotePopupHost.IsRemote(this))
         {
             DropDownPopup.IsOpen = value;
@@ -327,16 +387,25 @@ public sealed partial class SearchableComboBox : UserControl
         remoteResults      = null;
     }
 
-    private void OnRemoteResultSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void OnRemoteResultSelectionChanged
+    (
+        object?                   sender,
+        SelectionChangedEventArgs e
+    )
     {
         if (remoteResults?.SelectedItem is { } selectedItem)
             CommitSelection(selectedItem);
     }
 
-    private void OnRemoteResultKeyDown(object? sender, KeyEventArgs e)
+    private void OnRemoteResultKeyDown
+    (
+        object?      sender,
+        KeyEventArgs e
+    )
     {
         if (e.Key == Key.Escape)
         {
+            SuppressDropDownOnFocus();
             SetDropDownOpen(false);
             SearchInput.Focus();
             e.Handled = true;
@@ -350,7 +419,10 @@ public sealed partial class SearchableComboBox : UserControl
         }
     }
 
-    private void RestoreRemotePopupContent(Control content)
+    private void RestoreRemotePopupContent
+    (
+        Control content
+    )
     {
         remotePopupContent = null;
         remoteResults      = null;
