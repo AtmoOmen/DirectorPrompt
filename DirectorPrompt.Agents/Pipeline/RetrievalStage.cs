@@ -89,12 +89,6 @@ public sealed class RetrievalStage
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(context.PreviousSceneSummary))
-        {
-            sb.AppendLine("上一场景摘要:");
-            sb.AppendLine(context.PreviousSceneSummary);
-        }
-
         sb.AppendLine("导演指令:");
 
         foreach (var item in context.DirectiveBatch.Directives)
