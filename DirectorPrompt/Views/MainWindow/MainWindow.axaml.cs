@@ -25,7 +25,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
     private readonly ILanSharingService? lanSharingService;
 
     private DialogMessageList dialogMessages = null!;
-    private ScrollViewer? dialogScrollViewer;
+    private ScrollViewer?     dialogScrollViewer;
 
     private int  dialogScrollRequestID;
     private bool isFollowingDialogTail = true;
@@ -49,19 +49,30 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         AvaloniaXamlLoader.Load(this);
     }
 
-    public MainWindow(MainViewModel viewModel)
+    public MainWindow
+    (
+        MainViewModel viewModel
+    )
         : this(viewModel, true)
     {
     }
 
-    public MainWindow(MainViewModel viewModel, ILanSharingService lanSharingService)
+    public MainWindow
+    (
+        MainViewModel      viewModel,
+        ILanSharingService lanSharingService
+    )
         : this(viewModel, true)
     {
         this.lanSharingService =  lanSharingService;
         Closing                += OnClosing;
     }
 
-    internal MainWindow(MainViewModel viewModel, bool attachWindowBehavior)
+    internal MainWindow
+    (
+        MainViewModel viewModel,
+        bool          attachWindowBehavior
+    )
     {
         this.viewModel = viewModel;
         isRemote       = !attachWindowBehavior;
@@ -88,7 +99,10 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
             Loaded += OnLoaded;
     }
 
-    internal void SetRemoteViewportWidth(double width)
+    internal void SetRemoteViewportWidth
+    (
+        double width
+    )
     {
         if (!isRemote || width <= 0)
             return;
@@ -117,7 +131,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         viewModel.PropertyChanged                  -= OnViewModelPropertyChanged;
     }
 
-    private void OnMobileSessionsToggleClick(object? sender, RoutedEventArgs e)
+    private void OnMobileSessionsToggleClick
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         if (!isMobileRemote)
             return;
@@ -126,7 +144,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
             MobileDetailsToggle.IsChecked = false;
     }
 
-    private void OnMobileDetailsToggleClick(object? sender, RoutedEventArgs e)
+    private void OnMobileDetailsToggleClick
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         if (!isMobileRemote)
             return;
@@ -135,25 +157,45 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
             MobileSessionsToggle.IsChecked = false;
     }
 
-    private void OnMobileBackdropPointerPressed(object? sender, PointerPressedEventArgs e) =>
+    private void OnMobileBackdropPointerPressed
+    (
+        object?                 sender,
+        PointerPressedEventArgs e
+    ) =>
         MobileMoreActionsButton.IsChecked = false;
 
-    private void OnMobileMenuItemClick(object? sender, RoutedEventArgs e) =>
+    private void OnMobileMenuItemClick
+    (
+        object?         sender,
+        RoutedEventArgs e
+    ) =>
         MobileMoreActionsButton.IsChecked = false;
 
-    private void OnMobileImportDirectorPromptClick(object? sender, RoutedEventArgs e)
+    private void OnMobileImportDirectorPromptClick
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         MobileMoreActionsButton.IsChecked = false;
         viewModel.ImportProjectCommand.Execute(null);
     }
 
-    private void OnMobileImportSillyTavernClick(object? sender, RoutedEventArgs e)
+    private void OnMobileImportSillyTavernClick
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         MobileMoreActionsButton.IsChecked = false;
         viewModel.ImportSillyTavernProjectCommand.Execute(null);
     }
 
-    private void OnSessionSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void OnSessionSelectionChanged
+    (
+        object?                   sender,
+        SelectionChangedEventArgs e
+    )
     {
         if (isMobileRemote)
             ResetMobileNavigation();
@@ -167,17 +209,33 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         CloseRemoteMenu();
     }
 
-    private async void OnLoaded(object? sender, RoutedEventArgs e)
+    private async void OnLoaded
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
-        dialogScrollViewer = dialogMessages.ScrollViewer;
-
-        if (dialogScrollViewer is not null)
-            dialogScrollViewer.ScrollChanged += OnDialogScrollChanged;
+        Dispatcher.UIThread.Post(HookDialogScrollViewer, DispatcherPriority.Loaded);
 
         await viewModel.LoadProjectsCommand.ExecuteAsync(null);
     }
 
-    private async void OnClosing(object? sender, WindowClosingEventArgs e)
+    private void HookDialogScrollViewer()
+    {
+        dialogScrollViewer = dialogMessages.ScrollViewer;
+
+        if (dialogScrollViewer is null)
+            return;
+
+        dialogScrollViewer.ScrollChanged -= OnDialogScrollChanged;
+        dialogScrollViewer.ScrollChanged += OnDialogScrollChanged;
+    }
+
+    private async void OnClosing
+    (
+        object?                sender,
+        WindowClosingEventArgs e
+    )
     {
         if (closeAuthorized)
             return;
@@ -205,7 +263,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         }
     }
 
-    private void OnDialogEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnDialogEntriesChanged
+    (
+        object?                          sender,
+        NotifyCollectionChangedEventArgs e
+    )
     {
         if (e.Action == NotifyCollectionChangedAction.Reset)
             return;
@@ -216,13 +278,21 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         ScrollDialogToBottom();
     }
 
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnViewModelPropertyChanged
+    (
+        object?                  sender,
+        PropertyChangedEventArgs e
+    )
     {
         if (e.PropertyName == nameof(MainViewModel.IsLoadingDialog) && !viewModel.IsLoadingDialog)
             ScrollDialogToBottom(true);
     }
 
-    private void OnDialogScrollChanged(object? sender, ScrollChangedEventArgs e)
+    private void OnDialogScrollChanged
+    (
+        object?                sender,
+        ScrollChangedEventArgs e
+    )
     {
         if (dialogScrollViewer is null)
             return;
@@ -232,7 +302,10 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         isFollowingDialogTail = maximum - dialogScrollViewer.Offset.Y <= 1;
     }
 
-    private void ScrollDialogToBottom(bool force = false)
+    private void ScrollDialogToBottom
+    (
+        bool force = false
+    )
     {
         if (!force && !isFollowingDialogTail)
             return;
@@ -247,7 +320,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         );
     }
 
-    private void ScrollDialogToBottomAfterLayout(int requestID, long? sessionID)
+    private void ScrollDialogToBottomAfterLayout
+    (
+        int   requestID,
+        long? sessionID
+    )
     {
         if (requestID != dialogScrollRequestID        ||
             sessionID != viewModel.CurrentSession?.ID ||
@@ -271,7 +348,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         );
     }
 
-    private void CompleteDialogScrollToBottom(int requestID, long? sessionID)
+    private void CompleteDialogScrollToBottom
+    (
+        int   requestID,
+        long? sessionID
+    )
     {
         if (requestID != dialogScrollRequestID        ||
             sessionID != viewModel.CurrentSession?.ID ||
@@ -281,7 +362,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         dialogScrollViewer?.ScrollToEnd();
     }
 
-    private async void OnLoadEarlierDialog(object? sender, RoutedEventArgs e)
+    private async void OnLoadEarlierDialog
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         if (dialogScrollViewer is null)
             return;
@@ -302,7 +387,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         );
     }
 
-    private void RestoreDialogOffset(double previousExtent, Vector previousOffset)
+    private void RestoreDialogOffset
+    (
+        double previousExtent,
+        Vector previousOffset
+    )
     {
         if (dialogScrollViewer is null)
             return;
@@ -314,7 +403,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         dialogScrollViewer.Offset = dialogScrollViewer.Offset.WithY(offset);
     }
 
-    private void OnImportButtonClick(object sender, RoutedEventArgs e)
+    private void OnImportButtonClick
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         if (!isRemote || sender is not Control element)
             return;
@@ -323,13 +416,25 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         e.Handled = true;
     }
 
-    private void OnImportDirectorPrompt(object sender, RoutedEventArgs e) =>
+    private void OnImportDirectorPrompt
+    (
+        object          sender,
+        RoutedEventArgs e
+    ) =>
         viewModel.ImportProjectCommand.Execute(null);
 
-    private void OnImportSillyTavern(object sender, RoutedEventArgs e) =>
+    private void OnImportSillyTavern
+    (
+        object          sender,
+        RoutedEventArgs e
+    ) =>
         viewModel.ImportSillyTavernProjectCommand.Execute(null);
 
-    private void OpenRemoteMenu(Control owner, Border menu)
+    private void OpenRemoteMenu
+    (
+        Control owner,
+        Border  menu
+    )
     {
         CloseRemoteMenu();
 
@@ -362,7 +467,10 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
             remoteMenu.IsVisible = false;
     }
 
-    private void RestoreRemoteMenu(Control content)
+    private void RestoreRemoteMenu
+    (
+        Control content
+    )
     {
         remoteMenuOwner   = null;
         remoteMenu        = null;
@@ -372,19 +480,31 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
             remoteOverlay.Children.Add(content);
     }
 
-    private void OnRemoteImportDirectorPromptClick(object? sender, RoutedEventArgs e)
+    private void OnRemoteImportDirectorPromptClick
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         CloseRemoteMenu();
         viewModel.ImportProjectCommand.Execute(null);
     }
 
-    private void OnRemoteImportSillyTavernClick(object? sender, RoutedEventArgs e)
+    private void OnRemoteImportSillyTavernClick
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         CloseRemoteMenu();
         viewModel.ImportSillyTavernProjectCommand.Execute(null);
     }
 
-    private void OnProjectItemPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnProjectItemPointerPressed
+    (
+        object?                 sender,
+        PointerPressedEventArgs e
+    )
     {
         if (sender is not Border { Tag: Project project } item ||
             !e.GetCurrentPoint(item).Properties.IsRightButtonPressed)
@@ -401,7 +521,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         e.Handled = true;
     }
 
-    private void OnSessionItemPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnSessionItemPointerPressed
+    (
+        object?                 sender,
+        PointerPressedEventArgs e
+    )
     {
         if (sender is not Border { Tag: Session session } item ||
             !e.GetCurrentPoint(item).Properties.IsRightButtonPressed)
@@ -418,13 +542,25 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         e.Handled = true;
     }
 
-    private void OnProjectItemContextRequested(object? sender, ContextRequestedEventArgs e) =>
+    private void OnProjectItemContextRequested
+    (
+        object?                   sender,
+        ContextRequestedEventArgs e
+    ) =>
         e.Handled = true;
 
-    private void OnSessionItemContextRequested(object? sender, ContextRequestedEventArgs e) =>
+    private void OnSessionItemContextRequested
+    (
+        object?                   sender,
+        ContextRequestedEventArgs e
+    ) =>
         e.Handled = true;
 
-    private static void OpenLocalMenu(Control owner, object item)
+    private static void OpenLocalMenu
+    (
+        Control owner,
+        object  item
+    )
     {
         if (owner.ContextFlyout is not MenuFlyout menu)
             return;
@@ -435,7 +571,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         menu.ShowAt(owner);
     }
 
-    private void OnEditProjectItem(object sender, RoutedEventArgs e)
+    private void OnEditProjectItem
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         if (sender is not Control { Tag: Project project })
             return;
@@ -445,7 +585,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         viewModel.EditProjectCommand.Execute(null);
     }
 
-    private void OnExportProjectItem(object sender, RoutedEventArgs e)
+    private void OnExportProjectItem
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         if (sender is not Control { Tag: Project project })
             return;
@@ -455,7 +599,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         viewModel.ExportProjectCommand.Execute(null);
     }
 
-    private async void OnDeleteProjectItem(object sender, RoutedEventArgs e)
+    private async void OnDeleteProjectItem
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         if (sender is not Control { Tag: Project project })
             return;
@@ -467,7 +615,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
             _ = viewModel.DeleteProjectCommand.ExecuteAsync(project);
     }
 
-    private async void OnRenameSessionItem(object sender, RoutedEventArgs e)
+    private async void OnRenameSessionItem
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         if (sender is not Control { Tag: Session session })
             return;
@@ -485,7 +637,11 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
             await viewModel.RenameSessionAsync(session, newTitle);
     }
 
-    private async void OnDeleteSessionItem(object sender, RoutedEventArgs e)
+    private async void OnDeleteSessionItem
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         if (sender is not Control { Tag: Session session })
             return;

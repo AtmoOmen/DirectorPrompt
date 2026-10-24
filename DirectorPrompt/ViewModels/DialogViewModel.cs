@@ -188,7 +188,11 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
     public DialogEntryViewModel() =>
         DirectorBlocks.CollectionChanged += OnDirectorBlocksChanged;
 
-    private void OnDirectorBlocksChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnDirectorBlocksChanged
+    (
+        object?                          sender,
+        NotifyCollectionChangedEventArgs e
+    )
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDirectorBlocks)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowDirectorContent)));
@@ -197,14 +201,22 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
     public void RenderMarkdown() =>
         IsStreaming = false;
 
-    public void UpdateStreamingContent(string narrative, string thinking, bool replaceContent = false)
+    public void UpdateStreamingContent
+    (
+        string narrative,
+        string thinking,
+        bool   replaceContent = false
+    )
     {
         Content  = narrative;
         Thinking = thinking;
 
     }
 
-    public void SetError(string message)
+    public void SetError
+    (
+        string message
+    )
     {
         IsStreaming  = false;
         ErrorMessage = message;
@@ -232,9 +244,8 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
 public sealed class DialogViewModel : INotifyPropertyChanged
 {
-    private readonly HashSet<DialogEntryViewModel> trackedEntries = [];
-    private readonly ObservableCollection<DialogEntryViewModel> stableEntries = [];
-    private          DialogEntryViewModel?          streamingEntry;
+    private readonly HashSet<DialogEntryViewModel>              trackedEntries = [];
+    private readonly ObservableCollection<DialogEntryViewModel> stableEntries  = [];
 
     public ObservableCollection<DialogEntryViewModel> Entries { get; } = [];
 
@@ -242,13 +253,13 @@ public sealed class DialogViewModel : INotifyPropertyChanged
 
     public DialogEntryViewModel? StreamingEntry
     {
-        get => streamingEntry;
+        get;
         private set
         {
-            if (ReferenceEquals(streamingEntry, value))
+            if (ReferenceEquals(field, value))
                 return;
 
-            streamingEntry = value;
+            field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StreamingEntry)));
         }
     }
@@ -257,14 +268,18 @@ public sealed class DialogViewModel : INotifyPropertyChanged
 
     public DialogViewModel()
     {
-        StableEntries = new ReadOnlyObservableCollection<DialogEntryViewModel>(stableEntries);
+        StableEntries             =  new ReadOnlyObservableCollection<DialogEntryViewModel>(stableEntries);
         Entries.CollectionChanged += OnEntriesChanged;
     }
 
     public void Clear() =>
         Entries.Clear();
 
-    public void AddOpeningMessage(string content, bool renderImmediately = false)
+    public void AddOpeningMessage
+    (
+        string content,
+        bool   renderImmediately = false
+    )
     {
         ClearLastFlag();
 
@@ -280,7 +295,12 @@ public sealed class DialogViewModel : INotifyPropertyChanged
         Entries.Add(entry);
     }
 
-    public DialogEntryViewModel AddDirectorEntry(long roundID, IReadOnlyList<(DirectiveType Type, string Content)> directives, bool renderImmediately = false)
+    public DialogEntryViewModel AddDirectorEntry
+    (
+        long                                                roundID,
+        IReadOnlyList<(DirectiveType Type, string Content)> directives,
+        bool                                                renderImmediately = false
+    )
     {
         ClearLastFlag();
 
@@ -312,7 +332,10 @@ public sealed class DialogViewModel : INotifyPropertyChanged
         return entry;
     }
 
-    public DialogEntryViewModel BeginStreamingNarrative(long roundID)
+    public DialogEntryViewModel BeginStreamingNarrative
+    (
+        long roundID
+    )
     {
         ClearLastFlag();
 
@@ -331,7 +354,13 @@ public sealed class DialogViewModel : INotifyPropertyChanged
         return entry;
     }
 
-    public void AddNarrativeEntry(long roundID, string content, string thinking = "", bool renderImmediately = false)
+    public void AddNarrativeEntry
+    (
+        long   roundID,
+        string content,
+        string thinking          = "",
+        bool   renderImmediately = false
+    )
     {
         ClearLastFlag();
 
@@ -348,7 +377,10 @@ public sealed class DialogViewModel : INotifyPropertyChanged
         Entries.Add(entry);
     }
 
-    public void RemoveEntriesByRound(long roundID)
+    public void RemoveEntriesByRound
+    (
+        long roundID
+    )
     {
         var toRemove = Entries.Where(e => e.RoundID == roundID).ToList();
 
@@ -372,13 +404,21 @@ public sealed class DialogViewModel : INotifyPropertyChanged
             Entries[^1].IsLast = false;
     }
 
-    private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnEntriesChanged
+    (
+        object?                          sender,
+        NotifyCollectionChangedEventArgs e
+    )
     {
         SynchronizeTrackedEntries();
         SynchronizePresentationEntries();
     }
 
-    private void OnEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnEntryPropertyChanged
+    (
+        object?                  sender,
+        PropertyChangedEventArgs e
+    )
     {
         if (!string.IsNullOrEmpty(e.PropertyName) && e.PropertyName != nameof(DialogEntryViewModel.IsStreaming))
             return;

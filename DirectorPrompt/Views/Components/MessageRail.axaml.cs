@@ -50,10 +50,14 @@ public partial class MessageRail : UserControl
         Loaded += OnLoaded;
     }
 
-    private void OnLoaded(object? sender, RoutedEventArgs e)
+    private void OnLoaded
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         railScrollViewer = Rail.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-        HookTargetScrollViewer();
+        Dispatcher.UIThread.Post(HookTargetScrollViewer, DispatcherPriority.Loaded);
     }
 
     private void HookTargetScrollViewer()
@@ -72,7 +76,11 @@ public partial class MessageRail : UserControl
             targetScrollViewer.ScrollChanged += OnTargetScrollChanged;
     }
 
-    private void OnTargetScrollChanged(object? sender, ScrollChangedEventArgs e)
+    private void OnTargetScrollChanged
+    (
+        object?                sender,
+        ScrollChangedEventArgs e
+    )
     {
         // 鼠标悬停在 MessageRail 上时不进行位置偏移同步，防止闪现和鼠标底下元素移位
         if (isPointerOver)
@@ -92,8 +100,8 @@ public partial class MessageRail : UserControl
             return;
 
         DialogEntryViewModel? topEntry    = null;
-        var     targetIndex = -1;
-        var     minDistance = double.MaxValue;
+        var                   targetIndex = -1;
+        var                   minDistance = double.MaxValue;
 
         foreach (var (entry, container) in TargetDialogMessages.GetRealizedEntries())
         {
@@ -146,7 +154,11 @@ public partial class MessageRail : UserControl
         }
     }
 
-    private void OnRailItemPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnRailItemPointerPressed
+    (
+        object?                 sender,
+        PointerPressedEventArgs e
+    )
     {
         if (sender is not Control { DataContext: DialogEntryViewModel entry } || TargetDialogMessages is null)
             return;
@@ -162,7 +174,11 @@ public partial class MessageRail : UserControl
         e.Handled = true;
     }
 
-    private void ScrollToEntry(int requestID, DialogEntryViewModel entry)
+    private void ScrollToEntry
+    (
+        int                  requestID,
+        DialogEntryViewModel entry
+    )
     {
         if (requestID != navigationRequestID || TargetDialogMessages is null)
             return;
@@ -176,7 +192,11 @@ public partial class MessageRail : UserControl
         );
     }
 
-    private void AlignEntryToTop(int requestID, DialogEntryViewModel entry)
+    private void AlignEntryToTop
+    (
+        int                  requestID,
+        DialogEntryViewModel entry
+    )
     {
         if (requestID != navigationRequestID || TargetDialogMessages is null)
             return;
@@ -202,16 +222,28 @@ public partial class MessageRail : UserControl
         targetScrollViewer.Offset = targetScrollViewer.Offset.WithY(offset);
     }
 
-    private void OnRailPointerEntered(object? sender, PointerEventArgs e) =>
+    private void OnRailPointerEntered
+    (
+        object?          sender,
+        PointerEventArgs e
+    ) =>
         isPointerOver = true;
 
-    private void OnRailPointerExited(object? sender, PointerEventArgs e)
+    private void OnRailPointerExited
+    (
+        object?          sender,
+        PointerEventArgs e
+    )
     {
         isPointerOver = false;
         SyncRailToTargetScroll();
     }
 
-    private void OnGoToTopClick(object? sender, RoutedEventArgs e)
+    private void OnGoToTopClick
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         targetScrollViewer ??= TargetDialogMessages?.ScrollViewer;
 
@@ -219,7 +251,11 @@ public partial class MessageRail : UserControl
             targetScrollViewer.Offset = targetScrollViewer.Offset.WithY(0);
     }
 
-    private void OnGoToBottomClick(object? sender, RoutedEventArgs e)
+    private void OnGoToBottomClick
+    (
+        object?         sender,
+        RoutedEventArgs e
+    )
     {
         if (TargetDialogMessages is null)
             return;

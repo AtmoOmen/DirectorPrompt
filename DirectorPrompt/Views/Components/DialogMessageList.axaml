@@ -47,38 +47,38 @@
         </Style>
     </UserControl.Styles>
 
-    <ScrollViewer x:Name="DialogScrollViewer"
-                  HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Hidden"
-                  Background="Transparent">
-        <Border Padding="16,8,8,8">
-            <StackPanel HorizontalAlignment="Stretch">
-                <ListBox x:Name="StableEntriesListBox"
-                         ItemsSource="{Binding StableEntries, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                         ItemTemplate="{StaticResource DialogEntryTemplate}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         Padding="0"
-                         Focusable="False">
-                    <ListBox.Template>
-                        <ControlTemplate>
-                            <ItemsPresenter Name="PART_ItemsPresenter" />
-                        </ControlTemplate>
-                    </ListBox.Template>
-                    <ListBox.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <VirtualizingStackPanel CacheLength="1" />
-                        </ItemsPanelTemplate>
-                    </ListBox.ItemsPanel>
-                </ListBox>
-
-                <ContentPresenter x:Name="StreamingEntryPresenter"
-                                  Content="{Binding StreamingEntry, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                  ContentTemplate="{StaticResource DialogEntryTemplate}"
-                                  IsVisible="{Binding HasStreamingEntry, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                  HorizontalAlignment="Stretch"
-                                  HorizontalContentAlignment="Stretch" />
-            </StackPanel>
-        </Border>
-    </ScrollViewer>
+    <ListBox x:Name="DialogEntriesListBox"
+             ItemsSource="{Binding StableEntries, RelativeSource={RelativeSource AncestorType=UserControl}}"
+             ItemTemplate="{StaticResource DialogEntryTemplate}"
+             Background="Transparent"
+             BorderThickness="0"
+             Padding="16,8,8,8"
+             Focusable="False">
+        <ListBox.Template>
+            <ControlTemplate>
+                <Border Padding="{TemplateBinding Padding}">
+                    <ScrollViewer Name="PART_ScrollViewer"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Hidden"
+                                  Background="Transparent">
+                        <StackPanel>
+                            <ItemsPresenter Name="PART_ItemsPresenter"
+                                            ItemsPanel="{TemplateBinding ItemsPanel}" />
+                            <ContentPresenter x:Name="StreamingEntryPresenter"
+                                              Content="{Binding StreamingEntry, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              ContentTemplate="{StaticResource DialogEntryTemplate}"
+                                              IsVisible="{Binding HasStreamingEntry, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              HorizontalAlignment="Stretch"
+                                              HorizontalContentAlignment="Stretch" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </ControlTemplate>
+        </ListBox.Template>
+        <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+                <VirtualizingStackPanel CacheLength="1" />
+            </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+    </ListBox>
 </UserControl>
