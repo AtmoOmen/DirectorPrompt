@@ -129,7 +129,7 @@ public sealed class StoryReader
                          selectedSceneID,
                          before,
                          maxRounds + 1,
-                         cancellationToken
+                         cancellationToken: cancellationToken
                      );
         var rounds   = events.GroupBy(item => item.RoundID).OrderByDescending(group => group.Key).ToList();
         var selected = rounds.Take(maxRounds).ToList();

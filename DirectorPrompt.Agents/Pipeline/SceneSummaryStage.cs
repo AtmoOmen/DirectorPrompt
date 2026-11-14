@@ -39,7 +39,7 @@ public sealed class SceneSummaryStage
                          sceneID,
                          long.MaxValue,
                          orchestratorConfig.HistoryContext.MaxRounds,
-                         cancellationToken
+                         cancellationToken: cancellationToken
                      );
 
         var historyText = HistoryBuilder.BuildSceneHistoryText(events);
@@ -150,6 +150,6 @@ public sealed class SceneSummaryStage
             ModelId     = resolved.ModelConfig.ModelName
         };
         var response = await client.GetResponseAsync(messages, options, cancellationToken);
-        return response.Text?.Trim();
+        return response.Text.Trim();
     }
 }

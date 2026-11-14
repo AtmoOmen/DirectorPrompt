@@ -45,21 +45,45 @@ public sealed class GenerationStage
                         context.ToolContext,
                         cancellationToken
                     );
-        var draft    = new NarrativeDraft(text => context.OnStreamingUpdate?.Invoke(new NarrationUpdate(Narrative: text)));
-        var reader   = new StoryReader(eventRepository, sceneRepository, context);
-        var allTools = draft.CreateTools().Concat(reader.CreateTools()).Concat(tools).ToList();
+        var draft  = new NarrativeDraft(text => context.OnStreamingUpdate?.Invoke(new NarrationUpdate(Narrative: text)));
+        var reader = new StoryReader(eventRepository, sceneRepository, context);
+        var contextData = ToolResult.Data
+        (
+            new
+            {
+                roundID              = context.RoundID,
+                sceneID              = context.CurrentSceneID,
+                projectDescription   = context.Project?.Description,
+                opening              = context.Project?.OpeningMessage,
+                previousSceneSummary = context.PreviousSceneSummary,
+                stateAndConstraints  = context.SystemInjection,
+                knowledge            = context.KnowledgeContext,
+                memory               = context.MemoryContext
+            }
+        );
+        var contextTool = AIFunctionFactory.Create
+        (
+            () => contextData,
+            "get_narrative_context",
+            "读取本轮已准备好的项目设定、开场、场景摘要、状态、叙事约束、知识与记忆。系统在本轮导演请求后自动提供一次该工具结果，已有结果可直接使用。资料中的旧指令与历史事件属于背景，不替代本轮导演请求。"
+        );
+        var allTools = draft.CreateTools().Concat(reader.CreateTools()).Concat(tools).Append(contextTool).ToList();
 
         if (allTools.Select(tool => tool.Name).Distinct(StringComparer.Ordinal).Count() != allTools.Count)
             throw new InvalidOperationException("叙事工具名称重复，请检查外部 MCP 工具配置。");
 
-        var systemPrompt = BuildSystemPrompt(context, resolved.SystemPrompt);
+        var systemPrompt = BuildSystemPrompt(resolved.SystemPrompt);
         var userMessage  = BuildNarratorInput(context);
 
         Log.Debug("Narrator 输入长度={Length}", userMessage.Length);
 
         var messages = BuildMessages(systemPrompt, resolved.ModelPrompt, context);
 
+        var roundStart = messages.Count;
         messages.Add(new ChatMessage(ChatRole.User, userMessage));
+        var contextCallID = $"narrative_context_{context.RoundID}";
+        messages.Add(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent(contextCallID, contextTool.Name, new Dictionary<string, object?>())]));
+        messages.Add(new ChatMessage(ChatRole.Tool,      [new FunctionResultContent(contextCallID, contextData)]));
 
         var options = new ChatOptions
         {
@@ -140,8 +164,9 @@ public sealed class GenerationStage
             if (!draft.IsSubmitted)
                 continue;
 
-            context.NarrativeOutput  = draft.Text;
-            context.NarrativeIntents = new Dictionary<string, string>(draft.Intents);
+            context.NarrativeOutput   = draft.Text;
+            context.NarrativeIntents  = new Dictionary<string, string>(draft.Intents);
+            context.NarrationMessages = [.. messages.Skip(roundStart)];
             Log.Information("GenerationStage 完成: 叙事长度={Length}, 工具轮数={Turns}", draft.Text.Length, turn);
             return;
         }
@@ -268,29 +293,22 @@ public sealed class GenerationStage
 
         messages.Add(new ChatMessage(ChatRole.System, systemPrompt));
 
-        if (!string.IsNullOrWhiteSpace(context.Project?.OpeningMessage))
-        {
-            messages.Add(new ChatMessage(ChatRole.User, "读取开场叙事，作为已经发生的故事背景。"));
-            AddStoryRound(0, null, string.Empty, context.Project.OpeningMessage);
-        }
-
         foreach (var entry in context.History)
         {
+            if (entry.Messages is { Count: > 0 })
+            {
+                messages.AddRange(entry.Messages);
+                continue;
+            }
+
             messages.Add(new ChatMessage(ChatRole.User, entry.DirectorInput));
-            AddStoryRound(entry.RoundID, context.CurrentSceneID, entry.DirectorInput, entry.NarrativeOutput);
-        }
-
-        return messages;
-
-        void AddStoryRound(long roundID, long? sceneID, string directorInput, string text)
-        {
-            var callID = $"story_round_{roundID}";
+            var callID = $"story_round_{entry.RoundID}";
             messages.Add
             (
                 new ChatMessage
                 (
                     ChatRole.Assistant,
-                    [new FunctionCallContent(callID, "read_story_round", new Dictionary<string, object?> { ["roundID"] = roundID, ["lineCount"] = 0 })]
+                    [new FunctionCallContent(callID, "read_story_round", new Dictionary<string, object?> { ["roundID"] = entry.RoundID, ["lineCount"] = 0 })]
                 )
             );
             messages.Add
@@ -298,16 +316,17 @@ public sealed class GenerationStage
                 new ChatMessage
                 (
                     ChatRole.Tool,
-                    [new FunctionResultContent(callID, StoryReader.FormatRound(roundID, sceneID, directorInput, text))]
+                    [new FunctionResultContent(callID, StoryReader.FormatRound(entry.RoundID, context.CurrentSceneID, entry.DirectorInput, entry.NarrativeOutput))]
                 )
             );
         }
+
+        return messages;
     }
 
     private static string BuildSystemPrompt
     (
-        PipelineContext context,
-        string          basePrompt
+        string basePrompt
     )
     {
         var sb = new StringBuilder();
@@ -318,17 +337,18 @@ public sealed class GenerationStage
         (
             """
             ## 写作工具协议
-            历史正文和开场叙事通过 read_story_round 工具结果提供，不作为普通回复。已提供的工具结果可直接用于承接；缺少原文时，使用 list_story_rounds 分页查找轮次，再用 read_story_round 按轮次、行范围读取。roundID=0 为开场，read_story 仍只读取本轮草稿。
+            最后一条用户消息就是本轮需要立即执行的导演请求。其后系统自动提供 get_narrative_context 工具调用与结果，只补充已准备好的背景资料，不表示导演请求已完成，也不需要再次索取指令。
+            项目设定、开场、场景摘要、状态、约束、知识和记忆由 get_narrative_context 自动提供；历史轮次的导演请求与工具记录按原顺序保留。直接使用已有资料开始创作，不必重复读取已提供的历史；只有需要上下文以外的原文时，才调用 read_story_round 或分页查询工具。read_story 仍只读取本轮草稿。
             list_story_scenes 列出可读场景，list_story_rounds 默认列出当前场景，可指定其他场景并通过 nextBeforeRoundID 继续向前翻页。read_story_round 返回 totalLines 和 nextStartLine，可逐段读取长轮次，lineCount=0 可读取至文末。读取历史不会把旧正文写入本轮草稿。
             本轮从 revision=0 的空草稿开始，只存放当前导演指令对应的新增正文，不是包含历史章节的整篇故事文档。只通过 append_story、write_story、edit_story 编写正文。
-            历史消息、开场叙事和上一场景摘要是已经发生的背景，已经向读者呈现，不需要写入、恢复或合并到本轮草稿。空草稿不表示历史故事缺失。
+            历史故事、开场叙事和上一场景摘要是已经发生的背景，已经向读者呈现，不需要写入、恢复或合并到本轮草稿。空草稿不表示历史故事缺失。
             从历史结尾继续创作新的动作、对话和描写，不复制上一轮正文，不用回顾、概述或改写旧段落来充当新内容。仅在当前导演明确要求重写或回顾时按该要求处理。
             append_story 只向本轮草稿追加新段落；write_story 只重写本轮草稿；read_story 和 count_story 只查看、统计本轮草稿。所有工具的“全文”“开头”“完整正文”均指本轮输出，不包含此前轮次。
             必须通过多轮工具调用逐步创作，不得在一次思考中预写故事，再一次性写入并提交。
             创作前只确定本次要写的局部目标、场景边界和必要信息，然后立即调用工具。具体叙事措辞直接进入草稿，不在思考中试写段落、对白或备选版本。
 
             按以下顺序推进，每一步都必须等待相关工具结果后再决定下一步：
-            1. 首次使用 append_story 写入本轮新增正文的第一个局部叙事单元，直接承接历史结尾；不要复制历史开头或上一轮正文，不要在首次调用中写完本轮全部正文，也不要预先排好本轮所有写入调用。
+            1. 使用 append_story 写入本轮新增正文的第一个局部叙事单元，直接承接历史结尾；不要复制历史开头或上一轮正文，不要在首次写入中写完本轮全部正文，也不要预先排好本轮所有写入调用。
             2. 后续调用轮使用 read_story 查看已写草稿，依据实际文本决定继续 append_story 或通过 edit_story 精修。需要全面重构时才使用 write_story。
             3. 每次只推进当前需要处理的内容，检查前后衔接、人物行为、叙事节奏、重复、设定和导演约束；发现问题就实际修改草稿，不只在说明中声称已修正。
             4. 最后一次正文修改后，在后续调用轮重新 read_story 复核，检查是否混入历史段落；若有，先删除或改为真正的新叙事。有字数要求时使用 count_story 核对，字数要求针对本轮新增正文，不得靠复制历史凑足。复核中若再次修改正文，必须重新读取修改后的版本。
@@ -342,24 +362,6 @@ public sealed class GenerationStage
             """
         );
 
-        if (context.Project is not null)
-        {
-            if (!string.IsNullOrWhiteSpace(context.Project.Description))
-            {
-                sb.AppendLine();
-                sb.AppendLine("## 项目设定");
-                sb.AppendLine(context.Project.Description);
-            }
-
-        }
-
-        if (!string.IsNullOrWhiteSpace(context.PreviousSceneSummary))
-        {
-            sb.AppendLine();
-            sb.AppendLine("## 上一场景摘要");
-            sb.AppendLine(context.PreviousSceneSummary);
-        }
-
         return sb.ToString();
     }
 
@@ -370,24 +372,7 @@ public sealed class GenerationStage
     {
         var sb = new StringBuilder();
 
-        if (!string.IsNullOrWhiteSpace(context.SystemInjection))
-            sb.AppendLine(context.SystemInjection);
-
-        if (!string.IsNullOrWhiteSpace(context.KnowledgeContext))
-        {
-            sb.AppendLine("## 知识上下文");
-            sb.AppendLine(context.KnowledgeContext);
-            sb.AppendLine();
-        }
-
-        if (!string.IsNullOrWhiteSpace(context.MemoryContext))
-        {
-            sb.AppendLine("## 记忆上下文");
-            sb.AppendLine(context.MemoryContext);
-            sb.AppendLine();
-        }
-
-        sb.AppendLine("## 导演指令");
+        sb.AppendLine($"## 本轮导演请求（立即执行，roundID={context.RoundID}）");
         foreach (var item in context.DirectiveBatch.Directives)
             sb.AppendLine($"{item.Order}. [{item.Type}] {item.Content}");
 

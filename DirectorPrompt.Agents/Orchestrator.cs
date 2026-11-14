@@ -483,7 +483,8 @@ public sealed class Orchestrator
                 RoundID   = context.RoundID,
                 SceneID   = context.CurrentSceneID,
                 Type      = EventType.NarrationTrace,
-                Data      = JsonSerializer.Serialize(new NarrationTrace(context.NarrationActivities, context.NarrativeIntents), JsonOptions.Compact),
+                Data = JsonSerializer.Serialize
+                    (new NarrationTrace(context.NarrationActivities, context.NarrativeIntents, context.NarrationMessages), JsonOptions.Compact),
                 CreatedAt = now
             }
         );

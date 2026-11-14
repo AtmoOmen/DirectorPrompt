@@ -1,6 +1,7 @@
 using System.ClientModel.Primitives;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using DirectorPrompt.Domain;
 using Microsoft.Extensions.AI;
 using OpenAI.Chat;
 using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
@@ -70,8 +71,15 @@ internal sealed class OpenAIReasoningChatClient
         {
             var state = message.Contents
                                .Select(content => content.AdditionalProperties?.GetValueOrDefault(nameof(OpenAIReasoningState)))
-                               .OfType<OpenAIReasoningState>()
-                               .FirstOrDefault();
+                               .Select
+                               (value => value switch
+                                   {
+                                       OpenAIReasoningState reasoningState => reasoningState,
+                                       JsonElement element                 => element.Deserialize<OpenAIReasoningState>(JsonOptions.Compact),
+                                       _                                   => null
+                                   }
+                               )
+                               .FirstOrDefault(value => value is not null);
 
             if (message.Role != ChatRole.Assistant || state is null)
             {

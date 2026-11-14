@@ -19,7 +19,8 @@ public interface IEventRepository
         long              sceneID,
         long              beforeRoundID,
         int               maxRounds,
-        CancellationToken cancellationToken = default
+        bool              includeNarrationTrace = false,
+        CancellationToken cancellationToken     = default
     );
 
     Task<IReadOnlyList<PlaythroughEvent>> GetSceneSummaryChunkAsync

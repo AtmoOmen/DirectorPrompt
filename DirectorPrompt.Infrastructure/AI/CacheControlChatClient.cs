@@ -44,8 +44,14 @@ public sealed class CacheControlChatClient
     public void Dispose() =>
         inner.Dispose();
 
-    private static void ApplyCacheBreakpoints(IList<ChatMessage> messages)
+    private static void ApplyCacheBreakpoints(List<ChatMessage> messages)
     {
+        foreach (var message in messages)
+        {
+            foreach (var content in message.Contents)
+                content.WithCacheControl((CacheControlEphemeral?)null);
+        }
+
         for (var i = messages.Count - 1; i >= 0; i--)
         {
             if (messages[i].Role != ChatRole.System)
@@ -55,14 +61,8 @@ public sealed class CacheControlChatClient
             break;
         }
 
-        for (var i = messages.Count - 1; i >= 0; i--)
-        {
-            if (messages[i].Role != ChatRole.Assistant)
-                continue;
-
-            MarkLastContent(messages[i]);
-            break;
-        }
+        if (messages.Count > 0 && messages[^1].Role != ChatRole.System)
+            MarkLastContent(messages[^1]);
     }
 
     private static void MarkLastContent(ChatMessage message)

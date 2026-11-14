@@ -8,8 +8,9 @@ namespace DirectorPrompt.Infrastructure.AI;
 
 internal sealed class OpenAIReasoningState
 {
-    private readonly JsonObject                  reasoning  = [];
-    private readonly Dictionary<int, JsonObject> toolExtras = [];
+    public JsonObject Reasoning { get; init; } = [];
+
+    public Dictionary<int, JsonObject> ToolExtras { get; init; } = [];
 
     public string Append(JsonElement response, bool streaming)
     {
@@ -31,7 +32,7 @@ internal sealed class OpenAIReasoningState
             if (!message.TryGetProperty(name, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
                 continue;
 
-            Merge(reasoning, name, JsonNode.Parse(value.GetRawText()));
+            Merge(Reasoning, name, JsonNode.Parse(value.GetRawText()));
 
             if (text.Length == 0)
                 text = ReadText(value);
@@ -51,10 +52,10 @@ internal sealed class OpenAIReasoningState
                 if (!call.TryGetProperty("extra_content", out var extra))
                     continue;
 
-                if (!toolExtras.TryGetValue(index, out var stored))
+                if (!ToolExtras.TryGetValue(index, out var stored))
                 {
                     stored = [];
-                    toolExtras.Add(index, stored);
+                    ToolExtras.Add(index, stored);
                 }
 
                 Merge(stored, "extra_content", JsonNode.Parse(extra.GetRawText()));
@@ -66,7 +67,7 @@ internal sealed class OpenAIReasoningState
 
     public void Attach(IList<AIContent> contents)
     {
-        if (reasoning.Count == 0 && toolExtras.Count == 0)
+        if (Reasoning.Count == 0 && ToolExtras.Count == 0)
             return;
 
         foreach (var content in contents)
@@ -79,10 +80,10 @@ internal sealed class OpenAIReasoningState
     public void Apply(AssistantChatMessage message)
     {
 #pragma warning disable SCME0001
-        foreach (var (name, value) in reasoning)
+        foreach (var (name, value) in Reasoning)
             message.Patch.Set(Encoding.UTF8.GetBytes("$." + name), BinaryData.FromString(value!.ToJsonString()));
 
-        foreach (var (index, extra) in toolExtras)
+        foreach (var (index, extra) in ToolExtras)
         {
             if (index >= message.ToolCalls.Count)
                 continue;

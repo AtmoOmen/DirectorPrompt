@@ -198,7 +198,8 @@ public sealed class EventRepository
         long              sceneID,
         long              beforeRoundID,
         int               maxRounds,
-        CancellationToken cancellationToken = default
+        bool              includeNarrationTrace = false,
+        CancellationToken cancellationToken     = default
     ) =>
         scheduler.ExecuteReadAsync<IReadOnlyList<PlaythroughEvent>>
         (
@@ -233,14 +234,15 @@ public sealed class EventRepository
                                        JOIN selected_rounds sr ON sr.round_id = pe.round_id
                                        WHERE pe.session_id = @sessionID
                                          AND pe.scene_id = @sceneID
-                                         AND pe.type IN ('DirectorInput', 'NarrativeOutput')
+                                         AND (pe.type IN ('DirectorInput', 'NarrativeOutput')
+                                              OR (@includeNarrationTrace AND pe.type = 'NarrationTrace'))
                                    )
                                    SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
                                    FROM ranked_events
                                    WHERE row_number = 1
                                    ORDER BY round_id, id
                                    """,
-                                   new { sessionID, sceneID, beforeRoundID, roundLimit },
+                                   new { sessionID, sceneID, beforeRoundID, roundLimit, includeNarrationTrace },
                                    cancellationToken: token
                                )
                            );
@@ -417,7 +419,14 @@ public sealed class EventRepository
                 (
                     new CommandDefinition
                     (
-                        "UPDATE playthrough_events SET data = @data WHERE id = @eventID",
+                        """
+                        UPDATE playthrough_events
+                        SET data = json_remove(data, '$.messages')
+                        WHERE type = 'NarrationTrace'
+                          AND session_id = (SELECT session_id FROM playthrough_events WHERE id = @eventID)
+                          AND round_id >= (SELECT round_id FROM playthrough_events WHERE id = @eventID);
+                        UPDATE playthrough_events SET data = @data WHERE id = @eventID;
+                        """,
                         new { eventID, data },
                         cancellationToken: token
                     )

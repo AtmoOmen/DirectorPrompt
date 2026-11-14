@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -40,7 +41,8 @@ public sealed class HistoryBuilder
                          sceneID,
                          currentRoundID,
                          config.MaxRounds,
-                         cancellationToken
+                         includeNarrationTrace: true,
+                         cancellationToken: cancellationToken
                      );
 
         var directorEvents = events
@@ -61,6 +63,9 @@ public sealed class HistoryBuilder
                                      .ToList();
 
         var history = new List<ChatHistoryEntry>();
+        var traces = events.Where(item => item.Type == EventType.NarrationTrace)
+                           .GroupBy(item => item.RoundID)
+                           .ToDictionary(group => group.Key, group => group.MaxBy(item => item.ID)!);
 
         foreach (var roundID in roundIDs)
         {
@@ -72,9 +77,12 @@ public sealed class HistoryBuilder
 
             var directorInput = ParseDirectorInput(directorEntry.Data);
             var narrativeText = narrativeEntry.Data;
+            var messages = traces.TryGetValue(roundID, out var trace) ?
+                               JsonSerializer.Deserialize<NarrationTrace>(trace.Data, JsonOptions.Compact)?.Messages :
+                               null;
 
             if (!string.IsNullOrWhiteSpace(narrativeText))
-                history.Add(new ChatHistoryEntry(roundID, directorInput, narrativeText));
+                history.Add(new ChatHistoryEntry(roundID, directorInput, narrativeText, messages));
         }
 
         var selected   = new List<ChatHistoryEntry>();
@@ -82,8 +90,10 @@ public sealed class HistoryBuilder
 
         for (var index = history.Count - 1; index >= 0; index--)
         {
-            var entry  = history[index];
-            var tokens = EstimateTokens(entry.DirectorInput) + EstimateTokens(entry.NarrativeOutput);
+            var entry = history[index];
+            var tokens = entry.Messages is { Count: > 0 } ?
+                             EstimateTokens(JsonSerializer.Serialize(entry.Messages, JsonOptions.Compact)) :
+                             EstimateTokens(entry.DirectorInput) + EstimateTokens(entry.NarrativeOutput);
 
             if (selected.Count > 0 && usedTokens + tokens > config.TokenBudget)
                 break;
@@ -113,10 +123,12 @@ public sealed class HistoryBuilder
 
         foreach (var evt in events.OrderBy(e => e.RoundID))
         {
-            if (evt.Type == EventType.DirectorInput)
-                sb.AppendLine($"[导演指令] {ParseDirectorInput(evt.Data)}");
-            else if (evt.Type == EventType.NarrativeOutput)
-                sb.AppendLine($"[叙事输出] {evt.Data}");
+            _ = evt.Type switch
+            {
+                EventType.DirectorInput   => sb.AppendLine($"[导演指令] {ParseDirectorInput(evt.Data)}"),
+                EventType.NarrativeOutput => sb.AppendLine($"[叙事输出] {evt.Data}"),
+                _                         => sb
+            };
         }
 
         return sb.ToString();
