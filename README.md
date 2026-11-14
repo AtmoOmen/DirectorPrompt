@@ -76,6 +76,24 @@ DirectorPrompt 是一款 AI 交互式叙事桌面软件，核心定位是**导�
 
 创作过程按轮次显示工具参数、执行结果与错误，并随对话保存。叙事意图可用于向后处理说明伏笔、人物动机和状态变化依据；状态与记忆仍以正文中已经发生的事实为准。叙事模型需要支持流式工具调用。
 
+### 模型思考内容
+
+创作过程中的“思考”显示接口公开返回的推理文本或摘要。模型内部执行推理并不表示接口一定公开思考内容；加密推理数据和思考签名用于后续工具调用，不作为可读文本显示。
+
+| 接口与模型 | 提供商设置 | 思考配置 |
+| --- | --- | --- |
+| Gemini OpenAI 兼容接口 | `openai`，端点为 `https://generativelanguage.googleapis.com/v1beta/openai/` | Gemini 模型自动请求 `include_thoughts`；推理强度可留空以使用服务默认值 |
+| GPT、o 系列 | `openai-responses`，端点为 `https://api.openai.com/v1` | 支持推理的模型请求思考摘要；按模型支持范围填写推理强度 |
+| Claude Messages API | `anthropic` | 填写 `low`、`medium`、`high`、`xhigh`；较早型号使用 token 预算，Sonnet / Opus 4.6 及后续版本使用自适应思考 |
+| DeepSeek、Kimi、GLM | `openai`，填写对应服务的 OpenAI 兼容端点 | 已开启思考的响应直接显示；配置推理强度时发送对应的 `thinking` 开关，`none` 表示关闭 |
+| Qwen、QwQ | `openai`，填写对应服务的 OpenAI 兼容端点 | 配置推理强度时发送 `enable_thinking`；模型能否关闭思考以服务支持范围为准 |
+| OpenRouter | `openai`，端点为 `https://openrouter.ai/api/v1` | 配置推理强度时使用其 `reasoning` 参数；公开的推理详情显示在“思考”中 |
+| Grok、其他兼容接口及本地模型 | `openai` 或 `ollama` | 接收 `reasoning_content`、`reasoning`、`thinking`、`reasoning_details`，以及流式 `<think>`、`<thinking>`、`<analysis>` 标签 |
+
+自定义参数填写实际请求 JSON 中的字段，显式配置优先于自动生成的同名字段。例如 Gemini 可填写 `{"extra_body":{"google":{"thinking_config":{"include_thoughts":true,"thinking_budget":8192}}}}`，Qwen 可填写 `{"enable_thinking":true}`。Gemini 的 `thinking_budget` / `thinking_level` 与推理强度不同时发送。经过第三方网关时，公开思考内容和额外参数的支持范围由网关决定。
+
+接口参考：[Gemini](https://ai.google.dev/gemini-api/docs/openai)、[OpenAI 推理](https://platform.openai.com/docs/guides/reasoning)、[Claude 思考](https://platform.claude.com/docs/en/build-with-claude/extended-thinking)、[DeepSeek](https://api-docs.deepseek.com/guides/thinking_mode)、[Kimi](https://platform.moonshot.ai/docs/guide/use-thinking-models)、[Qwen](https://www.alibabacloud.com/help/en/model-studio/deep-thinking)、[GLM](https://docs.bigmodel.cn/cn/guide/capabilities/thinking)、[OpenRouter](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens)。
+
 ### 状态栏
 
 侧边状态栏根据故事发展由 AI 实时填写、更新, 支持自定义任意状态, 包含项目状态系统和人物类别状态系统。

@@ -11,6 +11,8 @@ using Serilog;
 
 namespace DirectorPrompt.Infrastructure.AI;
 
+#pragma warning disable OPENAI001
+
 public sealed class ChatClientFactory : IChatClientFactory, IDisposable
 {
     private ImmutableDictionary<string, IChatClient> clients = ImmutableDictionary<string, IChatClient>.Empty;
@@ -97,7 +99,7 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
             _           => CreateOpenAICompatibleClient(provider, model, providerType)
         };
 
-        var wrapped = new ModelOptionsChatClient(inner, model);
+        var wrapped = new ModelOptionsChatClient(inner, model, provider);
 
         var builder = new ChatClientBuilder(wrapped);
 
@@ -137,9 +139,12 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
                          };
 
         var openAIClient = new OpenAIClient(new ApiKeyCredential(apiKey), options);
-        var chatClient   = openAIClient.GetChatClient(model.ModelName);
+        if (providerType == "openai-responses")
+            return openAIClient.GetResponsesClient().AsIChatClient(model.ModelName);
 
-        return chatClient.AsIChatClient();
+        var chatClient = openAIClient.GetChatClient(model.ModelName);
+
+        return new OpenAIReasoningChatClient(chatClient.AsIChatClient());
     }
 
     private static IChatClient CreateAnthropicClient(ProviderConfig provider, ModelConfig model)

@@ -159,59 +159,24 @@ public sealed class GenerationStage
         NarrationActivity? activity       = null;
         var                contentBuilder = new StringBuilder();
         var                lastPublished  = 0L;
+        var                thinkingParser = new StreamingThinkingParser();
 
         await foreach (var update in client.GetStreamingResponseAsync(messages, options, cancellationToken))
         {
             updates.Add(update);
 
-            foreach (var content in update.Contents)
-            {
-                var kind = content switch
-                {
-                    TextReasoningContent => NarrationActivityKind.Reasoning,
-                    TextContent          => NarrationActivityKind.Message,
-                    _                    => (NarrationActivityKind?)null
-                };
-                var text = content switch
-                {
-                    TextReasoningContent reasoning => reasoning.Text,
-                    TextContent message            => message.Text,
-                    _                              => null
-                };
+            var contents = update.Contents.SelectMany
+            (content => content is TextContent text ?
+                            thinkingParser.Append(text.Text) :
+                            [content]
+            );
 
-                if (kind is null || string.IsNullOrEmpty(text))
-                    continue;
-
-                if (activity?.Kind != kind)
-                {
-                    if (activity is not null)
-                        PublishActivity(context, activity with { Content = contentBuilder.ToString(), Status = PipelineStageStatus.Complete });
-
-                    contentBuilder.Clear();
-                    lastPublished = 0L;
-                    activity = new NarrationActivity
-                    (
-                        context.NarrationActivities.Count,
-                        turn,
-                        kind.Value,
-                        kind == NarrationActivityKind.Reasoning ?
-                            "思考" :
-                            "创作说明",
-                        string.Empty,
-                        PipelineStageStatus.Running
-                    );
-                }
-
-                contentBuilder.Append(text);
-
-                if (Stopwatch.GetElapsedTime(lastPublished) < TimeSpan.FromMilliseconds(50))
-                    continue;
-
-                activity = activity with { Content = contentBuilder.ToString() };
-                PublishActivity(context, activity);
-                lastPublished = Stopwatch.GetTimestamp();
-            }
+            foreach (var content in contents)
+                PublishContent(content);
         }
+
+        foreach (var content in thinkingParser.Append(string.Empty, true))
+            PublishContent(content);
 
         if (activity is not null)
             PublishActivity(context, activity with { Content = contentBuilder.ToString(), Status = PipelineStageStatus.Complete });
@@ -221,6 +186,54 @@ public sealed class GenerationStage
         return response.FinishReason == ChatFinishReason.Length ?
                    throw new InvalidOperationException("叙事模型达到输出长度限制，本轮工具参数可能不完整，草稿未提交。") :
                    response;
+
+        void PublishContent(AIContent content)
+        {
+            var kind = content switch
+            {
+                TextReasoningContent => NarrationActivityKind.Reasoning,
+                TextContent          => NarrationActivityKind.Message,
+                _                    => (NarrationActivityKind?)null
+            };
+            var text = content switch
+            {
+                TextReasoningContent reasoning => reasoning.Text,
+                TextContent message            => message.Text,
+                _                              => null
+            };
+
+            if (kind is null || string.IsNullOrEmpty(text))
+                return;
+
+            if (activity?.Kind != kind)
+            {
+                if (activity is not null)
+                    PublishActivity(context, activity with { Content = contentBuilder.ToString(), Status = PipelineStageStatus.Complete });
+
+                contentBuilder.Clear();
+                lastPublished = 0L;
+                activity = new NarrationActivity
+                (
+                    context.NarrationActivities.Count,
+                    turn,
+                    kind.Value,
+                    kind == NarrationActivityKind.Reasoning ?
+                        "思考" :
+                        "创作说明",
+                    string.Empty,
+                    PipelineStageStatus.Running
+                );
+            }
+
+            contentBuilder.Append(text);
+
+            if (Stopwatch.GetElapsedTime(lastPublished) < TimeSpan.FromMilliseconds(50))
+                return;
+
+            activity = activity with { Content = contentBuilder.ToString() };
+            PublishActivity(context, activity);
+            lastPublished = Stopwatch.GetTimestamp();
+        }
     }
 
     private static void PublishActivity

@@ -11,8 +11,12 @@ using Serilog;
 
 namespace DirectorPrompt.Infrastructure.AI;
 
+#pragma warning disable OPENAI001
+
 public sealed class ModelConnectionTester : IModelConnectionTester
 {
+    private static readonly HttpClient Client = new();
+
     public async Task<IReadOnlyList<string>> FetchModelsAsync
     (
         string            provider,
@@ -38,15 +42,14 @@ public sealed class ModelConnectionTester : IModelConnectionTester
             _ => BuildModelsURI(endpoint)
         };
 
-        using var httpClient = new HttpClient();
-        using var request    = new HttpRequestMessage(HttpMethod.Get, effectiveEndpoint);
+        using var request = new HttpRequestMessage(HttpMethod.Get, effectiveEndpoint);
 
         if (!string.IsNullOrWhiteSpace(apiKey))
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         ApplyCustomHeaders(request, customHeaders);
 
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await Client.SendAsync(request, cancellationToken);
 
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
@@ -106,8 +109,10 @@ public sealed class ModelConnectionTester : IModelConnectionTester
             return;
         }
 
-        var client     = CreateOpenAIClient(normalizedProvider, endpoint, apiKey, customHeaders);
-        var chatClient = client.GetChatClient(modelName).AsIChatClient();
+        var client = CreateOpenAIClient(normalizedProvider, endpoint, apiKey, customHeaders);
+        var chatClient = normalizedProvider == "openai-responses" ?
+                             client.GetResponsesClient().AsIChatClient(modelName) :
+                             client.GetChatClient(modelName).AsIChatClient();
 
         var messages = new List<ChatMessage>
         {
@@ -236,10 +241,9 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         if (trimmedEndpoint.EndsWith("/models", StringComparison.OrdinalIgnoreCase))
             return trimmedEndpoint;
 
-        if (trimmedEndpoint.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
-            return $"{trimmedEndpoint}/models";
-
-        return $"{trimmedEndpoint}/v1/models";
+        return trimmedEndpoint.EndsWith("/v1", StringComparison.OrdinalIgnoreCase) ?
+                   $"{trimmedEndpoint}/models" :
+                   $"{trimmedEndpoint}/v1/models";
     }
 
     private static List<string> ParseModelIds(string content)
@@ -249,7 +253,9 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
             return [];
 
-        return data.EnumerateArray()
+        return
+        [
+            .. data.EnumerateArray()
                    .Select
                    (item => item.TryGetProperty("id", out var id) ?
                                 id.GetString() :
@@ -259,7 +265,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
                    .Select(id => id!)
                    .Distinct(StringComparer.OrdinalIgnoreCase)
                    .Order(StringComparer.OrdinalIgnoreCase)
-                   .ToList();
+        ];
     }
 
     private static OpenAIClient CreateOpenAIClient(string provider, string? endpoint, string? apiKey, string? customHeaders = null)

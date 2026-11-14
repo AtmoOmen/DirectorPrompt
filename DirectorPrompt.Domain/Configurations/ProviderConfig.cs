@@ -32,5 +32,5 @@ public sealed class ProviderConfig
         set => CustomHeaders = value;
     }
 
-    public static string[] AvailableProviders { get; } = ["openai", "ollama", "anthropic"];
+    public static string[] AvailableProviders { get; } = ["openai", "openai-responses", "ollama", "anthropic"];
 }

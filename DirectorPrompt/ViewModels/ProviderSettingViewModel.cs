@@ -76,5 +76,5 @@ public sealed class ProviderSettingViewModel : ObservableObject
         }
     }
 
-    public static string[] AvailableProviders { get; } = ["openai", "ollama", "anthropic"];
+    public static string[] AvailableProviders => ProviderConfig.AvailableProviders;
 }
