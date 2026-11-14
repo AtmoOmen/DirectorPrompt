@@ -15,7 +15,7 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
 {
     private ImmutableDictionary<string, IChatClient> clients = ImmutableDictionary<string, IChatClient>.Empty;
 
-    public IChatClient Create(ProviderConfig provider, ModelConfig model)
+    public IChatClient Create(ProviderConfig provider, ModelConfig model, bool invokeTools = true)
     {
         var key = string.Join
         (
@@ -26,7 +26,8 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
             provider.CustomHeaders,
             model.ModelName,
             model.ExtraParameters,
-            model.ReasoningEffort
+            model.ReasoningEffort,
+            invokeTools.ToString()
         );
 
         while (true)
@@ -45,7 +46,7 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
                 return existing;
             }
 
-            var created = CreateClient(provider, model);
+            var created = CreateClient(provider, model, invokeTools);
             var updated = snapshot.Add(key, created);
 
             if (ReferenceEquals(Interlocked.CompareExchange(ref clients, updated, snapshot), snapshot))
@@ -78,7 +79,7 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
     public void Dispose() =>
         Reset();
 
-    private static IChatClient CreateClient(ProviderConfig provider, ModelConfig model)
+    private static IChatClient CreateClient(ProviderConfig provider, ModelConfig model, bool invokeTools)
     {
         var providerType = provider.Provider.ToLowerInvariant();
 
@@ -103,9 +104,10 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
         if (providerType == "anthropic")
             builder = builder.Use(next => new CacheControlChatClient(next));
 
-        return builder
-               .UseFunctionInvocation(configure: client => client.IncludeDetailedErrors = true)
-               .Build();
+        if (invokeTools)
+            builder = builder.UseFunctionInvocation(configure: client => client.IncludeDetailedErrors = true);
+
+        return builder.Build();
     }
 
     private static IChatClient CreateOpenAICompatibleClient(ProviderConfig provider, ModelConfig model, string providerType)

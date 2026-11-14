@@ -27,11 +27,13 @@ public sealed class PipelineContext
 
     public string? NarrativeOutput { get; set; }
 
-    public string? ThinkingOutput { get; set; }
+    public List<NarrationActivity> NarrationActivities { get; } = [];
+
+    public IReadOnlyDictionary<string, string> NarrativeIntents { get; set; } = new Dictionary<string, string>();
 
     public string? PreviousSceneSummary { get; set; }
 
-    public Action<string, string, bool>? OnStreamingUpdate { get; set; }
+    public Action<NarrationUpdate>? OnStreamingUpdate { get; set; }
 
     public Action<PipelineStageUpdate>? OnStageUpdate { get; set; }
 

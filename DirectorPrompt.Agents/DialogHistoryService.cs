@@ -1,4 +1,6 @@
+using System.Text.Json;
 using DirectorPrompt.Agents.Config;
+using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -43,6 +45,10 @@ public sealed class DialogHistoryService
                               .GroupBy(e => e.RoundID)
                               .ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.ID).First());
 
+        var traces = events.Where(item => item.Type == EventType.NarrationTrace)
+                           .GroupBy(item => item.RoundID)
+                           .ToDictionary(group => group.Key, group => group.MaxBy(item => item.ID)!);
+
         var roundIDs = directorEvents.Keys
                                      .Concat(narrativeEvents.Keys)
                                      .Distinct()
@@ -71,7 +77,12 @@ public sealed class DialogHistoryService
                 narrativeText    = narrativeEvent.Data;
             }
 
-            rounds.Add(new DialogHistoryResult.RoundEntry(roundID, directorEventID, directorBlocks, narrativeEventID, narrativeText));
+            IReadOnlyList<NarrationActivity> activities = [];
+
+            if (traces.TryGetValue(roundID, out var trace))
+                activities = JsonSerializer.Deserialize<NarrationTrace>(trace.Data, JsonOptions.Compact)?.Activities ?? [];
+
+            rounds.Add(new DialogHistoryResult.RoundEntry(roundID, directorEventID, directorBlocks, narrativeEventID, narrativeText, activities));
         }
 
         Log.Information

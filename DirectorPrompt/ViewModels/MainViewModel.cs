@@ -1,8 +1,6 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -166,7 +164,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     public ObservableCollection<PipelineStageViewModel> PipelineStages { get; } = [];
 
-    private void OnProjectContentChanged(ProjectContentChange change)
+    private void OnProjectContentChanged
+    (
+        ProjectContentChange change
+    )
     {
         Log.Debug("收到项目内容变更: 项目={ProjectID}, 已删除={IsDeleted}", change.ProjectID, change.IsDeleted);
 
@@ -186,37 +187,48 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async void RefreshProjectContentAsync()
     {
-        Log.Debug("开始刷新项目内容变更");
-
-        while (true)
+        try
         {
-            ProjectContentChange[] changes;
+            Log.Debug("开始刷新项目内容变更");
 
-            lock (projectContentChangeSync)
+            while (true)
             {
-                changes = [.. pendingProjectChanges.Select(change => new ProjectContentChange(change.Key, change.Value))];
-                pendingProjectChanges.Clear();
-            }
+                ProjectContentChange[] changes;
 
-            Log.Debug("处理项目内容变更批次: 变更项目数={ChangeCount}", changes.Length);
-
-            if (changes.Any(change => change.IsDeleted && CurrentProject?.ID == change.ProjectID))
-            {
-                CurrentProject = null;
-                CurrentSession = null;
-            }
-
-            await LoadProjectsAsync();
-
-            lock (projectContentChangeSync)
-            {
-                if (pendingProjectChanges.Count == 0)
+                lock (projectContentChangeSync)
                 {
-                    projectContentRefreshScheduled = false;
-                    Log.Debug("项目内容变更刷新完成");
-                    return;
+                    changes = [.. pendingProjectChanges.Select(change => new ProjectContentChange(change.Key, change.Value))];
+                    pendingProjectChanges.Clear();
+                }
+
+                Log.Debug("处理项目内容变更批次: 变更项目数={ChangeCount}", changes.Length);
+
+                if (changes.Any(change => change.IsDeleted && CurrentProject?.ID == change.ProjectID))
+                {
+                    CurrentProject = null;
+                    CurrentSession = null;
+                }
+
+                await LoadProjectsAsync();
+
+                lock (projectContentChangeSync)
+                {
+                    if (pendingProjectChanges.Count == 0)
+                    {
+                        projectContentRefreshScheduled = false;
+                        Log.Debug("项目内容变更刷新完成");
+                        return;
+                    }
                 }
             }
+        }
+        catch (Exception exception)
+        {
+            lock (projectContentChangeSync)
+                projectContentRefreshScheduled = false;
+
+            Log.Error(exception, "刷新项目内容变更失败");
+            StatusMessage = Loc.Get("Status.LoadFailed", exception.Message);
         }
     }
 
@@ -249,7 +261,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task LoadSessionsAsync(bool selectNewestIfNoMatch = false)
+    private async Task LoadSessionsAsync
+    (
+        bool selectNewestIfNoMatch = false
+    )
     {
         if (CurrentProject is null)
             return;
@@ -341,7 +356,10 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private static string GetInitialStateValue(StateAttribute attribute)
+    private static string GetInitialStateValue
+    (
+        StateAttribute attribute
+    )
     {
         var config = string.IsNullOrWhiteSpace(attribute.Config) ?
                          null :
@@ -397,7 +415,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task DeleteProjectAsync(Project project)
+    private async Task DeleteProjectAsync
+    (
+        Project project
+    )
     {
         try
         {
@@ -543,7 +564,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task DeleteSessionAsync(Session session)
+    private async Task DeleteSessionAsync
+    (
+        Session session
+    )
     {
         try
         {
@@ -564,7 +588,11 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    public async Task RenameSessionAsync(Session session, string newTitle)
+    public async Task RenameSessionAsync
+    (
+        Session session,
+        string  newTitle
+    )
     {
         if (string.IsNullOrWhiteSpace(newTitle))
             return;
@@ -629,7 +657,12 @@ public sealed partial class MainViewModel : ObservableObject
     private void ResetPipelineStages() =>
         PipelineStages.Clear();
 
-    private void UpdatePipelineStage(PipelineStageKind stage, PipelineStageStatus status, string? detail = null)
+    private void UpdatePipelineStage
+    (
+        PipelineStageKind   stage,
+        PipelineStageStatus status,
+        string?             detail = null
+    )
     {
         var existing = PipelineStages.FirstOrDefault(s => s.Kind == stage);
 
@@ -686,9 +719,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            items = DirectiveInput.Directives
-                                  .Select(d => new DirectiveItem(d.Type, d.Content, d.Order, d.TTL))
-                                  .ToList();
+            items = [.. DirectiveInput.Directives.Select(d => new DirectiveItem(d.Type, d.Content, d.Order, d.TTL))];
 
             var batch = new DirectiveBatch(CurrentProject.ID, items);
 
@@ -701,7 +732,7 @@ public sealed partial class MainViewModel : ObservableObject
                 items.Count
             );
 
-            directorEntry = Dialog.AddDirectorEntry(0, items.Select(d => (d.Type, d.Content)).ToList());
+            directorEntry = Dialog.AddDirectorEntry(0, [.. items.Select(d => (d.Type, d.Content))]);
 
             await PrepareMarkdownDocumentsAsync([directorEntry], token);
 
@@ -737,10 +768,12 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
             }
 
-            directorEntry.RoundID           = result.RoundID;
-            streamingEntry.RoundID          = result.RoundID;
-            streamingEntry.Content          = result.Narrative;
-            streamingEntry.Thinking         = result.Thinking;
+            directorEntry.RoundID  = result.RoundID;
+            streamingEntry.RoundID = result.RoundID;
+            streamingEntry.Content = result.Narrative;
+            foreach (var activity in result.Activities)
+                streamingEntry.UpdateActivity(activity);
+
             streamingEntry.MarkdownDocument = markdownDocument;
             streamingEntry.RenderMarkdown();
 
@@ -760,31 +793,36 @@ public sealed partial class MainViewModel : ObservableObject
                 Loc.Get("Notification.TaskComplete.Message")
             );
 
-            void StreamingUpdate(string narrativeDelta, string thinkingDelta, bool isFullSnapshot) =>
-                streamingBuffer.Append(narrativeDelta, thinkingDelta, isFullSnapshot);
+            void StreamingUpdate
+            (
+                NarrationUpdate update
+            ) =>
+                streamingBuffer.Append(update);
 
             void FlushStreamingUpdate()
             {
-                if (!streamingBuffer.TryGetSnapshot(out var narrative, out var thinking, out var isFullSnapshot))
+                var updates = streamingBuffer.TakeUpdates();
+
+                if (CurrentSession?.ID != sessionID || streamingEntry is null)
                     return;
 
-                if (CurrentSession?.ID == sessionID && streamingEntry is not null)
-                    streamingEntry.UpdateStreamingContent(narrative, thinking, isFullSnapshot);
+                if (updates.Narrative is not null)
+                    streamingEntry.Content = updates.Narrative;
+
+                foreach (var activity in updates.Activities)
+                    streamingEntry.UpdateActivity(activity);
             }
 
             void StopStreamingTimer()
             {
-                if (streamingTimer is null)
-                    return;
-
-                if (streamingTimerTick is not null)
-                    streamingTimer.Tick -= streamingTimerTick;
-
+                streamingTimer.Tick -= streamingTimerTick;
                 streamingTimer.Stop();
-                streamingTimer = null;
             }
 
-            void StageUpdate(PipelineStageUpdate update) =>
+            void StageUpdate
+            (
+                PipelineStageUpdate update
+            ) =>
                 dispatcher.Post
                 (() =>
                     {
@@ -914,7 +952,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task SaveEditAsync(DialogEntryViewModel entry)
+    private async Task SaveEditAsync
+    (
+        DialogEntryViewModel entry
+    )
     {
         entry.CommitEdit();
 
@@ -935,7 +976,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CancelEdit(DialogEntryViewModel entry) =>
+    private static void CancelEdit
+    (
+        DialogEntryViewModel entry
+    ) =>
         entry.CancelEdit();
 
     private void RemoveErrorEntries()
@@ -954,7 +998,10 @@ public sealed partial class MainViewModel : ObservableObject
         HasError            = false;
     }
 
-    partial void OnCurrentProjectChanged(Project? value)
+    partial void OnCurrentProjectChanged
+    (
+        Project? value
+    )
     {
         if (selectedProjectID == value?.ID)
             return;
@@ -981,7 +1028,10 @@ public sealed partial class MainViewModel : ObservableObject
             _ = SaveSessionStateAsync();
     }
 
-    partial void OnCurrentSessionChanged(Session? value)
+    partial void OnCurrentSessionChanged
+    (
+        Session? value
+    )
     {
         CancelGeneration();
 
@@ -1024,7 +1074,11 @@ public sealed partial class MainViewModel : ObservableObject
         generationCts?.Cancel();
     }
 
-    private async Task LoadSessionDataAsync(long sessionID, CancellationToken token)
+    private async Task LoadSessionDataAsync
+    (
+        long              sessionID,
+        CancellationToken token
+    )
     {
         Log.Debug("开始加载对话数据: 对话={SessionID}", sessionID);
 
@@ -1091,7 +1145,11 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private async Task LoadDialogHistoryAsync(long sessionID, CancellationToken token = default)
+    private async Task LoadDialogHistoryAsync
+    (
+        long              sessionID,
+        CancellationToken token = default
+    )
     {
         IsLoadingDialog = true;
 
@@ -1152,7 +1210,12 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private async Task AddDialogHistoryAsync(DialogHistoryResult result, bool prepend, CancellationToken token)
+    private async Task AddDialogHistoryAsync
+    (
+        DialogHistoryResult result,
+        bool                prepend,
+        CancellationToken   token
+    )
     {
         var entries = new List<DialogEntryViewModel>();
 
@@ -1185,16 +1248,18 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (!string.IsNullOrWhiteSpace(round.NarrativeText))
             {
-                entries.Add
-                (
-                    new DialogEntryViewModel
-                    {
-                        RoundID = round.RoundID,
-                        EventID = round.NarrativeEventID,
-                        Type    = EventType.NarrativeOutput,
-                        Content = round.NarrativeText
-                    }
-                );
+                var entry = new DialogEntryViewModel
+                {
+                    RoundID = round.RoundID,
+                    EventID = round.NarrativeEventID,
+                    Type    = EventType.NarrativeOutput,
+                    Content = round.NarrativeText
+                };
+
+                foreach (var activity in round.Activities)
+                    entry.UpdateActivity(activity);
+
+                entries.Add(entry);
             }
         }
 
@@ -1232,9 +1297,13 @@ public sealed partial class MainViewModel : ObservableObject
         );
     }
 
-    private static async Task PrepareMarkdownDocumentsAsync(IReadOnlyList<DialogEntryViewModel> entries, CancellationToken token)
+    private static async Task PrepareMarkdownDocumentsAsync
+    (
+        List<DialogEntryViewModel> entries,
+        CancellationToken          token
+    )
     {
-        var narrativeDocuments    = new MarkdownDocument?[entries.Count];
+        var narrativeDocuments     = new MarkdownDocument?[entries.Count];
         var directorBlockDocuments = new MarkdownDocument?[entries.Count][];
 
         await Parallel.ForEachAsync
@@ -1287,7 +1356,10 @@ public sealed partial class MainViewModel : ObservableObject
         );
     }
 
-    private async Task RefreshSidebarAsync(CancellationToken token = default)
+    private async Task RefreshSidebarAsync
+    (
+        CancellationToken token = default
+    )
     {
         if (CurrentSession is null || CurrentProject is null)
             return;
@@ -1371,7 +1443,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task SaveDirectiveEditAsync(DirectivePanelItemViewModel item)
+    private async Task SaveDirectiveEditAsync
+    (
+        DirectivePanelItemViewModel item
+    )
     {
         if (CurrentSession is null)
             return;
@@ -1384,7 +1459,9 @@ public sealed partial class MainViewModel : ObservableObject
 
         var sessionID = CurrentSession.ID;
         var content   = item.EditingContent.Trim();
-        int? ttl      = item.EditingIsPermanent ? null : item.EditingTTL ?? 5;
+        int? ttl = item.EditingIsPermanent ?
+                       null :
+                       item.EditingTTL ?? 5;
 
         try
         {
@@ -1402,11 +1479,17 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CancelDirectiveEdit(DirectivePanelItemViewModel item) =>
+    private static void CancelDirectiveEdit
+    (
+        DirectivePanelItemViewModel item
+    ) =>
         item.CancelEdit();
 
     [RelayCommand]
-    private async Task DeleteDirectiveAsync(DirectivePanelItemViewModel item)
+    private async Task DeleteDirectiveAsync
+    (
+        DirectivePanelItemViewModel item
+    )
     {
         if (CurrentSession is null)
             return;
@@ -1510,7 +1593,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task SaveMemoryEditAsync(MemoryPanelItemViewModel item)
+    private async Task SaveMemoryEditAsync
+    (
+        MemoryPanelItemViewModel item
+    )
     {
         item.CommitEdit();
 
@@ -1538,11 +1624,17 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CancelMemoryEdit(MemoryPanelItemViewModel item) =>
+    private static void CancelMemoryEdit
+    (
+        MemoryPanelItemViewModel item
+    ) =>
         item.CancelEdit();
 
     [RelayCommand]
-    private async Task DeleteMemoryAsync(MemoryPanelItemViewModel item)
+    private async Task DeleteMemoryAsync
+    (
+        MemoryPanelItemViewModel item
+    )
     {
         try
         {
@@ -1562,113 +1654,34 @@ public sealed partial class MainViewModel : ObservableObject
 
     private sealed class StreamingBuffer
     {
-        private readonly Lock          streamingLock = new();
-        private readonly StringBuilder narrative     = new();
-        private readonly StringBuilder thinking      = new();
+        private readonly Lock                               streamingLock = new();
+        private readonly Dictionary<int, NarrationActivity> activities    = [];
+        private          string?                            narrative;
 
-        private bool hasUpdate;
-        private bool hasFullSnapshot;
-
-        public void Append(string narrativeDelta, string thinkingDelta, bool isFullSnapshot)
+        public void Append
+        (
+            NarrationUpdate update
+        )
         {
             lock (streamingLock)
             {
-                if (isFullSnapshot)
-                {
-                    narrative.Clear();
-                    thinking.Clear();
-                    hasFullSnapshot = true;
-                }
+                if (update.Narrative is not null)
+                    narrative = update.Narrative;
 
-                if (!string.IsNullOrEmpty(narrativeDelta))
-                    narrative.Append(narrativeDelta);
-
-                if (!string.IsNullOrEmpty(thinkingDelta))
-                    thinking.Append(thinkingDelta);
-
-                hasUpdate = true;
+                if (update.Activity is not null)
+                    activities[update.Activity.ID] = update.Activity;
             }
         }
 
-        public bool TryGetSnapshot(out string narrativeText, out string thinkingText, out bool isFullSnapshot)
+        public (string? Narrative, IReadOnlyList<NarrationActivity> Activities) TakeUpdates()
         {
             lock (streamingLock)
             {
-                if (!hasUpdate)
-                {
-                    narrativeText  = string.Empty;
-                    thinkingText   = string.Empty;
-                    isFullSnapshot = false;
-                    return false;
-                }
-
-                narrativeText   = narrative.ToString();
-                thinkingText    = thinking.ToString();
-                isFullSnapshot  = hasFullSnapshot;
-                hasUpdate       = false;
-                hasFullSnapshot = false;
-                return true;
+                var snapshot = (narrative, activities.Values.ToArray());
+                narrative = null;
+                activities.Clear();
+                return snapshot;
             }
         }
     }
-}
-
-public sealed class PipelineStageViewModel : INotifyPropertyChanged
-{
-    private PipelineStageStatus status;
-    private string?             detail;
-
-    public PipelineStageKind Kind { get; init; }
-
-    public string Stage => Loc.Get
-    (
-        Kind switch
-        {
-            PipelineStageKind.DirectiveProcessing => "Pipeline.Stage.DirectiveProcessing",
-            PipelineStageKind.Retrieval           => "Pipeline.Stage.Retrieval",
-            PipelineStageKind.Generation          => "Pipeline.Stage.Generation",
-            PipelineStageKind.PostProcessing      => "Pipeline.Stage.PostProcessing",
-            _                                     => Kind.ToString()
-        }
-    );
-
-    public PipelineStageStatus Status
-    {
-        get => status;
-        set
-        {
-            if (status != value)
-            {
-                status = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Status)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusText)));
-            }
-        }
-    }
-
-    public string StatusText => Loc.Get
-    (
-        status switch
-        {
-            PipelineStageStatus.Running  => "Pipeline.Status.Running",
-            PipelineStageStatus.Complete => "Pipeline.Status.Complete",
-            PipelineStageStatus.Failed   => "Pipeline.Status.Failed",
-            _                            => status.ToString()
-        }
-    );
-
-    public string? Detail
-    {
-        get => detail;
-        set
-        {
-            if (detail != value)
-            {
-                detail = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Detail)));
-            }
-        }
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

@@ -25,26 +25,6 @@
                 </ControlTemplate>
             </Setter>
         </Style>
-        <Style Selector="Border.message.director">
-            <Setter Property="HorizontalAlignment" Value="Right" />
-        </Style>
-        <Style Selector="Border.message.error">
-            <Setter Property="Background"
-                    Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
-        </Style>
-        <Style Selector="StackPanel.message-actions Button">
-            <Setter Property="Width" Value="26" />
-            <Setter Property="Height" Value="26" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Button.message-menu">
-            <Setter Property="Width" Value="28" />
-            <Setter Property="Height" Value="28" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
     </UserControl.Styles>
 
     <ListBox x:Name="DialogEntriesListBox"

@@ -2,7 +2,7 @@ namespace DirectorPrompt.Agents;
 
 public record NarrationResult
 (
-    string Narrative,
-    string Thinking,
-    long   RoundID
+    string                           Narrative,
+    IReadOnlyList<NarrationActivity> Activities,
+    long                             RoundID
 );

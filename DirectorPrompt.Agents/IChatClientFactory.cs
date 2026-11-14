@@ -5,7 +5,7 @@ namespace DirectorPrompt.Agents;
 
 public interface IChatClientFactory
 {
-    IChatClient Create(ProviderConfig provider, ModelConfig model);
+    IChatClient Create(ProviderConfig provider, ModelConfig model, bool invokeTools = true);
 
     void Reset();
 }

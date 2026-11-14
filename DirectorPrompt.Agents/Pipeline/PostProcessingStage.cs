@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using DirectorPrompt.Agents.Config;
@@ -52,6 +53,12 @@ public sealed class PostProcessingStage
         var agentContext = await BuildAgentContextAsync(toolContext, cancellationToken);
 
         var userContent = $"{agentContext}\n\n---\n\n## 叙事文本\n{context.NarrativeOutput ?? string.Empty}";
+
+        if (context.NarrativeIntents.Count > 0)
+        {
+            userContent += "\n\n## 叙事意图\n仅用于理解正文，状态和记忆更新必须以已发生的正文事实为依据，不得将伏笔、计划或未发生事件记录为事实。\n";
+            userContent += JsonSerializer.Serialize(context.NarrativeIntents, JsonOptions.Default);
+        }
 
         var messages = DirectiveProcessingStage.BuildMessages(resolved.SystemPrompt, resolved.ModelPrompt, userContent);
 
@@ -109,9 +116,7 @@ public sealed class PostProcessingStage
 
             foreach (var attr in attributes)
             {
-                var value = valueMap.TryGetValue(attr.ID, out var sv) ?
-                                sv :
-                                null;
+                var value      = valueMap.GetValueOrDefault(attr.ID);
                 var type       = FormatType(attr);
                 var constraint = FormatConstraint(attr);
                 var rules      = FormatRules(attr);
@@ -131,7 +136,7 @@ public sealed class PostProcessingStage
             if (context.SceneID is not null)
             {
                 var presence = await characterRepository.GetPresenceAsync(context.SceneID.Value, cancellationToken);
-                sceneCharacterIDs = presence.Select(p => p.CharacterID).ToHashSet();
+                sceneCharacterIDs = [.. presence.Select(p => p.CharacterID)];
             }
 
             sb.AppendLine("## 已有人物 (不要重复添加, 如不确定可调用 search_character 检索)");
@@ -240,8 +245,8 @@ public sealed class PostProcessingStage
         if (config is null)
             return string.Empty;
 
-        var min = config.Min?.ToString();
-        var max = config.Max?.ToString();
+        var min = config.Min?.ToString(CultureInfo.InvariantCulture);
+        var max = config.Max?.ToString(CultureInfo.InvariantCulture);
 
         var range = (min, max) switch
         {
@@ -251,11 +256,12 @@ public sealed class PostProcessingStage
             _                    => string.Empty
         };
 
-        return string.IsNullOrEmpty(config.Unit) ?
-                   range :
-                   string.IsNullOrEmpty(range) ?
-                       config.Unit :
-                       $"{range} {config.Unit}";
+        return (string.IsNullOrEmpty(config.Unit), string.IsNullOrEmpty(range)) switch
+        {
+            (true, _)     => range,
+            (false, true) => config.Unit,
+            _             => $"{range} {config.Unit}"
+        };
     }
 
     private static string FormatRules(StateAttribute attr)
@@ -264,28 +270,20 @@ public sealed class PostProcessingStage
                          null :
                          JsonSerializer.Deserialize<StateAttributeConfig>(attr.Config, JsonOptions.Default);
 
-        if (attr.ValueType == StateValueType.Enum)
+        return attr.ValueType switch
         {
-            return config?.Transitions is { Count: > 0 } transitions ?
-                       string.Join
-                       (
-                           "；",
-                           transitions.Where(transition => !string.IsNullOrWhiteSpace(transition.ChangeRules))
-                                      .Select(transition => $"{transition.Option}: {transition.ChangeRules}")
-                       ) :
-                       string.Empty;
-        }
-
-        if (attr.ValueType == StateValueType.Text)
-        {
-            return string.IsNullOrWhiteSpace(config?.NarrativeGuidance) ?
-                       string.Empty :
-                       config.NarrativeGuidance;
-        }
-
-        return string.IsNullOrWhiteSpace(config?.ChangeRules) ?
-                   string.Empty :
-                   config.ChangeRules;
+            StateValueType.Enum when config?.Transitions is { Count: > 0 } transitions => string.Join
+            (
+                "；",
+                transitions.Where(transition => !string.IsNullOrWhiteSpace(transition.ChangeRules))
+                           .Select(transition => $"{transition.Option}: {transition.ChangeRules}")
+            ),
+            StateValueType.Enum                                                            => string.Empty,
+            StateValueType.Text when !string.IsNullOrWhiteSpace(config?.NarrativeGuidance) => config.NarrativeGuidance,
+            StateValueType.Text                                                            => string.Empty,
+            _ when !string.IsNullOrWhiteSpace(config?.ChangeRules)                         => config.ChangeRules,
+            _                                                                              => string.Empty
+        };
     }
 
     private static string FormatEnumOptions(string config)

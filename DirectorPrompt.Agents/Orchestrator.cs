@@ -38,11 +38,11 @@ public sealed class Orchestrator
 {
     public async Task<NarrationResult> ProcessBatchAsync
     (
-        DirectiveBatch                batch,
-        long                          sessionID,
-        Action<string, string, bool>? onStreamingUpdate = null,
-        Action<PipelineStageUpdate>?  onStageUpdate     = null,
-        CancellationToken             cancellationToken = default
+        DirectiveBatch               batch,
+        long                         sessionID,
+        Action<NarrationUpdate>?     onStreamingUpdate = null,
+        Action<PipelineStageUpdate>? onStageUpdate     = null,
+        CancellationToken            cancellationToken = default
     )
     {
         var project = await projectRepository.GetByIDAsync(batch.ProjectID, cancellationToken);
@@ -55,12 +55,11 @@ public sealed class Orchestrator
         if (session is null)
             throw new ArgumentException($"对话 {sessionID} 不存在");
 
-        var roundID          = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken) + 1;
-        var activeScene      = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
-        var oldSceneID       = activeScene?.ID;
-        var timelinePosition = activeScene?.TimelinePosition ?? 0;
-        var batchStopwatch   = Stopwatch.StartNew();
-        var pipelineID       = Guid.NewGuid().ToString("N");
+        var roundID        = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken) + 1;
+        var activeScene    = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
+        var oldSceneID     = activeScene?.ID;
+        var batchStopwatch = Stopwatch.StartNew();
+        var pipelineID     = Guid.NewGuid().ToString("N");
 
         using var sessionAffinity = SessionAffinityContext.Push(sessionID);
 
@@ -192,7 +191,7 @@ public sealed class Orchestrator
                           cancellationToken
                       );
 
-        timelinePosition = activeScene.TimelinePosition;
+        var timelinePosition = activeScene.TimelinePosition;
 
         var history = await historyBuilder.BuildAsync(sessionID, activeScene.ID, roundID, cancellationToken);
 
@@ -220,11 +219,11 @@ public sealed class Orchestrator
 
         Log.Information
         (
-            "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 叙事长度={NarrativeLen}, 思考长度={ThinkingLen}, 耗时={ElapsedMilliseconds}ms",
+            "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 叙事长度={NarrativeLen}, 创作活动数={ActivityCount}, 耗时={ElapsedMilliseconds}ms",
             sessionID,
             roundID,
             context.NarrativeOutput?.Length ?? 0,
-            context.ThinkingOutput?.Length  ?? 0,
+            context.NarrationActivities.Count,
             batchStopwatch.ElapsedMilliseconds
         );
 
@@ -475,6 +474,20 @@ public sealed class Orchestrator
             );
         }
 
+        events.Add
+        (
+            new PlaythroughEvent
+            {
+                ProjectID = context.DirectiveBatch.ProjectID,
+                SessionID = context.SessionID,
+                RoundID   = context.RoundID,
+                SceneID   = context.CurrentSceneID,
+                Type      = EventType.NarrationTrace,
+                Data      = JsonSerializer.Serialize(new NarrationTrace(context.NarrationActivities, context.NarrativeIntents), JsonOptions.Compact),
+                CreatedAt = now
+            }
+        );
+
         await eventRepository.AppendBatchAsync(events, cancellationToken);
 
         Log.Information
@@ -537,7 +550,7 @@ public sealed class Orchestrator
         return new NarrationResult
         (
             context.NarrativeOutput ?? string.Empty,
-            context.ThinkingOutput  ?? string.Empty,
+            [.. context.NarrationActivities],
             context.RoundID
         );
     }
@@ -693,6 +706,6 @@ public sealed class Orchestrator
 
     private sealed class TransitionEventData
     {
-        public IReadOnlyList<string>? ActiveKeys { get; set; }
+        public IReadOnlyList<string>? ActiveKeys { get; init; }
     }
 }

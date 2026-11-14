@@ -9,6 +9,30 @@
              xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:DialogEntryViewModel}">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.tool-error">
+            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        </Style>
+        <Style Selector="Border.message.director">
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <Style Selector="Border.message.error">
+            <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        </Style>
+        <Style Selector="StackPanel.message-actions Button">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.message-menu">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
     <Border Classes="message"
             Classes.director="{Binding IsDirector}"
             Classes.error="{Binding HasError}"
@@ -66,23 +90,47 @@
                             Click="OnMoreButtonClick"
                             Tag="{Binding}"
                             VerticalAlignment="Center"
-                            IsEnabled="{Binding $parent[Window].DataContext.IsNotProcessing}">
+                            IsEnabled="{Binding $parent[Window].((vm:MainViewModel)DataContext).IsNotProcessing, FallbackValue=False}">
                         <fa:FASymbolIcon Symbol="MoreVertical" />
                     </Button>
                 </StackPanel>
             </Grid>
 
             <Expander
-                Header="{Binding [Dialog.ThinkingProcess], Source={x:Static loc:Loc.Instance}}"
-                IsVisible="{Binding HasThinking}"
+                Header="{Binding [Dialog.CreationProcess], Source={x:Static loc:Loc.Instance}}"
+                IsVisible="{Binding HasActivities}"
+                IsExpanded="{Binding IsStreaming, Mode=OneWay}"
                 Margin="0,4,0,0"
                 FontSize="12"
                 Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-                <TextBlock Text="{Binding Thinking}"
-                           TextWrapping="Wrap"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                           Margin="0,4,0,0" />
+                <ItemsControl ItemsSource="{Binding Activities}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:NarrationActivityViewModel">
+                            <Border Margin="0,3" Padding="8,4" CornerRadius="4"
+                                    Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                <StackPanel>
+                                    <ProgressBar IsIndeterminate="True" Height="2"
+                                                 IsVisible="{Binding IsRunning}" />
+                                    <Expander Header="{Binding Header}" HorizontalContentAlignment="Stretch">
+                                        <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
+                                            <StackPanel Spacing="8">
+                                                <Border Padding="8" CornerRadius="4"
+                                                        Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                        IsVisible="{Binding HasArguments}">
+                                                    <TextBlock Text="{Binding Arguments}" TextWrapping="Wrap"
+                                                               FontSize="12" />
+                                                </Border>
+                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                                           Classes.tool-error="{Binding HasError}"
+                                                           FontSize="12" Margin="0,4" />
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Expander>
 
             <!-- 内容区域: 四种状态重叠, 同一时刻只显示一个 -->

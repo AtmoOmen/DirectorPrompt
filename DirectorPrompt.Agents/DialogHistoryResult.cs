@@ -14,6 +14,7 @@ public sealed record DialogHistoryResult
         long?                                               DirectorEventID,
         IReadOnlyList<(DirectiveType Type, string Content)> DirectorBlocks,
         long?                                               NarrativeEventID,
-        string                                              NarrativeText
+        string                                              NarrativeText,
+        IReadOnlyList<NarrationActivity>                    Activities
     );
 }

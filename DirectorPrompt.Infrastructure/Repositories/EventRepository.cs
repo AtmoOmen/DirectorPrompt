@@ -96,7 +96,7 @@ public sealed class EventRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -138,7 +138,7 @@ public sealed class EventRepository
                                        FROM playthrough_events pe
                                        JOIN selected_rounds sr ON sr.round_id = pe.round_id
                                        WHERE pe.session_id = @sessionID
-                                         AND pe.type IN ('DirectorInput', 'NarrativeOutput')
+                                         AND pe.type IN ('DirectorInput', 'NarrativeOutput', 'NarrationTrace')
                                    )
                                    SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
                                    FROM ranked_events
@@ -245,7 +245,7 @@ public sealed class EventRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -355,7 +355,7 @@ public sealed class EventRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
