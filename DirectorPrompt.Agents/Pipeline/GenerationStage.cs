@@ -5,6 +5,7 @@ using DirectorPrompt.Agents.Config;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -14,7 +15,9 @@ public sealed class GenerationStage
 (
     IChatClientFactory  chatClientFactory,
     AgentConfigResolver agentConfigResolver,
-    IAgentToolResolver  agentToolResolver
+    IAgentToolResolver  agentToolResolver,
+    IEventRepository    eventRepository,
+    ISceneRepository    sceneRepository
 )
 {
     public async Task ExecuteAsync
@@ -43,7 +46,8 @@ public sealed class GenerationStage
                         cancellationToken
                     );
         var draft    = new NarrativeDraft(text => context.OnStreamingUpdate?.Invoke(new NarrationUpdate(Narrative: text)));
-        var allTools = draft.CreateTools().Concat(tools).ToList();
+        var reader   = new StoryReader(eventRepository, sceneRepository, context);
+        var allTools = draft.CreateTools().Concat(reader.CreateTools()).Concat(tools).ToList();
 
         if (allTools.Select(tool => tool.Name).Distinct(StringComparer.Ordinal).Count() != allTools.Count)
             throw new InvalidOperationException("叙事工具名称重复，请检查外部 MCP 工具配置。");
@@ -264,13 +268,40 @@ public sealed class GenerationStage
 
         messages.Add(new ChatMessage(ChatRole.System, systemPrompt));
 
+        if (!string.IsNullOrWhiteSpace(context.Project?.OpeningMessage))
+        {
+            messages.Add(new ChatMessage(ChatRole.User, "读取开场叙事，作为已经发生的故事背景。"));
+            AddStoryRound(0, null, string.Empty, context.Project.OpeningMessage);
+        }
+
         foreach (var entry in context.History)
         {
-            messages.Add(new ChatMessage(ChatRole.User,      entry.DirectorInput));
-            messages.Add(new ChatMessage(ChatRole.Assistant, entry.NarrativeOutput));
+            messages.Add(new ChatMessage(ChatRole.User, entry.DirectorInput));
+            AddStoryRound(entry.RoundID, context.CurrentSceneID, entry.DirectorInput, entry.NarrativeOutput);
         }
 
         return messages;
+
+        void AddStoryRound(long roundID, long? sceneID, string directorInput, string text)
+        {
+            var callID = $"story_round_{roundID}";
+            messages.Add
+            (
+                new ChatMessage
+                (
+                    ChatRole.Assistant,
+                    [new FunctionCallContent(callID, "read_story_round", new Dictionary<string, object?> { ["roundID"] = roundID, ["lineCount"] = 0 })]
+                )
+            );
+            messages.Add
+            (
+                new ChatMessage
+                (
+                    ChatRole.Tool,
+                    [new FunctionResultContent(callID, StoryReader.FormatRound(roundID, sceneID, directorInput, text))]
+                )
+            );
+        }
     }
 
     private static string BuildSystemPrompt
@@ -287,6 +318,8 @@ public sealed class GenerationStage
         (
             """
             ## 写作工具协议
+            历史正文和开场叙事通过 read_story_round 工具结果提供，不作为普通回复。已提供的工具结果可直接用于承接；缺少原文时，使用 list_story_rounds 分页查找轮次，再用 read_story_round 按轮次、行范围读取。roundID=0 为开场，read_story 仍只读取本轮草稿。
+            list_story_scenes 列出可读场景，list_story_rounds 默认列出当前场景，可指定其他场景并通过 nextBeforeRoundID 继续向前翻页。read_story_round 返回 totalLines 和 nextStartLine，可逐段读取长轮次，lineCount=0 可读取至文末。读取历史不会把旧正文写入本轮草稿。
             本轮从 revision=0 的空草稿开始，只存放当前导演指令对应的新增正文，不是包含历史章节的整篇故事文档。只通过 append_story、write_story、edit_story 编写正文。
             历史消息、开场叙事和上一场景摘要是已经发生的背景，已经向读者呈现，不需要写入、恢复或合并到本轮草稿。空草稿不表示历史故事缺失。
             从历史结尾继续创作新的动作、对话和描写，不复制上一轮正文，不用回顾、概述或改写旧段落来充当新内容。仅在当前导演明确要求重写或回顾时按该要求处理。
@@ -304,7 +337,7 @@ public sealed class GenerationStage
             多轮调用用于实际撰写与检查，不得为了增加轮数重复读取未变化的内容、进行无意义修改或无必要的检索。很短的故事可以一次写完草稿，但仍需在后续调用轮读取复核，再单独提交。
             工具返回的 revision 是下一次修改所需的 expectedRevision，不得预估后续版本号并提前生成依赖调用。
             set_narrative_intent 记录已在正文落实的意图，可反复更新或移除；意图不能代替正文事实，也不能授权提前兑现伏笔。
-            所有普通回复与思考仅用于创作过程，不会进入故事。即使历史正文以普通消息呈现，本轮仍必须使用写作工具。
+            所有普通回复与思考仅用于创作过程，不会进入故事。正文只通过写作工具写入，通过读取工具查看，不在普通回复中复述。
             提交是最后一次调用，不需要再次输出全文。
             """
         );
@@ -318,12 +351,6 @@ public sealed class GenerationStage
                 sb.AppendLine(context.Project.Description);
             }
 
-            if (!string.IsNullOrWhiteSpace(context.Project.OpeningMessage))
-            {
-                sb.AppendLine();
-                sb.AppendLine("## 开场叙事");
-                sb.AppendLine(context.Project.OpeningMessage);
-            }
         }
 
         if (!string.IsNullOrWhiteSpace(context.PreviousSceneSummary))
