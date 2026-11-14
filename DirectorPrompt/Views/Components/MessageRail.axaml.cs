@@ -22,7 +22,7 @@ public partial class MessageRail : UserControl
     private ScrollViewer? railScrollViewer;
     private ScrollViewer? targetScrollViewer;
     private bool          isPointerOver;
-    private int           navigationRequestID;
+    private bool          synchronizationScheduled;
 
     private ListBox Rail =>
         this.GetLogicalDescendants().OfType<ListBox>().First(control => control.Name == "RailListBox");
@@ -47,7 +47,16 @@ public partial class MessageRail : UserControl
     public MessageRail()
     {
         AvaloniaXamlLoader.Load(this);
-        Loaded += OnLoaded;
+        Loaded                 += OnLoaded;
+        DetachedFromVisualTree += OnDetachedFromVisualTree;
+    }
+
+    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (targetScrollViewer is not null)
+            targetScrollViewer.ScrollChanged -= OnTargetScrollChanged;
+        targetScrollViewer = null;
+        railScrollViewer   = null;
     }
 
     private void OnLoaded
@@ -73,7 +82,10 @@ public partial class MessageRail : UserControl
         targetScrollViewer = scrollViewer;
 
         if (targetScrollViewer is not null)
+        {
             targetScrollViewer.ScrollChanged += OnTargetScrollChanged;
+            ScheduleSynchronization();
+        }
     }
 
     private void OnTargetScrollChanged
@@ -82,11 +94,34 @@ public partial class MessageRail : UserControl
         ScrollChangedEventArgs e
     )
     {
-        // 鼠标悬停在 MessageRail 上时不进行位置偏移同步，防止闪现和鼠标底下元素移位
-        if (isPointerOver)
+        if (!ReferenceEquals(e.Source, targetScrollViewer))
             return;
 
-        SyncRailToTargetScroll();
+        ScheduleSynchronization();
+    }
+
+    private void ScheduleSynchronization()
+    {
+        if (isPointerOver || synchronizationScheduled)
+            return;
+
+        synchronizationScheduled = true;
+        Dispatcher.UIThread.Post
+        (
+            () =>
+            {
+                try
+                {
+                    if (!isPointerOver)
+                        SyncRailToTargetScroll();
+                }
+                finally
+                {
+                    synchronizationScheduled = false;
+                }
+            },
+            DispatcherPriority.Loaded
+        );
     }
 
     private void SyncRailToTargetScroll()
@@ -94,13 +129,7 @@ public partial class MessageRail : UserControl
         if (targetScrollViewer is null || TargetDialogMessages is null || railScrollViewer is null)
             return;
 
-        var items = Entries?.OfType<DialogEntryViewModel>().ToList();
-
-        if (items is null || items.Count == 0)
-            return;
-
         DialogEntryViewModel? topEntry    = null;
-        var                   targetIndex = -1;
         var                   minDistance = double.MaxValue;
 
         foreach (var (entry, container) in TargetDialogMessages.GetRealizedEntries())
@@ -115,8 +144,7 @@ public partial class MessageRail : UserControl
 
             if (y <= 1 && y + height > 1)
             {
-                topEntry    = entry;
-                targetIndex = items.IndexOf(entry);
+                topEntry = entry;
                 break;
             }
 
@@ -126,31 +154,14 @@ public partial class MessageRail : UserControl
             {
                 minDistance = distance;
                 topEntry    = entry;
-                targetIndex = items.IndexOf(entry);
             }
         }
 
-        if (topEntry is not null)
+        if (topEntry is not null && !ReferenceEquals(Rail.SelectedItem, topEntry))
         {
             Rail.SelectedItem = topEntry;
 
-            if (targetIndex >= 0 && items.Count > 1)
-            {
-                double lastItemHeight = 80;
-                var    lastContainer  = TargetDialogMessages.ContainerFromItem(items[^1]);
-
-                if (lastContainer is not null)
-                    lastItemHeight = lastContainer.Bounds.Height;
-
-                var effectiveMaximum = targetScrollViewer.Extent.Height - Math.Max(targetScrollViewer.Viewport.Height, lastItemHeight);
-                var railMaximum      = Math.Max(0, railScrollViewer.Extent.Height - railScrollViewer.Viewport.Height);
-
-                if (effectiveMaximum > 0 && railMaximum > 0)
-                {
-                    var ratio = Math.Clamp(targetScrollViewer.Offset.Y / effectiveMaximum, 0, 1);
-                    railScrollViewer.Offset = railScrollViewer.Offset.WithY(ratio * railMaximum);
-                }
-            }
+            Rail.ScrollIntoView(topEntry);
         }
     }
 
@@ -163,63 +174,8 @@ public partial class MessageRail : UserControl
         if (sender is not Control { DataContext: DialogEntryViewModel entry } || TargetDialogMessages is null)
             return;
 
-        var requestID = ++navigationRequestID;
-
-        Dispatcher.UIThread.Post
-        (
-            () => ScrollToEntry(requestID, entry),
-            DispatcherPriority.Background
-        );
-
-        e.Handled = true;
-    }
-
-    private void ScrollToEntry
-    (
-        int                  requestID,
-        DialogEntryViewModel entry
-    )
-    {
-        if (requestID != navigationRequestID || TargetDialogMessages is null)
-            return;
-
         TargetDialogMessages.ScrollIntoView(entry);
-
-        Dispatcher.UIThread.Post
-        (
-            () => AlignEntryToTop(requestID, entry),
-            DispatcherPriority.Render
-        );
-    }
-
-    private void AlignEntryToTop
-    (
-        int                  requestID,
-        DialogEntryViewModel entry
-    )
-    {
-        if (requestID != navigationRequestID || TargetDialogMessages is null)
-            return;
-
-        targetScrollViewer ??= TargetDialogMessages.ScrollViewer;
-
-        if (targetScrollViewer is null)
-            return;
-
-        var container = TargetDialogMessages.ContainerFromItem(entry);
-
-        if (container is null)
-            return;
-
-        var position = container.TranslatePoint(new Point(0, 0), targetScrollViewer);
-
-        if (!position.HasValue)
-            return;
-
-        var maximum = Math.Max(0, targetScrollViewer.Extent.Height - targetScrollViewer.Viewport.Height);
-        var offset  = Math.Clamp(targetScrollViewer.Offset.Y       + position.Value.Y, 0, maximum);
-
-        targetScrollViewer.Offset = targetScrollViewer.Offset.WithY(offset);
+        e.Handled = true;
     }
 
     private void OnRailPointerEntered
@@ -236,7 +192,7 @@ public partial class MessageRail : UserControl
     )
     {
         isPointerOver = false;
-        SyncRailToTargetScroll();
+        ScheduleSynchronization();
     }
 
     private void OnGoToTopClick
@@ -245,33 +201,13 @@ public partial class MessageRail : UserControl
         RoutedEventArgs e
     )
     {
-        targetScrollViewer ??= TargetDialogMessages?.ScrollViewer;
-
-        if (targetScrollViewer is not null)
-            targetScrollViewer.Offset = targetScrollViewer.Offset.WithY(0);
+        if (Entries?.OfType<DialogEntryViewModel>().FirstOrDefault() is { } firstEntry)
+            TargetDialogMessages?.ScrollIntoView(firstEntry);
     }
 
     private void OnGoToBottomClick
     (
         object?         sender,
         RoutedEventArgs e
-    )
-    {
-        if (TargetDialogMessages is null)
-            return;
-
-        var items = Entries?.OfType<DialogEntryViewModel>().ToList();
-        if (items is null || items.Count == 0)
-            return;
-
-        var lastEntry = items[^1];
-
-        var requestID = ++navigationRequestID;
-        TargetDialogMessages.ScrollIntoView(lastEntry);
-        Dispatcher.UIThread.Post
-        (
-            () => AlignEntryToTop(requestID, lastEntry),
-            DispatcherPriority.Render
-        );
-    }
+    ) => TargetDialogMessages?.ScrollToEnd();
 }

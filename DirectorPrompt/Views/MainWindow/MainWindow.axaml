@@ -482,10 +482,9 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Grid Grid.Row="1" ClipToBounds="False" RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
+                <Grid Grid.Row="1" ClipToBounds="False" RowDefinitions="Auto,*">
 
                     <Button Grid.Row="0"
-                            Grid.Column="0"
                             Margin="16,8,8,0"
                             HorizontalAlignment="Center"
                             Click="OnLoadEarlierDialog"
@@ -496,30 +495,30 @@
 
                     <components:DialogMessageList x:Name="DialogMessageList"
                                                   Grid.Row="1"
-                                                  Grid.Column="0"
-                                                  StableEntries="{Binding Dialog.StableEntries}"
-                                                  StreamingEntry="{Binding Dialog.StreamingEntry}" />
+                                                  Entries="{Binding Dialog.Entries}">
+                        <components:DialogMessageList.RailContent>
+                            <Grid>
 
-                    <components:MessageRail x:Name="MessageRail"
-                                            Grid.Row="1"
-                                            Grid.Column="1"
-                                            Entries="{Binding Dialog.Entries}"
-                                            TargetDialogMessages="{Binding ElementName=DialogMessageList}"
-                                            MaxHeight="400"
-                                            VerticalAlignment="Center"
-                                            Margin="0,8,4,8" />
+                                <components:MessageRail x:Name="MessageRail"
+                                                        Entries="{Binding Dialog.Entries}"
+                                                        TargetDialogMessages="{Binding ElementName=DialogMessageList}"
+                                                        MaxHeight="400"
+                                                        HorizontalAlignment="Right"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,8,-8,8" />
 
-                    <components:MessageRail x:Name="MobileMessageRail"
-                                            Grid.Row="1"
-                                            Grid.Column="1"
-                                            Classes="mobile"
-                                            Entries="{Binding Dialog.Entries}"
-                                            TargetDialogMessages="{Binding ElementName=DialogMessageList}"
-                                            Width="40"
-                                            MaxHeight="264"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Center"
-                                            Margin="0,8,4,8" />
+                                <components:MessageRail x:Name="MobileMessageRail"
+                                                        Classes="mobile"
+                                                        Entries="{Binding Dialog.Entries}"
+                                                        TargetDialogMessages="{Binding ElementName=DialogMessageList}"
+                                                        Width="40"
+                                                        MaxHeight="264"
+                                                        HorizontalAlignment="Right"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,8,-8,8" />
+                            </Grid>
+                        </components:DialogMessageList.RailContent>
+                    </components:DialogMessageList>
                 </Grid>
 
                 <Border Grid.Row="2"

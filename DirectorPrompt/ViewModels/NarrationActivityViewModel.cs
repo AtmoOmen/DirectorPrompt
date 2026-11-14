@@ -50,6 +50,18 @@ public sealed class NarrationActivityViewModel
 
     public bool HasError => Activity.Status == PipelineStageStatus.Failed;
 
+    public bool IsExpanded
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsExpanded)));
+        }
+    }
+
     public void Update(NarrationActivity value)
     {
         Activity = value;

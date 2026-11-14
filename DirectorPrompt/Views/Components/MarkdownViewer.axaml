@@ -2,11 +2,5 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:md="using:LiveMarkdown.Avalonia">
-    <Grid>
-        <TextBlock x:Name="FallbackText"
-                   IsHitTestVisible="False"
-                   TextWrapping="Wrap" />
-        <md:MarkdownRenderer x:Name="Renderer"
-                             IsVisible="False" />
-    </Grid>
+    <md:MarkdownRenderer x:Name="Renderer" />
 </UserControl>

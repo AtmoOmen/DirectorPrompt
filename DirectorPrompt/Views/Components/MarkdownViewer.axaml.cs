@@ -21,8 +21,6 @@ public sealed partial class MarkdownViewer : UserControl
     private          string           renderedMarkdown = string.Empty;
     private          string           queuedMarkdown   = string.Empty;
     private          bool             updateScheduled;
-    private          IDisposable?     fallbackRelease;
-    private readonly TextBlock        fallbackText;
     private readonly MarkdownRenderer renderer;
 
     public string Markdown
@@ -58,12 +56,9 @@ public sealed partial class MarkdownViewer : UserControl
     public MarkdownViewer()
     {
         AvaloniaXamlLoader.Load(this);
-        fallbackText             =  this.FindControl<TextBlock>(nameof(FallbackText));
         renderer                 =  this.FindControl<MarkdownRenderer>(nameof(Renderer));
         renderer.MarkdownBuilder =  MarkdownBuilder;
-        renderer.Rendered        += OnRendererRendered;
-        EffectiveViewportChanged += OnEffectiveViewportChanged;
-        DetachedFromVisualTree   += OnDetachedFromVisualTree;
+        DataContextChanged       += OnDataContextChanged;
     }
 
     private void RefreshMarkdown()
@@ -79,14 +74,9 @@ public sealed partial class MarkdownViewer : UserControl
 
     private void ShowMarkdownDocument()
     {
-        fallbackRelease?.Dispose();
-        fallbackRelease           = null;
-        fallbackText.Text         = string.Empty;
-        fallbackText.IsVisible    = false;
         queuedMarkdown            = Markdown ?? string.Empty;
         renderedMarkdown          = queuedMarkdown;
         renderer.MarkdownDocument = MarkdownDocument;
-        renderer.IsVisible        = true;
     }
 
     private void ScheduleMarkdownUpdate()
@@ -103,9 +93,9 @@ public sealed partial class MarkdownViewer : UserControl
                 updateScheduled = false;
 
                 if (MarkdownDocument is not null)
-                    return;
-
-                UpdateMarkdown();
+                    ShowMarkdownDocument();
+                else
+                    UpdateMarkdown();
             },
             DispatcherPriority.Render
         );
@@ -125,19 +115,14 @@ public sealed partial class MarkdownViewer : UserControl
         {
             renderer.MarkdownDocument = null;
             MarkdownBuilder.Clear();
-            queuedMarkdown            = string.Empty;
-            renderedMarkdown          = string.Empty;
+            queuedMarkdown   = string.Empty;
+            renderedMarkdown = string.Empty;
         }
 
         if (markdown == queuedMarkdown)
             return;
 
         var append = IsStreaming && markdown.StartsWith(queuedMarkdown, StringComparison.Ordinal);
-
-        if (!append || !renderer.IsVisible)
-            ShowFallback(markdown);
-        else
-            fallbackText.Text = markdown;
 
         if (append)
             MarkdownBuilder.Append(markdown[queuedMarkdown.Length..]);
@@ -148,54 +133,14 @@ public sealed partial class MarkdownViewer : UserControl
         renderedMarkdown = markdown;
     }
 
-    private void ShowFallback(string markdown)
+    private void OnDataContextChanged(object? sender, EventArgs e)
     {
-        fallbackRelease?.Dispose();
-        fallbackRelease        = null;
-        fallbackText.Text      = markdown;
-        fallbackText.IsVisible = true;
-        fallbackText.Opacity   = 1;
-        renderer.IsVisible     = false;
-    }
-
-    private void OnRendererRendered(object? sender, EventArgs e)
-    {
-        if (!string.Equals(MarkdownBuilder.ToString(), queuedMarkdown, StringComparison.Ordinal))
-            return;
-
-        fallbackText.Opacity = 0;
-        renderer.IsVisible   = true;
-        ScheduleFallbackRelease();
-    }
-
-    private void OnEffectiveViewportChanged(object? sender, EventArgs e)
-    {
-        if (renderer.IsVisible && fallbackText.IsVisible)
-            ScheduleFallbackRelease();
-    }
-
-    private void ScheduleFallbackRelease()
-    {
-        fallbackRelease?.Dispose();
-        fallbackRelease = DispatcherTimer.RunOnce
-        (
-            ReleaseFallbackLayout,
-            TimeSpan.FromMilliseconds(250),
-            DispatcherPriority.Background
-        );
-    }
-
-    private void ReleaseFallbackLayout()
-    {
-        fallbackRelease = null;
-
-        if (renderer.IsVisible && string.Equals(MarkdownBuilder.ToString(), queuedMarkdown, StringComparison.Ordinal))
-            fallbackText.IsVisible = false;
-    }
-
-    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
-    {
-        fallbackRelease?.Dispose();
-        fallbackRelease = null;
+        renderer.MarkdownBuilder  = null;
+        renderer.MarkdownDocument = null;
+        MarkdownBuilder.Clear();
+        queuedMarkdown           = string.Empty;
+        renderedMarkdown         = string.Empty;
+        renderer.MarkdownBuilder = MarkdownBuilder;
+        RefreshMarkdown();
     }
 }

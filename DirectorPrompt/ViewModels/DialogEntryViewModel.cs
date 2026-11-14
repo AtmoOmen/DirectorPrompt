@@ -71,6 +71,18 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     public bool HasActivities => Activities.Count > 0;
 
+    public bool IsActivitiesExpanded
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsActivitiesExpanded)));
+        }
+    }
+
     public void UpdateActivity
     (
         NarrationActivity activity
@@ -80,6 +92,8 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
         if (existing is null)
         {
+            if (Activities.Count == 0)
+                IsActivitiesExpanded = IsStreaming;
             Activities.Add(new NarrationActivityViewModel(activity));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasActivities)));
         }

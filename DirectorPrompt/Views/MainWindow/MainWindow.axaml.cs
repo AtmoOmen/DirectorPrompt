@@ -1,7 +1,5 @@
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Reflection;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -25,13 +23,9 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
     private readonly ILanSharingService? lanSharingService;
 
     private DialogMessageList dialogMessages = null!;
-    private ScrollViewer?     dialogScrollViewer;
-
-    private int  dialogScrollRequestID;
-    private bool isFollowingDialogTail = true;
-    private bool isMobileRemote;
-    private bool closeAuthorized;
-    private bool closeInProgress;
+    private bool              isMobileRemote;
+    private bool              closeAuthorized;
+    private bool              closeInProgress;
 
     private Panel?        remoteOverlay;
     private Border?       remoteImportMenu;
@@ -92,8 +86,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         Title = $"DirectorPrompt {version}";
 
-        viewModel.Dialog.Entries.CollectionChanged += OnDialogEntriesChanged;
-        viewModel.PropertyChanged                  += OnViewModelPropertyChanged;
+        viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         if (attachWindowBehavior)
             Loaded += OnLoaded;
@@ -127,8 +120,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         if (!isRemote)
             return;
 
-        viewModel.Dialog.Entries.CollectionChanged -= OnDialogEntriesChanged;
-        viewModel.PropertyChanged                  -= OnViewModelPropertyChanged;
+        viewModel.PropertyChanged -= OnViewModelPropertyChanged;
     }
 
     private void OnMobileSessionsToggleClick
@@ -209,27 +201,12 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         CloseRemoteMenu();
     }
 
-    private async void OnLoaded
+    private void OnLoaded
     (
         object?         sender,
         RoutedEventArgs e
     )
-    {
-        Dispatcher.UIThread.Post(HookDialogScrollViewer, DispatcherPriority.Loaded);
-
-        await viewModel.LoadProjectsCommand.ExecuteAsync(null);
-    }
-
-    private void HookDialogScrollViewer()
-    {
-        dialogScrollViewer = dialogMessages.ScrollViewer;
-
-        if (dialogScrollViewer is null)
-            return;
-
-        dialogScrollViewer.ScrollChanged -= OnDialogScrollChanged;
-        dialogScrollViewer.ScrollChanged += OnDialogScrollChanged;
-    }
+        => _ = viewModel.LoadProjectsCommand.ExecuteAsync(null);
 
     private async void OnClosing
     (
@@ -263,21 +240,6 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         }
     }
 
-    private void OnDialogEntriesChanged
-    (
-        object?                          sender,
-        NotifyCollectionChangedEventArgs e
-    )
-    {
-        if (e.Action == NotifyCollectionChangedAction.Reset)
-            return;
-
-        if (viewModel.IsLoadingDialog || viewModel.IsLoadingEarlierDialog)
-            return;
-
-        ScrollDialogToBottom();
-    }
-
     private void OnViewModelPropertyChanged
     (
         object?                  sender,
@@ -285,81 +247,7 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
     )
     {
         if (e.PropertyName == nameof(MainViewModel.IsLoadingDialog) && !viewModel.IsLoadingDialog)
-            ScrollDialogToBottom(true);
-    }
-
-    private void OnDialogScrollChanged
-    (
-        object?                sender,
-        ScrollChangedEventArgs e
-    )
-    {
-        if (dialogScrollViewer is null)
-            return;
-
-        var maximum = Math.Max(0, dialogScrollViewer.Extent.Height - dialogScrollViewer.Viewport.Height);
-
-        isFollowingDialogTail = maximum - dialogScrollViewer.Offset.Y <= 1;
-    }
-
-    private void ScrollDialogToBottom
-    (
-        bool force = false
-    )
-    {
-        if (!force && !isFollowingDialogTail)
-            return;
-
-        var requestID = ++dialogScrollRequestID;
-        var sessionID = viewModel.CurrentSession?.ID;
-
-        Dispatcher.UIThread.Post
-        (
-            () => ScrollDialogToBottomAfterLayout(requestID, sessionID),
-            DispatcherPriority.Render
-        );
-    }
-
-    private void ScrollDialogToBottomAfterLayout
-    (
-        int   requestID,
-        long? sessionID
-    )
-    {
-        if (requestID != dialogScrollRequestID        ||
-            sessionID != viewModel.CurrentSession?.ID ||
-            viewModel.IsLoadingDialog)
-            return;
-
-        dialogScrollViewer ??= dialogMessages.ScrollViewer;
-
-        if (dialogScrollViewer is null)
-            return;
-
-        if (viewModel.Dialog.Entries.Count > 0)
-            dialogMessages.ScrollIntoView(viewModel.Dialog.Entries[^1]);
-
-        dialogScrollViewer.ScrollToEnd();
-
-        Dispatcher.UIThread.Post
-        (
-            () => CompleteDialogScrollToBottom(requestID, sessionID),
-            DispatcherPriority.ContextIdle
-        );
-    }
-
-    private void CompleteDialogScrollToBottom
-    (
-        int   requestID,
-        long? sessionID
-    )
-    {
-        if (requestID != dialogScrollRequestID        ||
-            sessionID != viewModel.CurrentSession?.ID ||
-            viewModel.IsLoadingDialog)
-            return;
-
-        dialogScrollViewer?.ScrollToEnd();
+            dialogMessages.ScrollToEnd();
     }
 
     private async void OnLoadEarlierDialog
@@ -368,39 +256,15 @@ public partial class MainWindow : FAAppWindow, IRemoteDialogOwner
         RoutedEventArgs e
     )
     {
-        if (dialogScrollViewer is null)
-            return;
-
-        var previousExtent = dialogScrollViewer.Extent.Height;
-        var previousOffset = dialogScrollViewer.Offset;
-        var sessionID      = viewModel.CurrentSession?.ID;
+        var anchor    = dialogMessages.CaptureScrollAnchor();
+        var sessionID = viewModel.CurrentSession?.ID;
 
         await viewModel.LoadEarlierDialogHistoryAsync();
 
         if (sessionID != viewModel.CurrentSession?.ID)
             return;
 
-        Dispatcher.UIThread.Post
-        (
-            () => RestoreDialogOffset(previousExtent, previousOffset),
-            DispatcherPriority.Render
-        );
-    }
-
-    private void RestoreDialogOffset
-    (
-        double previousExtent,
-        Vector previousOffset
-    )
-    {
-        if (dialogScrollViewer is null)
-            return;
-
-        var maximum     = Math.Max(0, dialogScrollViewer.Extent.Height - dialogScrollViewer.Viewport.Height);
-        var addedHeight = Math.Max(0, dialogScrollViewer.Extent.Height - previousExtent);
-        var offset      = Math.Clamp(previousOffset.Y                  + addedHeight, 0, maximum);
-
-        dialogScrollViewer.Offset = dialogScrollViewer.Offset.WithY(offset);
+        dialogMessages.RestoreScrollAnchor(anchor.Entry, anchor.Offset);
     }
 
     private void OnImportButtonClick

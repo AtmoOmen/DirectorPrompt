@@ -1,7 +1,8 @@
 using System.Collections;
+using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -13,88 +14,62 @@ namespace DirectorPrompt.Views.Components;
 
 public partial class DialogMessageList : UserControl
 {
-    public static readonly StyledProperty<IEnumerable?> StableEntriesProperty =
-        AvaloniaProperty.Register<DialogMessageList, IEnumerable?>(nameof(StableEntries));
+    public static readonly StyledProperty<IEnumerable?> EntriesProperty =
+        AvaloniaProperty.Register<DialogMessageList, IEnumerable?>(nameof(Entries));
 
-    public static readonly StyledProperty<DialogEntryViewModel?> StreamingEntryProperty =
-        AvaloniaProperty.Register<DialogMessageList, DialogEntryViewModel?>(nameof(StreamingEntry));
+    public static readonly StyledProperty<Control?> RailContentProperty =
+        AvaloniaProperty.Register<DialogMessageList, Control?>(nameof(RailContent));
 
-    public static readonly StyledProperty<bool> HasStreamingEntryProperty =
-        AvaloniaProperty.Register<DialogMessageList, bool>(nameof(HasStreamingEntry));
+    private readonly ListBox   dialogEntriesListBox;
+    private readonly ScrollBar messageScrollBar;
 
-    private readonly ListBox dialogEntriesListBox;
+    private INotifyCollectionChanged? observedEntries;
+    private bool                      isFollowingTail = true;
+    private bool                      scrollScheduled;
+    private bool                      userScrollPending;
+    private DialogEntryViewModel?     navigationEntry;
+    private double                    navigationOffset;
 
-    private ScrollViewer? hookedScrollViewer;
-    private bool          isFollowingTail = true;
-    private bool          tailScrollScheduled;
-    private bool          suppressFollowUpdate;
-    private int           tailRetryCount;
-
-    public IEnumerable? StableEntries
+    public IEnumerable? Entries
     {
-        get => GetValue(StableEntriesProperty);
-        set => SetValue(StableEntriesProperty, value);
+        get => GetValue(EntriesProperty);
+        set => SetValue(EntriesProperty, value);
     }
 
-    public DialogEntryViewModel? StreamingEntry
+    public ScrollViewer? ScrollViewer { get; private set; }
+
+    public Control? RailContent
     {
-        get => GetValue(StreamingEntryProperty);
-        set => SetValue(StreamingEntryProperty, value);
+        get => GetValue(RailContentProperty);
+        set => SetValue(RailContentProperty, value);
     }
-
-    public bool HasStreamingEntry
-    {
-        get => GetValue(HasStreamingEntryProperty);
-        private set => SetValue(HasStreamingEntryProperty, value);
-    }
-
-    /// <summary>
-    /// 稳定消息与流式消息共处同一个滚动视图，该视图由列表模板提供。
-    /// </summary>
-    public ScrollViewer? ScrollViewer =>
-        field ??= dialogEntriesListBox.GetVisualDescendants()
-                                      .OfType<ScrollViewer>()
-                                      .FirstOrDefault(control => control.Name == "PART_ScrollViewer");
-
-    private ContentPresenter? StreamingEntryPresenter =>
-        field ??= dialogEntriesListBox.GetVisualDescendants()
-                                      .OfType<ContentPresenter>()
-                                      .FirstOrDefault(control => control.Name == "StreamingEntryPresenter");
 
     static DialogMessageList() =>
-        StreamingEntryProperty.Changed.AddClassHandler<DialogMessageList>
-            (static (list, _) => list.OnStreamingEntryChanged());
+        EntriesProperty.Changed.AddClassHandler<DialogMessageList>
+            (static (list, _) => list.ObserveEntries());
 
     public DialogMessageList()
     {
         AvaloniaXamlLoader.Load(this);
-        dialogEntriesListBox =  this.FindControl<ListBox>(nameof(DialogEntriesListBox))!;
-        LayoutUpdated        += OnLayoutUpdated;
-        SizeChanged          += OnSizeChanged;
+        dialogEntriesListBox   =  this.FindControl<ListBox>(nameof(DialogEntriesListBox))!;
+        messageScrollBar       =  this.FindControl<ScrollBar>("MessageScrollBar")!;
+        AttachedToVisualTree   += OnAttachedToVisualTree;
+        DetachedFromVisualTree += OnDetachedFromVisualTree;
         AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Tunnel);
+        AddHandler(PointerPressedEvent,      OnPointerPressed,      RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent,             OnKeyDown,             RoutingStrategies.Tunnel);
     }
 
     public void ScrollIntoView
     (
         DialogEntryViewModel entry
-    )
-    {
-        if (ReferenceEquals(entry, StreamingEntry))
-        {
-            StreamingEntryPresenter?.BringIntoView();
-            return;
-        }
-
-        dialogEntriesListBox.ScrollIntoView(entry);
-    }
+    ) => RestoreScrollAnchor(entry, 0);
 
     public Control? ContainerFromItem
     (
         DialogEntryViewModel entry
     ) =>
-        ReferenceEquals(entry, StreamingEntry) ?
-            StreamingEntryPresenter :
-            dialogEntriesListBox.ContainerFromItem(entry);
+        dialogEntriesListBox.ContainerFromItem(entry);
 
     public IEnumerable<(DialogEntryViewModel Entry, Control Container)> GetRealizedEntries()
     {
@@ -103,167 +78,213 @@ public partial class DialogMessageList : UserControl
             if (dialogEntriesListBox.ItemFromContainer(container) is DialogEntryViewModel entry)
                 yield return (entry, container);
         }
-
-        if (StreamingEntry is not null && StreamingEntryPresenter is { IsVisible: true } presenter)
-            yield return (StreamingEntry, presenter);
     }
 
-    /// <summary>
-    /// 列表模板在首次布局时才建立滚动视图，布局完成后订阅一次即可。
-    /// </summary>
-    private void OnLayoutUpdated
-    (
-        object?   sender,
-        EventArgs e
-    )
-    {
-        if (ScrollViewer is null)
-            return;
-
-        LayoutUpdated -= OnLayoutUpdated;
-        HookScrollViewer();
-    }
-
-    private void HookScrollViewer()
+    public (DialogEntryViewModel? Entry, double Offset) CaptureScrollAnchor()
     {
         var scrollViewer = ScrollViewer;
-
-        if (scrollViewer is null || ReferenceEquals(scrollViewer, hookedScrollViewer))
-            return;
-
-        if (hookedScrollViewer is not null)
-            hookedScrollViewer.ScrollChanged -= OnScrollChanged;
-
-        hookedScrollViewer               =  scrollViewer;
-        hookedScrollViewer.ScrollChanged += OnScrollChanged;
-    }
-
-    private void OnScrollChanged
-    (
-        object?                sender,
-        ScrollChangedEventArgs e
-    )
-    {
-        var scrollViewer = hookedScrollViewer;
-
+        isFollowingTail = false;
+        navigationEntry = null;
         if (scrollViewer is null)
-            return;
+            return (null, 0);
 
-        // 只有纯粹的偏移变化才代表用户滚动；布局变化引起的偏移夹取不应改变跟随状态。
-        var layoutChanged = e.ExtentDelta.Y != 0 || e.ViewportDelta.Y != 0;
-
-        if (e.OffsetDelta.Y != 0 && !layoutChanged && !suppressFollowUpdate)
+        foreach (var (entry, container) in GetRealizedEntries())
         {
-            var maximum = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
-
-            isFollowingTail = maximum - scrollViewer.Offset.Y <= 1;
+            var position = container.TranslatePoint(default, scrollViewer);
+            if (position is { } point && point.Y + container.Bounds.Height > 0)
+                return (entry, point.Y);
         }
 
-        // 内容高度与视口高度的变化都会改变底部位置，位于底部时都需要重新贴回。
-        // 视口高度变化来自生成结束时管线阶段面板收起等布局调整，同样会夹取既有偏移。
-        if (layoutChanged && isFollowingTail)
-            ScheduleTailScroll();
+        return (null, 0);
     }
 
-    /// <summary>
-    /// 用户向上滚动即刻退出底部跟随，避免后续布局变化把用户强行拉回末尾。
-    /// </summary>
-    private void OnPointerWheelChanged
-    (
-        object?               sender,
-        PointerWheelEventArgs e
-    )
+    public void RestoreScrollAnchor(DialogEntryViewModel? entry, double offset)
     {
-        if (e.Delta.Y > 0)
-            isFollowingTail = false;
-    }
-
-    /// <summary>
-    /// 生成结束时管线阶段面板收起、输入区状态变化都会改变本控件高度，视口随之变化，
-    /// 此时同样需要重新贴回底部。
-    /// </summary>
-    private void OnSizeChanged
-    (
-        object?              sender,
-        SizeChangedEventArgs e
-    )
-    {
-        if (isFollowingTail)
-            ScheduleTailScroll();
-    }
-
-    private void OnStreamingEntryChanged()
-    {
-        HasStreamingEntry = StreamingEntry is not null;
-
-        tailRetryCount = 0;
-
-        ScheduleTailScroll();
-    }
-
-    /// <summary>
-    /// 流式文本增长与条目并入稳定列表都会改变内容高度，合并到同一轮布局之后贴回底部。
-    /// </summary>
-    private void ScheduleTailScroll()
-    {
-        if (tailScrollScheduled)
+        if (entry is null)
             return;
 
-        tailScrollScheduled = true;
-
-        Dispatcher.UIThread.Post(ScrollToTail, DispatcherPriority.Loaded);
+        isFollowingTail   = false;
+        userScrollPending = false;
+        navigationEntry   = entry;
+        navigationOffset  = offset;
+        if (ContainerFromItem(entry) is null)
+            dialogEntriesListBox.ScrollIntoView(entry);
+        ScheduleScroll();
     }
 
-    /// <summary>
-    /// 贴底不使用滚动范围推算，而是以末尾项容器的实际位置对齐视口底部；
-    /// 末尾项尚未实现时先把它滚动进视口，待容器出现后在下一轮布局校准。
-    /// </summary>
-    private void ScrollToTail()
+    public void ScrollToEnd()
     {
-        tailScrollScheduled = false;
+        navigationEntry   = null;
+        userScrollPending = false;
+        isFollowingTail   = true;
+        ScheduleScroll();
+    }
 
-        if (!isFollowingTail)
-            return;
+    private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        dialogEntriesListBox.ApplyTemplate();
+        ScrollViewer = dialogEntriesListBox.GetVisualDescendants().OfType<ScrollViewer>()
+                                           .FirstOrDefault(control => control.Name == "PART_ScrollViewer");
+        if (ScrollViewer is not null)
+            ScrollViewer.ScrollChanged += OnScrollChanged;
+        SynchronizeScrollBar();
+        LayoutUpdated += OnLayoutUpdated;
+        ObserveEntries();
+    }
 
+    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (ScrollViewer is not null)
+            ScrollViewer.ScrollChanged -= OnScrollChanged;
+        if (observedEntries is not null)
+            observedEntries.CollectionChanged -= OnEntriesChanged;
+        observedEntries =  null;
+        ScrollViewer    =  null;
+        LayoutUpdated   -= OnLayoutUpdated;
+    }
+
+    private void ObserveEntries()
+    {
+        if (observedEntries is not null)
+            observedEntries.CollectionChanged -= OnEntriesChanged;
+        observedEntries = Entries as INotifyCollectionChanged;
+        if (observedEntries is not null)
+            observedEntries.CollectionChanged += OnEntriesChanged;
+        navigationEntry = null;
+        ScheduleScroll();
+    }
+
+    private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+            navigationEntry = null;
+        ScheduleScroll();
+    }
+
+    private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
         var scrollViewer = ScrollViewer;
-
-        if (scrollViewer is null)
+        if (!ReferenceEquals(e.Source, scrollViewer))
             return;
 
-        var lastEntry = StreamingEntry ?? StableEntries?.OfType<DialogEntryViewModel>().LastOrDefault();
+        SynchronizeScrollBar();
 
-        if (lastEntry is null)
+        if (userScrollPending && e.OffsetDelta.Y != 0 && e.ExtentDelta.Y == 0 && e.ViewportDelta.Y == 0 && scrollViewer is not null)
+        {
+            isFollowingTail   = scrollViewer.Extent.Height - scrollViewer.Viewport.Height - scrollViewer.Offset.Y <= 2;
+            userScrollPending = false;
+        }
+
+        if (isFollowingTail)
+            ScheduleScroll();
+    }
+
+    private void SynchronizeScrollBar()
+    {
+        if (ScrollViewer is not { } scrollViewer)
             return;
 
-        var container = ContainerFromItem(lastEntry);
+        messageScrollBar.Maximum      = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
+        messageScrollBar.ViewportSize = scrollViewer.Viewport.Height;
+        messageScrollBar.LargeChange  = scrollViewer.LargeChange.Height;
+        messageScrollBar.SmallChange  = scrollViewer.SmallChange.Height;
+        messageScrollBar.Value        = scrollViewer.Offset.Y;
+    }
+
+    private void OnScrollBarScroll(object? sender, ScrollEventArgs e)
+    {
+        if (ScrollViewer is not { } scrollViewer)
+            return;
+
+        navigationEntry     = null;
+        userScrollPending   = false;
+        isFollowingTail     = messageScrollBar.Maximum - e.NewValue <= 2;
+        scrollViewer.Offset = scrollViewer.Offset.WithY(e.NewValue);
+    }
+
+    private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (e.Delta.Y == 0)
+            return;
+        isFollowingTail   = false;
+        navigationEntry   = null;
+        userScrollPending = true;
+    }
+
+    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if ((e.Source as Visual)?.FindAncestorOfType<Expander>() is not null)
+        {
+            isFollowingTail   = false;
+            navigationEntry   = null;
+            userScrollPending = false;
+            return;
+        }
+
+        if (e.Pointer.Type != PointerType.Touch && e.Source is not ScrollBar && (e.Source as Visual)?.FindAncestorOfType<ScrollBar>() is null)
+            return;
+        isFollowingTail   = false;
+        navigationEntry   = null;
+        userScrollPending = true;
+    }
+
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Source is TextBox || e.Key is not (Key.Up or Key.Down or Key.PageUp or Key.PageDown or Key.Home or Key.End))
+            return;
+        isFollowingTail   = false;
+        navigationEntry   = null;
+        userScrollPending = true;
+    }
+
+    private void OnLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (isFollowingTail || navigationEntry is not null)
+            ScheduleScroll();
+    }
+
+    private void ScheduleScroll()
+    {
+        if (scrollScheduled)
+            return;
+
+        scrollScheduled = true;
+        Dispatcher.UIThread.Post(ApplyScroll, DispatcherPriority.Loaded);
+    }
+
+    private void ApplyScroll()
+    {
+        var scrollViewer = ScrollViewer;
+        scrollScheduled = false;
+        if (scrollViewer is null || (!isFollowingTail && navigationEntry is null))
+            return;
+
+        var entry = navigationEntry;
+        if (entry is null && dialogEntriesListBox.ItemCount > 0)
+            entry = dialogEntriesListBox.Items[^1] as DialogEntryViewModel;
+        if (entry is null)
+            return;
+
+        var container = ContainerFromItem(entry);
 
         if (container is null)
         {
-            if (tailRetryCount++ >= 6)
-                return;
-
-            suppressFollowUpdate = true;
-            scrollViewer.ScrollToEnd();
-            suppressFollowUpdate = false;
-            ScheduleTailScroll();
+            dialogEntriesListBox.ScrollIntoView(entry);
             return;
         }
 
-        var bottom = container.TranslatePoint(new Point(0, container.Bounds.Height), scrollViewer)?.Y;
-
-        if (bottom is null)
+        var position = container.TranslatePoint(default, scrollViewer);
+        if (position is null)
             return;
 
-        var maximum = Math.Max(0, scrollViewer.Extent.Height          - scrollViewer.Viewport.Height);
-        var target  = Math.Clamp(scrollViewer.Offset.Y + bottom.Value - scrollViewer.Viewport.Height, 0, maximum);
-
-        tailRetryCount = 0;
-
-        if (Math.Abs(target - scrollViewer.Offset.Y) <= 0.5)
-            return;
-
-        suppressFollowUpdate = true;
-        scrollViewer.Offset  = scrollViewer.Offset.WithY(target);
-        suppressFollowUpdate = false;
+        var delta = navigationEntry is not null ?
+                        position.Value.Y                           - navigationOffset :
+                        position.Value.Y + container.Bounds.Height - scrollViewer.Viewport.Height;
+        var maximum = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
+        var target  = Math.Clamp(scrollViewer.Offset.Y       + delta, 0, maximum);
+        if (Math.Abs(target - scrollViewer.Offset.Y) > 0.5)
+            scrollViewer.Offset = scrollViewer.Offset.WithY(target);
+        else
+            navigationEntry = null;
     }
 }
