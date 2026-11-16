@@ -10,7 +10,8 @@ namespace DirectorPrompt.Infrastructure.AI;
 
 internal sealed class OpenAIReasoningChatClient
 (
-    IChatClient inner
+    IChatClient inner,
+    bool        requiresReasoningContent
 ) : DelegatingChatClient(inner)
 {
     public override async Task<ChatResponse> GetResponseAsync
@@ -65,10 +66,16 @@ internal sealed class OpenAIReasoningChatClient
         }
     }
 
-    private static IEnumerable<ChatMessage> PrepareMessages(IEnumerable<ChatMessage> messages)
+    private IEnumerable<ChatMessage> PrepareMessages(IEnumerable<ChatMessage> messages)
     {
         foreach (var message in messages)
         {
+            if (message.Role != ChatRole.Assistant)
+            {
+                yield return message;
+                continue;
+            }
+
             var state = message.Contents
                                .Select(content => content.AdditionalProperties?.GetValueOrDefault(nameof(OpenAIReasoningState)))
                                .Select
@@ -81,7 +88,13 @@ internal sealed class OpenAIReasoningChatClient
                                )
                                .FirstOrDefault(value => value is not null);
 
-            if (message.Role != ChatRole.Assistant || state is null)
+            if (state is null && requiresReasoningContent && message.Contents.OfType<FunctionCallContent>().Any())
+                state = new OpenAIReasoningState
+                {
+                    Reasoning = { ["reasoning_content"] = string.Empty }
+                };
+
+            if (state is null)
             {
                 yield return message;
                 continue;

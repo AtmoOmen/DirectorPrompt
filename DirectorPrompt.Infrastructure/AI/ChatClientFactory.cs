@@ -144,7 +144,11 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
 
         var chatClient = openAIClient.GetChatClient(model.ModelName);
 
-        return new OpenAIReasoningChatClient(chatClient.AsIChatClient());
+        var requiresReasoningContent = model.ModelName.Contains
+                                           ("deepseek", StringComparison.OrdinalIgnoreCase) ||
+                                       options.Endpoint?.Host.Equals("api.deepseek.com", StringComparison.OrdinalIgnoreCase) == true;
+
+        return new OpenAIReasoningChatClient(chatClient.AsIChatClient(), requiresReasoningContent);
     }
 
     private static IChatClient CreateAnthropicClient(ProviderConfig provider, ModelConfig model)
