@@ -44,14 +44,15 @@ public sealed class NarrativeDraft
     private string Append
     (
         [Description("要追加的一个或多个非空 Markdown 段落，按呈现顺序排列。")]
-        string[] paragraphs,
+        string[]? paragraphs,
         [Description("上次工具操作返回的草稿版本，空草稿为 0。")] int expectedRevision
     )
     {
-        CheckRevision(expectedRevision);
+        if (CheckRevision(expectedRevision) is { } error)
+            return error;
 
-        if (paragraphs.Length == 0 || paragraphs.Any(string.IsNullOrWhiteSpace))
-            throw new ArgumentException("段落不能为空。");
+        if (paragraphs is null || paragraphs.Length == 0 || paragraphs.Any(string.IsNullOrWhiteSpace))
+            return ToolResult.Error("段落不能为空。");
 
         var appended = string.Join("\n\n", paragraphs.Select(paragraph => paragraph.Trim('\r', '\n')));
         return Change
@@ -68,10 +69,11 @@ public sealed class NarrativeDraft
         int    expectedRevision
     )
     {
-        CheckRevision(expectedRevision);
+        if (CheckRevision(expectedRevision) is { } error)
+            return error;
 
         return string.IsNullOrWhiteSpace(markdown) ?
-                   throw new ArgumentException("正文不能为空。") :
+                   ToolResult.Error("正文不能为空。") :
                    Change(markdown);
     }
 
@@ -82,19 +84,20 @@ public sealed class NarrativeDraft
         int    expectedRevision
     )
     {
-        CheckRevision(expectedRevision);
+        if (CheckRevision(expectedRevision) is { } error)
+            return error;
 
         if (string.IsNullOrEmpty(oldText))
-            throw new ArgumentException("需要提供非空的待替换原文。");
+            return ToolResult.Error("需要提供非空的待替换原文。");
 
         oldText = oldText.ReplaceLineEndings("\n");
         var position = Text.IndexOf(oldText, StringComparison.Ordinal);
 
         if (position < 0)
-            throw new ArgumentException("没有找到原文，请根据上下文中的写入与修改记录确认当前文本，必要时使用 search_story_text 定位。");
+            return ToolResult.Error("没有找到原文，请根据上下文中的写入与修改记录确认当前文本，必要时使用 search_story_text 定位。");
 
         return Text.IndexOf(oldText, position + 1, StringComparison.Ordinal) >= 0 ?
-                   throw new ArgumentException("原文存在多处匹配，请提供包含更多上下文的原文。") :
+                   ToolResult.Error("原文存在多处匹配，请提供包含更多上下文的原文。") :
                    Change(string.Concat(Text.AsSpan(0, position), replacement, Text.AsSpan(position + oldText.Length)));
     }
 
@@ -142,10 +145,10 @@ public sealed class NarrativeDraft
     )
     {
         if (string.IsNullOrWhiteSpace(query))
-            throw new ArgumentException("检索内容不能为空。");
+            return ToolResult.Error("检索内容不能为空。");
 
         if (startMatch < 1 || maxResults is < 0 or > 100 || contextLines is < 0 or > 5)
-            throw new ArgumentException("startMatch 必须至少为 1，maxResults 必须为 0 至 100，contextLines 必须为 0 至 5。");
+            return ToolResult.Error("startMatch 必须至少为 1，maxResults 必须为 0 至 100，contextLines 必须为 0 至 5。");
 
         query = query.ReplaceLineEndings("\n");
         var options = RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture;
@@ -237,10 +240,11 @@ public sealed class NarrativeDraft
         string content
     )
     {
-        CheckRevision(Revision);
+        if (CheckRevision(Revision) is { } error)
+            return error;
 
         if (string.IsNullOrWhiteSpace(key))
-            throw new ArgumentException("意图键不能为空。");
+            return ToolResult.Error("意图键不能为空。");
 
         if (string.IsNullOrWhiteSpace(content))
             intents.Remove(key);
@@ -256,25 +260,27 @@ public sealed class NarrativeDraft
         int expectedRevision
     )
     {
-        CheckRevision(expectedRevision);
+        if (CheckRevision(expectedRevision) is { } error)
+            return error;
 
         if (string.IsNullOrWhiteSpace(Text))
-            throw new ArgumentException("无法提交空草稿，请先通过写作工具撰写正文。");
+            return ToolResult.Error("无法提交空草稿，请先通过写作工具撰写正文。");
 
         IsSubmitted = true;
         return Count();
     }
 
-    private void CheckRevision
+    private string? CheckRevision
     (
         int expectedRevision
     )
     {
         if (IsSubmitted)
-            throw new InvalidOperationException("故事已经提交，不可继续修改。");
+            return ToolResult.Error("故事已经提交，不可继续修改。");
 
-        if (expectedRevision != Revision)
-            throw new ArgumentException($"草稿版本不一致：当前版本为 {Revision}，请使用当前版本重试。");
+        return expectedRevision != Revision ?
+                   ToolResult.Error($"草稿版本不一致：当前版本为 {Revision}，请使用当前版本重试。") :
+                   null;
     }
 
     private string Change

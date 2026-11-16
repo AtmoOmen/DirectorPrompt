@@ -134,6 +134,13 @@ public sealed partial class ModelOptionsChatClient
             else
             {
                 ApplyCompatibleOptions(options, parameters, effort, model, endpoint);
+
+                var deepSeek = model.Contains("deepseek", StringComparison.Ordinal) || endpoint.Equals("api.deepseek.com", StringComparison.OrdinalIgnoreCase);
+
+                if (deepSeek                                                          &&
+                    parameters["thinking"]?["type"]?.GetValue<string>() != "disabled" &&
+                    options.ToolMode is RequiredChatToolMode { RequiredFunctionName: null })
+                    options.ToolMode = ChatToolMode.Auto;
             }
 
             var originalFactory = options.RawRepresentationFactory;

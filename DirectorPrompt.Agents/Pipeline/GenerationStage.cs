@@ -132,17 +132,22 @@ public sealed class GenerationStage
                 try
                 {
                     if (!toolLookup.TryGetValue(call.Name, out var tool))
-                        throw new ArgumentException($"工具不存在：{call.Name}");
-
-                    if (call.Name == "submit_story" && (hadError || !ReferenceEquals(call, calls[^1])))
-                        throw new ArgumentException("请先处理本轮工具错误，并将 submit_story 作为最后一个工具调用。");
-
-                    result = await tool.InvokeAsync(new AIFunctionArguments(call.Arguments), cancellationToken);
+                        result = ToolResult.Error($"工具不存在：{call.Name}");
+                    else if (call.Name == "submit_story" && (hadError || !ReferenceEquals(call, calls[^1])))
+                        result = ToolResult.Error("请先处理本轮工具错误，并将 submit_story 作为最后一个工具调用。");
+                    else
+                        result = await tool.InvokeAsync(new AIFunctionArguments(call.Arguments), cancellationToken);
                 }
-                catch (Exception exception) when (exception is not OperationCanceledException)
+                catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
                     Log.Warning(exception, "叙事工具调用失败: {Tool}", call.Name);
                     result   = ToolResult.Error(exception.Message);
+                    status   = PipelineStageStatus.Failed;
+                    hadError = true;
+                }
+
+                if (ToolResult.IsError(result))
+                {
                     status   = PipelineStageStatus.Failed;
                     hadError = true;
                 }
