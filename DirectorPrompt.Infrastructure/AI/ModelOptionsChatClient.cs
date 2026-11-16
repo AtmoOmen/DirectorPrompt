@@ -165,7 +165,7 @@ public sealed partial class ModelOptionsChatClient
     {
         var openRouter = endpoint.Equals("openrouter.ai", StringComparison.OrdinalIgnoreCase);
 
-        if (model.Contains("gemini", StringComparison.Ordinal) && !openRouter)
+        if (model.Contains("gemini", StringComparison.Ordinal) && !openRouter && !endpoint.Equals("opencode.ai", StringComparison.OrdinalIgnoreCase))
         {
             var extraBody = parameters["extra_body"] as JsonObject  ?? new JsonObject();
             var google    = extraBody["google"] as JsonObject       ?? new JsonObject();
