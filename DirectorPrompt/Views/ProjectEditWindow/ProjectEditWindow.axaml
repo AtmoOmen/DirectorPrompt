@@ -1,23 +1,23 @@
 <windowing:FAAppWindow x:Class="DirectorPrompt.Views.ProjectEditWindow"
-                        xmlns="https://github.com/avaloniaui"
-                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                        xmlns:fa="using:FluentAvalonia.UI.Controls"
-                        xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
-                        xmlns:loc="clr-namespace:DirectorPrompt.Localization"
-                        xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
-                        xmlns:views="using:DirectorPrompt.Views"
-                        xmlns:windowing="using:FluentAvalonia.UI.Windowing"
-                        mc:Ignorable="d"
-                        d:DataContext="{d:DesignInstance Type=vm:ProjectEditViewModel}"
-                        Title="{Binding [Project.EditTitle], Source={x:Static loc:Loc.Instance}}"
-                        Width="1000"
-                        Height="720"
-                        MinWidth="800"
-                        MinHeight="600"
-                        Icon="/Assets/Images/Icon-NoBackground.ico"
-                        TransparencyLevelHint="Mica">
+                       xmlns="https://github.com/avaloniaui"
+                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                       xmlns:fa="using:FluentAvalonia.UI.Controls"
+                       xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+                       xmlns:loc="clr-namespace:DirectorPrompt.Localization"
+                       xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+                       xmlns:views="using:DirectorPrompt.Views"
+                       xmlns:windowing="using:FluentAvalonia.UI.Windowing"
+                       mc:Ignorable="d"
+                       d:DataContext="{d:DesignInstance Type=vm:ProjectEditViewModel}"
+                       Title="{Binding [Project.EditTitle], Source={x:Static loc:Loc.Instance}}"
+                       Width="1000"
+                       Height="720"
+                       MinWidth="800"
+                       MinHeight="600"
+                       Icon="/Assets/Images/Icon-NoBackground.ico"
+                       TransparencyLevelHint="Mica">
     <Grid x:Name="RootLayout" RowDefinitions="Auto,*,Auto">
         <Grid.Styles>
             <Style Selector="Border#RemoteNavHost">
@@ -41,8 +41,7 @@
             <components:PathComboBox x:Name="RemoteNavComboBox"
                                      Margin="12,8"
                                      HorizontalAlignment="Stretch"
-                                     SelectionChanged="OnRemoteNavSelectionChanged"
-                                     SelectedIndex="0">
+                                     SelectedIndex="{Binding #NavList.SelectedIndex, Mode=TwoWay}">
                 <ComboBoxItem Content="{Binding [Project.Basic.Title], Source={x:Static loc:Loc.Instance}}" />
                 <ComboBoxItem Content="{Binding [Knowledge.Title], Source={x:Static loc:Loc.Instance}}" />
                 <ComboBoxItem Content="{Binding [State.Title], Source={x:Static loc:Loc.Instance}}" />
@@ -58,30 +57,29 @@
                      Background="{DynamicResource ControlFillColorTransparentBrush}"
                      BorderThickness="0"
                      Padding="4"
-                     SelectionChanged="OnNavSelectionChanged"
                      SelectedIndex="0">
-                <ListBoxItem Tag="basic" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Edit" />
                         <TextBlock Text="{Binding [Project.Basic.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="knowledge" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Library" />
                         <TextBlock Text="{Binding [Knowledge.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="state" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="View" />
                         <TextBlock Text="{Binding [State.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="character" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="People" />
                         <TextBlock Text="{Binding [Character.Title], Source={x:Static loc:Loc.Instance}}"
@@ -94,19 +92,22 @@
                     BorderBrush="{DynamicResource ControlElevationBorderBrush}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Padding="24,12,24,16">
-                    <Grid>
+                    <Carousel SelectedIndex="{Binding #NavList.SelectedIndex, Mode=TwoWay}"
+                              PageTransition="{x:Null}"
+                              IsSwipeEnabled="False"
+                              IsTextSearchEnabled="False">
                         <!-- 基本信息 -->
-                        <views:ProjectBasicEditView x:Name="BasicPanel" IsVisible="True" />
+                        <views:ProjectBasicEditView />
 
                         <!-- 知识系统 (树状) -->
-                        <views:ProjectKnowledgeEditView x:Name="KnowledgePanel" IsVisible="False" />
+                        <views:ProjectKnowledgeEditView />
 
                         <!-- 状态系统 -->
-                        <views:ProjectStateEditView x:Name="StatePanel" IsVisible="False" />
+                        <views:ProjectStateEditView />
 
                         <!-- 人物系统 -->
-                        <views:ProjectCharacterEditView x:Name="CharacterPanel" IsVisible="False" />
-                    </Grid>
+                        <views:ProjectCharacterEditView />
+                    </Carousel>
                 </ScrollViewer>
             </Border>
         </DockPanel>

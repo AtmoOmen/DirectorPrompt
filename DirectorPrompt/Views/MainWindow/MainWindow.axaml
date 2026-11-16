@@ -529,7 +529,19 @@
                         <components:DirectiveInputControl DirectiveInput="{Binding DirectiveInput}"
                                                           ShowSendButton="True"
                                                           SendCommand="{Binding SendDirectivesCommand}"
-                                                          IsProcessing="{Binding IsProcessing}" />
+                                                          IsProcessing="{Binding IsProcessing}">
+                            <components:DirectiveInputControl.FooterContent>
+                                <components:PathComboBox
+                                    MinWidth="0"
+                                    DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=components:DirectiveInputControl}}"
+                                    ItemsSource="{Binding NarrationModels}"
+                                    DisplayMemberPath="DisplayName"
+                                    SelectedValuePath="ID"
+                                    SelectedValue="{Binding NarrationModelID, Mode=TwoWay}"
+                                    IsEnabled="{Binding IsNotProcessing}"
+                                    ToolTip.Tip="{Binding [Settings.Task.Model], Source={x:Static loc:Loc.Instance}}" />
+                            </components:DirectiveInputControl.FooterContent>
+                        </components:DirectiveInputControl>
                     </StackPanel>
                 </Border>
 

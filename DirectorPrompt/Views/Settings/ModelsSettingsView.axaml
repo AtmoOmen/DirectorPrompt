@@ -29,7 +29,7 @@
         <ItemsControl ItemsSource="{Binding Models}" Margin="0,8,0,0">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Expander Margin="0,0,0,8" IsExpanded="True">
+                    <Expander Margin="0,0,0,8" IsExpanded="False">
                         <Expander.Header>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal">
@@ -62,7 +62,7 @@
                                            Text="{Binding [Settings.Model.Provider], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center" />
                                 <components:SearchableComboBox Grid.Column="1"
-                                                               ItemsSource="{Binding DataContext.Providers, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               ItemsSource="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).Providers, FallbackValue={x:Null}}"
                                                                DisplayMemberPath="DisplayName"
                                                                SelectedValuePath="ID"
                                                                SelectedValue="{Binding ProviderID}" />
@@ -78,7 +78,7 @@
                                 <Button Grid.Column="2"
                                         Padding="6,4"
                                         Margin="8,0,0,0"
-                                        Command="{Binding DataContext.FetchModelsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).FetchModelsCommand, FallbackValue={x:Null}}"
                                         CommandParameter="{Binding}"
                                         IsEnabled="{Binding IsFetchingModels, Converter={StaticResource InverseBool}}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -139,7 +139,7 @@
                                            Text="{Binding [Settings.Model.Prompt], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center" />
                                 <components:SearchableComboBox Grid.Column="1"
-                                                               ItemsSource="{Binding DataContext.Prompts, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               ItemsSource="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).Prompts, FallbackValue={x:Null}}"
                                                                DisplayMemberPath="DisplayName"
                                                                SelectedValuePath="ID"
                                                                SelectedValue="{Binding PromptID}" />
@@ -147,7 +147,7 @@
                                         Content="{Binding [Common.Clear], Source={x:Static loc:Loc.Instance}}"
                                         Padding="6,4"
                                         Margin="8,0,0,0"
-                                        Command="{Binding DataContext.ClearModelPromptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ClearModelPromptCommand, FallbackValue={x:Null}}"
                                         CommandParameter="{Binding}" />
                             </Grid>
 
@@ -157,7 +157,7 @@
 
                                 <Button
                                     Padding="8,4"
-                                    Command="{Binding DataContext.TestModelConnectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).TestModelConnectionCommand, FallbackValue={x:Null}}"
                                     CommandParameter="{Binding}"
                                     IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBool}}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">

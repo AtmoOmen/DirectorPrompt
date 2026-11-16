@@ -1,14 +1,18 @@
 <UserControl x:Class="DirectorPrompt.Views.Components.DirectiveInputControl"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
              xmlns:fa="using:FluentAvalonia.UI.Controls"
              xmlns:loc="clr-namespace:DirectorPrompt.Localization"
-             xmlns:components="clr-namespace:DirectorPrompt.Views.Components">
-    <StackPanel x:Name="RootPanel">
+             xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
+             mc:Ignorable="d">
+    <StackPanel x:Name="RootPanel" d:DataContext="{d:DesignInstance Type=vm:DirectiveInputViewModel}">
         <ItemsControl ItemsSource="{Binding Directives}"
                       Margin="0,0,0,8">
             <ItemsControl.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate DataType="vm:DirectiveItemViewModel">
                     <Border Margin="0,2"
                             Padding="10,6"
                             Background="{DynamicResource ControlFillColorDefaultBrush}"
@@ -48,21 +52,21 @@
                                         <Button Padding="12,8"
                                                 MinWidth="36"
                                                 Margin="2,0"
-                                                Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding $parent[ItemsControl].((vm:DirectiveInputViewModel)DataContext).MoveUpCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding}">
                                             <TextBlock Text="↑" FontSize="14" />
                                         </Button>
                                         <Button Padding="12,8"
                                                 MinWidth="36"
                                                 Margin="2,0"
-                                                Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding $parent[ItemsControl].((vm:DirectiveInputViewModel)DataContext).MoveDownCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding}">
                                             <TextBlock Text="↓" FontSize="14" />
                                         </Button>
                                         <Button Padding="12,8"
                                                 MinWidth="36"
                                                 Margin="2,0"
-                                                Command="{Binding DataContext.RemoveDirectiveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding $parent[ItemsControl].((vm:DirectiveInputViewModel)DataContext).RemoveDirectiveCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding}">
                                             <TextBlock Text="✕" FontSize="14" />
                                         </Button>
@@ -99,21 +103,21 @@
                                     <Button Padding="12,8"
                                             MinWidth="36"
                                             Margin="2,0"
-                                            Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            Command="{Binding $parent[ItemsControl].((vm:DirectiveInputViewModel)DataContext).MoveUpCommand, FallbackValue={x:Null}}"
                                             CommandParameter="{Binding}">
                                         <TextBlock Text="↑" FontSize="14" />
                                     </Button>
                                     <Button Padding="12,8"
                                             MinWidth="36"
                                             Margin="2,0"
-                                            Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            Command="{Binding $parent[ItemsControl].((vm:DirectiveInputViewModel)DataContext).MoveDownCommand, FallbackValue={x:Null}}"
                                             CommandParameter="{Binding}">
                                         <TextBlock Text="↓" FontSize="14" />
                                     </Button>
                                     <Button Padding="12,8"
                                             MinWidth="36"
                                             Margin="2,0"
-                                            Command="{Binding DataContext.RemoveDirectiveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            Command="{Binding $parent[ItemsControl].((vm:DirectiveInputViewModel)DataContext).RemoveDirectiveCommand, FallbackValue={x:Null}}"
                                             CommandParameter="{Binding}">
                                         <TextBlock Text="✕" FontSize="14" />
                                     </Button>
@@ -165,10 +169,16 @@
                      MaxHeight="300"
                      AcceptsReturn="True" />
 
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Right"
-                        Margin="0,4,0,0">
-                <Button Width="150"
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto"
+                  Margin="0,4,0,0">
+                <ContentPresenter Grid.Column="0"
+                                  Margin="0,0,8,0"
+                                  MaxWidth="240"
+                                  HorizontalAlignment="Left"
+                                  VerticalAlignment="Center"
+                                  Content="{Binding FooterContent, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                <Button Grid.Column="1"
+                        Width="150"
                         Margin="0,0,4,0"
                         Padding="12,6"
                         Command="{Binding AddDirectiveCommand}">
@@ -177,11 +187,13 @@
                         <TextBlock Text="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}" />
                     </StackPanel>
                 </Button>
-                <Border Width="1"
+                <Border Grid.Column="2"
+                        Width="1"
                         Margin="4,4"
                         Background="{DynamicResource ControlElevationBorderBrush}"
                         IsVisible="{Binding ShowSendButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
-                <Button Width="150"
+                <Button Grid.Column="3"
+                        Width="150"
                         Margin="4,0,0,0"
                         Padding="16,6"
                         IsVisible="{Binding ShowSendButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"
@@ -192,7 +204,7 @@
                         <TextBlock Text="{Binding [Dialog.SendDirective], Source={x:Static loc:Loc.Instance}}" />
                     </StackPanel>
                 </Button>
-            </StackPanel>
+            </Grid>
         </StackPanel>
     </StackPanel>
 </UserControl>

@@ -175,7 +175,7 @@ public partial class DialogMessageList : UserControl
             userScrollPending = false;
         }
 
-        if (isFollowingTail)
+        if (isFollowingTail && (e.ExtentDelta.Y != 0 || e.ViewportDelta.Y != 0))
             ScheduleScroll();
     }
 
@@ -239,7 +239,7 @@ public partial class DialogMessageList : UserControl
 
     private void OnLayoutUpdated(object? sender, EventArgs e)
     {
-        if (isFollowingTail || navigationEntry is not null)
+        if (navigationEntry is not null)
             ScheduleScroll();
     }
 
@@ -260,10 +260,12 @@ public partial class DialogMessageList : UserControl
             return;
 
         var entry = navigationEntry;
-        if (entry is null && dialogEntriesListBox.ItemCount > 0)
-            entry = dialogEntriesListBox.Items[^1] as DialogEntryViewModel;
+
         if (entry is null)
+        {
+            scrollViewer.ScrollToEnd();
             return;
+        }
 
         var container = ContainerFromItem(entry);
 

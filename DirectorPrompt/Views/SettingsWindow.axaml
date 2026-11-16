@@ -41,8 +41,7 @@
             <components:PathComboBox x:Name="RemoteNavComboBox"
                                      Margin="12,8"
                                      HorizontalAlignment="Stretch"
-                                     SelectionChanged="OnRemoteNavSelectionChanged"
-                                     SelectedIndex="0">
+                                     SelectedIndex="{Binding #NavList.SelectedIndex, Mode=TwoWay}">
                 <ComboBoxItem Content="{Binding [Settings.Provider.Title], Source={x:Static loc:Loc.Instance}}" />
                 <ComboBoxItem Content="{Binding [Settings.Model.Title], Source={x:Static loc:Loc.Instance}}" />
                 <ComboBoxItem Content="{Binding [Settings.Prompt.Title], Source={x:Static loc:Loc.Instance}}" />
@@ -63,65 +62,64 @@
                      Background="{DynamicResource ControlFillColorTransparentBrush}"
                      BorderThickness="0"
                      Padding="4"
-                     SelectionChanged="OnNavSelectionChanged"
                      SelectedIndex="0">
-                <ListBoxItem Tag="providers" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Cloud" />
                         <TextBlock Text="{Binding [Settings.Provider.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="models" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="People" />
                         <TextBlock Text="{Binding [Settings.Model.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="prompts" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Document" />
                         <TextBlock Text="{Binding [Settings.Prompt.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="tasks" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Bullets" />
                         <TextBlock Text="{Binding [Settings.Task.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="mcp" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Globe" />
                         <TextBlock Text="{Binding [Settings.MCP.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="embedding" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Library" />
                         <TextBlock Text="{Binding [Settings.Embedding.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="memory" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="SaveLocal" />
                         <TextBlock Text="{Binding [Memory.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="retrieval" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Find" />
                         <TextBlock Text="{Binding [Knowledge.Retrieval.Title], Source={x:Static loc:Loc.Instance}}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem Tag="others" Padding="12,10">
+                <ListBoxItem Padding="12,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fa:FASymbolIcon Symbol="Setting" />
                         <TextBlock Text="{Binding [Settings.Others.Title], Source={x:Static loc:Loc.Instance}}"
@@ -134,17 +132,20 @@
                     BorderBrush="{DynamicResource ControlElevationBorderBrush}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Padding="24,12,24,16">
-                    <Grid>
-                        <settings:ProvidersSettingsView x:Name="ProvidersPanel" IsVisible="True" />
-                        <settings:ModelsSettingsView x:Name="ModelsPanel" IsVisible="False" />
-                        <settings:PromptsSettingsView x:Name="PromptsPanel" IsVisible="False" />
-                        <settings:TasksSettingsView x:Name="TasksPanel" IsVisible="False" />
-                        <settings:MCPSettingsView x:Name="MCPPanel" IsVisible="False" />
-                        <settings:EmbeddingSettingsView x:Name="EmbeddingPanel" IsVisible="False" />
-                        <settings:MemorySettingsView x:Name="MemoryPanel" IsVisible="False" />
-                        <settings:RetrievalSettingsView x:Name="RetrievalPanel" IsVisible="False" />
-                        <settings:OthersSettingsView x:Name="OthersPanel" IsVisible="False" />
-                    </Grid>
+                    <Carousel SelectedIndex="{Binding #NavList.SelectedIndex, Mode=TwoWay}"
+                              PageTransition="{x:Null}"
+                              IsSwipeEnabled="False"
+                              IsTextSearchEnabled="False">
+                        <settings:ProvidersSettingsView />
+                        <settings:ModelsSettingsView />
+                        <settings:PromptsSettingsView />
+                        <settings:TasksSettingsView />
+                        <settings:MCPSettingsView />
+                        <settings:EmbeddingSettingsView />
+                        <settings:MemorySettingsView />
+                        <settings:RetrievalSettingsView />
+                        <settings:OthersSettingsView />
+                    </Carousel>
                 </ScrollViewer>
             </Border>
         </DockPanel>

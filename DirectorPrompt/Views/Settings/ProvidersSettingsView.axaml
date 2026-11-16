@@ -29,7 +29,7 @@
         <ItemsControl ItemsSource="{Binding Providers}" Margin="0,8,0,0">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Expander Margin="0,0,0,8" IsExpanded="True">
+                    <Expander Margin="0,0,0,8" IsExpanded="False">
                         <Expander.Header>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal">

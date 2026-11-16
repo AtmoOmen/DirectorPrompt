@@ -22,7 +22,7 @@
         <ItemsControl ItemsSource="{Binding AgentTasks}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Expander Margin="0,0,0,8" IsExpanded="True">
+                    <Expander Margin="0,0,0,8" IsExpanded="False">
                         <Expander.Header>
                             <StackPanel Orientation="Horizontal" Spacing="10"
                                         VerticalAlignment="Center">
@@ -40,7 +40,7 @@
                                            Text="{Binding [Settings.Task.Model], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center" />
                                 <components:SearchableComboBox Grid.Column="1"
-                                                               ItemsSource="{Binding DataContext.Models, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               ItemsSource="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).Models, FallbackValue={x:Null}}"
                                                                DisplayMemberPath="DisplayName"
                                                                SelectedValuePath="ID"
                                                                SelectedValue="{Binding ModelConfigID}" />
@@ -51,12 +51,12 @@
                                            Text="{Binding [Settings.Task.Prompt], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center" />
                                 <components:SearchableComboBox Grid.Column="1"
-                                                               ItemsSource="{Binding DataContext.Prompts, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               ItemsSource="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).Prompts, FallbackValue={x:Null}}"
                                                                DisplayMemberPath="DisplayName"
                                                                SelectedValuePath="ID"
                                                                SelectedValue="{Binding PromptID}" />
                                 <Button Grid.Column="2"
-                                        Command="{Binding DataContext.ClearTaskPromptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ClearTaskPromptCommand, FallbackValue={x:Null}}"
                                         CommandParameter="{Binding}"
                                         Padding="8"
                                         Margin="8,0,0,0"

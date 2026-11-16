@@ -140,6 +140,8 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
             if (field != value)
             {
                 field = value;
+                if (!value)
+                    IsActivitiesExpanded = false;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsStreaming)));
             }
         }

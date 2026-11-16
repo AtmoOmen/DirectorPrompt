@@ -7,6 +7,12 @@
     <Application.Styles>
         <fa:FluentAvaloniaTheme PreferSystemTheme="False" />
         <StyleInclude Source="avares://LiveMarkdown.Avalonia/Styles.axaml" />
+        <Style Selector="Expander">
+            <Setter Property="ContentTransition" Value="{x:Null}" />
+        </Style>
+        <Style Selector="Expander:not(:expanded) /template/ Border#ExpanderContent">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
     </Application.Styles>
     <Application.Resources>
         <ResourceDictionary>

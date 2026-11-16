@@ -106,35 +106,39 @@
                 Margin="0,4,0,0"
                 FontSize="12"
                 Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-                <ItemsControl ItemsSource="{Binding Activities}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="vm:NarrationActivityViewModel">
-                            <Border Margin="0,3" Padding="8,4" CornerRadius="4"
-                                    Background="{DynamicResource ControlFillColorSecondaryBrush}">
-                                <StackPanel>
-                                    <ProgressBar IsIndeterminate="True" Height="2"
-                                                 IsVisible="{Binding IsRunning}" />
-                                    <Expander Header="{Binding Header}" HorizontalContentAlignment="Stretch"
-                                              IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
-                                        <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
-                                            <StackPanel Spacing="8">
-                                                <Border Padding="8" CornerRadius="4"
-                                                        Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                                        IsVisible="{Binding HasArguments}">
-                                                    <TextBlock Text="{Binding Arguments}" TextWrapping="Wrap"
-                                                               FontSize="12" />
-                                                </Border>
-                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
-                                                           Classes.tool-error="{Binding HasError}"
-                                                           FontSize="12" Margin="0,4" />
-                                            </StackPanel>
-                                        </ScrollViewer>
-                                    </Expander>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <ScrollViewer MaxHeight="360" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Activities}"
+                                  IsVisible="{Binding IsActivitiesExpanded}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:NarrationActivityViewModel">
+                                <Border Margin="0,3" Padding="8,4" CornerRadius="4"
+                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                    <StackPanel>
+                                        <ProgressBar IsIndeterminate="True" Height="2"
+                                                     IsVisible="{Binding IsRunning}" />
+                                        <Expander Header="{Binding Header}" HorizontalContentAlignment="Stretch"
+                                                  IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
+                                            <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled"
+                                                          IsVisible="{Binding IsExpanded}">
+                                                <StackPanel Spacing="8">
+                                                    <Border Padding="8" CornerRadius="4"
+                                                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                            IsVisible="{Binding HasArguments}">
+                                                        <TextBlock Text="{Binding Arguments}" TextWrapping="Wrap"
+                                                                   FontSize="12" />
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                                               Classes.tool-error="{Binding HasError}"
+                                                               FontSize="12" Margin="0,4" />
+                                                </StackPanel>
+                                            </ScrollViewer>
+                                        </Expander>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Expander>
 
             <!-- 内容区域: 四种状态重叠, 同一时刻只显示一个 -->

@@ -22,6 +22,15 @@ public partial class DirectiveInputControl : UserControl
     public static readonly StyledProperty<bool> IsProcessingProperty =
         AvaloniaProperty.Register<DirectiveInputControl, bool>(nameof(IsProcessing));
 
+    public static readonly StyledProperty<Control?> FooterContentProperty =
+        AvaloniaProperty.Register<DirectiveInputControl, Control?>(nameof(FooterContent));
+
+    public Control? FooterContent
+    {
+        get => GetValue(FooterContentProperty);
+        set => SetValue(FooterContentProperty, value);
+    }
+
     public DirectiveInputViewModel? DirectiveInput
     {
         get => GetValue(DirectiveInputProperty);

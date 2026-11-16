@@ -64,14 +64,34 @@ public sealed class NarrationActivityViewModel
 
     public void Update(NarrationActivity value)
     {
+        var previous = Activity;
         Activity = value;
-        Content = value.Kind == NarrationActivityKind.Tool ?
-                      FormatJSON(value.Content) :
-                      value.Content;
-        Arguments = value.Arguments is { } arguments ?
-                        FormatJSON(arguments) :
-                        null;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+
+        if (previous.Content != value.Content)
+        {
+            Content = value.Kind == NarrationActivityKind.Tool ?
+                          FormatJSON(value.Content) :
+                          value.Content;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Content)));
+        }
+
+        if (previous.Arguments != value.Arguments)
+        {
+            Arguments = value.Arguments is { } arguments ?
+                            FormatJSON(arguments) :
+                            null;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Arguments)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasArguments)));
+        }
+
+        if (previous.Status != value.Status)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRunning)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasError)));
+        }
+
+        if (previous.Status != value.Status || previous.Turn != value.Turn || previous.Title != value.Title)
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Header)));
     }
 
     private static string FormatJSON(string value)

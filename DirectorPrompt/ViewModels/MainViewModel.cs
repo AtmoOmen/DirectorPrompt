@@ -90,6 +90,7 @@ public sealed partial class MainViewModel : ObservableObject
         this.userSettingsStore     = userSettingsStore;
         this.windowService         = windowService;
         this.filePickerService     = filePickerService;
+        NarrationModels            = [.. userSettings.Orchestrator.Models];
         LanSharingService          = lanSharingService;
         this.projectContentService = projectContentService;
         if (projectContentService is not null)
@@ -163,6 +164,36 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<Session> Sessions { get; } = [];
 
     public ObservableCollection<PipelineStageViewModel> PipelineStages { get; } = [];
+
+    public IReadOnlyList<ModelConfig> NarrationModels { get; private set; }
+
+    public string? NarrationModelID
+    {
+        get => userSettings.Orchestrator.AgentTasks.FirstOrDefault(task => task.TaskType == AgentTaskType.Narrator)?.ModelConfigID;
+        set
+        {
+            var task = userSettings.Orchestrator.AgentTasks.FirstOrDefault(task => task.TaskType == AgentTaskType.Narrator);
+            if (task is null || value is null || task.ModelConfigID == value)
+                return;
+
+            task.ModelConfigID = value;
+            OnPropertyChanged();
+            _ = SaveNarrationModelAsync();
+        }
+    }
+
+    private async Task SaveNarrationModelAsync()
+    {
+        try
+        {
+            await userSettingsStore.SaveAsync(userSettings);
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, "保存叙事任务模型失败");
+            StatusMessage = Loc.Get("Settings.SaveFailed", exception.Message);
+        }
+    }
 
     private void OnProjectContentChanged
     (
@@ -634,6 +665,9 @@ public sealed partial class MainViewModel : ObservableObject
     {
         Log.Information("打开设置窗口");
         await windowService.ShowSettingsAsync();
+        NarrationModels = [.. userSettings.Orchestrator.Models];
+        OnPropertyChanged(nameof(NarrationModels));
+        OnPropertyChanged(nameof(NarrationModelID));
     }
 
     [RelayCommand]
@@ -829,6 +863,12 @@ public sealed partial class MainViewModel : ObservableObject
                         if (CurrentSession?.ID == sessionID)
                         {
                             UpdatePipelineStage(update.Stage, update.Status, update.Detail);
+
+                            if (update.Stage == PipelineStageKind.Generation && update.Status != PipelineStageStatus.Running)
+                            {
+                                FlushStreamingUpdate();
+                                streamingEntry.IsActivitiesExpanded = false;
+                            }
 
                             Log.Debug
                             (
