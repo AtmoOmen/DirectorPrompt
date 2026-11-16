@@ -75,7 +75,7 @@ public sealed class StoryReader
     )
     {
         if (roundID < 0 || roundID >= context.RoundID)
-            throw new ArgumentException("只能读取当前创作轮次之前的故事，使用 read_story 查看本轮草稿。");
+            throw new ArgumentException("只能读取当前创作轮次之前的故事，本轮草稿请依据上下文中的写入与修改记录确认。");
 
         if (roundID == 0)
         {
