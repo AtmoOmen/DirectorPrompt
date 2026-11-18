@@ -153,9 +153,7 @@ public sealed class RetrievalStage
 
             foreach (var attr in snapshot.GlobalAttributes)
             {
-                var value = valueMap.TryGetValue(attr.ID, out var sv) ?
-                                sv :
-                                null;
+                var value = valueMap.GetValueOrDefault(attr.ID);
                 sb.AppendLine($"- {attr.DisplayName} ({attr.Name}): {value?.Value ?? "未设置"}");
             }
 

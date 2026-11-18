@@ -22,9 +22,9 @@ public sealed class NarrativeDraft
 
     public IReadOnlyList<AIFunction> CreateTools() =>
     [
-        AIFunctionFactory.Create(Append, "append_story", "向本轮草稿追加当前局部叙事单元的一段或多段新增 Markdown 正文，段落之间自动插入空行。首次直接承接历史结尾创作新内容，不复制或恢复上一轮故事；后续依据本轮草稿逐步续写。返回新版本与本轮计数。"),
-        AIFunctionFactory.Create(Write,  "write_story",  "需要全面重构时重写本轮新增 Markdown 正文，不是重写或合并整篇历史故事。依据上下文中的草稿写入与修改记录决定重构；不得将此前轮次的正文复制进来。初次创作优先使用 append_story 分段推进。"),
-        AIFunctionFactory.Create(Edit,   "edit_story",   "精确替换草稿中唯一匹配的原文。可替换多段；replacement 为空时删除匹配内容。匹配不唯一时需要提供更多上下文。"),
+        AIFunctionFactory.Create(Append, "append_story", "向本轮草稿追加一段或多段 Markdown 正文，段落间自动插入空行。首次直接承接历史结尾创作，不复制上一轮正文。返回新版本与本轮计数。"),
+        AIFunctionFactory.Create(Write,  "write_story",  "需要全面重构时重写本轮新增 Markdown 正文，按段落数组传入，段落间自动插入空行。不是重写或合并整篇历史故事。初次创作优先使用 append_story。"),
+        AIFunctionFactory.Create(Edit,   "edit_story",   "精确替换草稿中唯一匹配的原文。replacementParagraphs 按顺序组成替换正文，段落间自动插入空行；空数组表示删除。匹配不唯一时需要提供更多上下文。"),
         AIFunctionFactory.Create(Count,  "count_story",  "统计本轮草稿的 Unicode 字符数、非空白字符数、段落数与行数，不改变正文。"),
         AIFunctionFactory.Create
         (
@@ -51,7 +51,11 @@ public sealed class NarrativeDraft
         if (CheckRevision(expectedRevision) is { } error)
             return error;
 
-        if (paragraphs is null || paragraphs.Length == 0 || paragraphs.Any(string.IsNullOrWhiteSpace))
+        if (paragraphs is null
+            ||
+            paragraphs.Length == 0
+            ||
+            paragraphs.Any(string.IsNullOrWhiteSpace))
             return ToolResult.Error("段落不能为空。");
 
         var appended = string.Join("\n\n", paragraphs.Select(paragraph => paragraph.Trim('\r', '\n')));
@@ -65,13 +69,20 @@ public sealed class NarrativeDraft
 
     private string Write
     (
-        string markdown,
-        int    expectedRevision
+        [Description("要写入的 Markdown 段落，按呈现顺序排列。")]
+        string[]? paragraphs,
+        int       expectedRevision
     )
     {
         if (CheckRevision(expectedRevision) is { } error)
             return error;
 
+        if (paragraphs is null
+            ||
+            paragraphs.Length == 0)
+            return ToolResult.Error("正文不能为空。");
+
+        var markdown = string.Join("\n\n", paragraphs);
         return string.IsNullOrWhiteSpace(markdown) ?
                    ToolResult.Error("正文不能为空。") :
                    Change(markdown);
@@ -79,13 +90,17 @@ public sealed class NarrativeDraft
 
     private string Edit
     (
-        string oldText,
-        string replacement,
-        int    expectedRevision
+        [Description("待替换原文的段落，按顺序排列。")]
+        string[]? oldParagraphs,
+        [Description("替换正文的段落，按顺序排列；空数组表示删除。")]
+        string[]? replacementParagraphs,
+        int       expectedRevision
     )
     {
         if (CheckRevision(expectedRevision) is { } error)
             return error;
+
+        var oldText = string.Join("\n\n", oldParagraphs ?? []);
 
         if (string.IsNullOrEmpty(oldText))
             return ToolResult.Error("需要提供非空的待替换原文。");
@@ -96,9 +111,11 @@ public sealed class NarrativeDraft
         if (position < 0)
             return ToolResult.Error("没有找到原文，请根据上下文中的写入与修改记录确认当前文本，必要时使用 search_story_text 定位。");
 
-        return Text.IndexOf(oldText, position + 1, StringComparison.Ordinal) >= 0 ?
-                   ToolResult.Error("原文存在多处匹配，请提供包含更多上下文的原文。") :
-                   Change(string.Concat(Text.AsSpan(0, position), replacement, Text.AsSpan(position + oldText.Length)));
+        if (Text.IndexOf(oldText, position + 1, StringComparison.Ordinal) >= 0)
+            return ToolResult.Error("原文存在多处匹配，请提供包含更多上下文的原文。");
+
+        var replacement = string.Join("\n\n", replacementParagraphs ?? []);
+        return Change(string.Concat(Text.AsSpan(0, position), replacement, Text.AsSpan(position + oldText.Length)));
     }
 
     private string Count()

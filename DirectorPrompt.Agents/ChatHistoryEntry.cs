@@ -6,6 +6,5 @@ public record ChatHistoryEntry
 (
     long                        RoundID,
     string                      DirectorInput,
-    string                      NarrativeOutput,
-    IReadOnlyList<ChatMessage>? Messages = null
+    string                      NarrativeOutput
 );
