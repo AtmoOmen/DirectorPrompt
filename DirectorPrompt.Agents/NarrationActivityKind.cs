@@ -4,5 +4,6 @@ public enum NarrationActivityKind
 {
     Reasoning,
     Message,
-    Tool
+    Tool,
+    Retrieval
 }

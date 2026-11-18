@@ -30,21 +30,23 @@ public sealed class NarrationActivityViewModel
 
     public bool HasArguments => Activity.Arguments is not null;
 
-    public string Header => Loc.Get
-    (
-        "Dialog.AgentActivity",
-        Activity.Turn,
-        Activity.Title,
-        Loc.Get
-        (
-            Activity.Status switch
-            {
-                PipelineStageStatus.Running  => "Pipeline.Status.Running",
-                PipelineStageStatus.Complete => "Pipeline.Status.Complete",
-                _                            => "Pipeline.Status.Failed"
-            }
-        )
-    );
+    public string Header => Activity.Kind == NarrationActivityKind.Retrieval ?
+                                Loc.Get(Activity.Title) :
+                                Loc.Get
+                                (
+                                    "Dialog.AgentActivity",
+                                    Activity.Turn,
+                                    Activity.Title,
+                                    Loc.Get
+                                    (
+                                        Activity.Status switch
+                                        {
+                                            PipelineStageStatus.Running  => "Pipeline.Status.Running",
+                                            PipelineStageStatus.Complete => "Pipeline.Status.Complete",
+                                            _                            => "Pipeline.Status.Failed"
+                                        }
+                                    )
+                                );
 
     public bool IsRunning => Activity.Status == PipelineStageStatus.Running;
 

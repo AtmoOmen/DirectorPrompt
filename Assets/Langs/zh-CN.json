@@ -69,6 +69,8 @@
     "Dialog.ThinkingProcess": "思考过程",
     "Dialog.CreationProcess": "创作过程",
     "Dialog.AgentActivity": "第 {0} 轮 · {1} · {2}",
+    "Dialog.RecalledKnowledge": "召回的知识",
+    "Dialog.RecalledMemory": "召回的记忆",
     "Directive.Panel.RemainingRounds": "剩余 {0} 轮",
     "Directive.Panel.Title": "叙事约束",
     "Directive.Input.TTLUnit": "轮",

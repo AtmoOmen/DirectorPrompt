@@ -1,5 +1,6 @@
 using System.Text;
 using DirectorPrompt.Agents.Retrieval;
+using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
@@ -50,6 +51,29 @@ public sealed class RetrievalStage
         context.KnowledgeContext = FormatKnowledgeContext(await knowledgeTask);
         context.MemoryContext    = FormatMemoryContext(await memoryTask);
         context.SystemInjection  = BuildSystemInjection(snapshot);
+
+        foreach (var (title, content) in new[]
+                 {
+                     ("Dialog.RecalledKnowledge", context.KnowledgeContext),
+                     ("Dialog.RecalledMemory", context.MemoryContext)
+                 })
+        {
+            if (string.IsNullOrEmpty(content))
+                continue;
+
+            var activity = new NarrationActivity
+            (
+                context.NarrationActivities.Count,
+                0,
+                NarrationActivityKind.Retrieval,
+                title,
+                content,
+                PipelineStageStatus.Complete
+            );
+
+            context.NarrationActivities.Add(activity);
+            context.OnStreamingUpdate?.Invoke(new NarrationUpdate(Activity: activity));
+        }
 
         Log.Information
         (
