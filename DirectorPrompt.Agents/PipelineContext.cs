@@ -1,6 +1,5 @@
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Models;
-using Microsoft.Extensions.AI;
 
 namespace DirectorPrompt.Agents;
 
@@ -30,11 +29,13 @@ public sealed class PipelineContext
 
     public List<NarrationActivity> NarrationActivities { get; } = [];
 
-    public IReadOnlyList<ChatMessage> NarrationMessages { get; set; } = [];
-
     public IReadOnlyDictionary<string, string> NarrativeIntents { get; set; } = new Dictionary<string, string>();
 
     public string? PreviousSceneSummary { get; set; }
+
+    public string? ProgressSummary { get; set; }
+
+    public long ProgressSummaryRoundID { get; set; }
 
     public Action<NarrationUpdate>? OnStreamingUpdate { get; set; }
 

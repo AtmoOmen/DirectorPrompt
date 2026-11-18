@@ -198,14 +198,14 @@ public sealed class EventRepository
         long              sceneID,
         long              beforeRoundID,
         int               maxRounds,
-        bool              includeNarrationTrace = false,
-        CancellationToken cancellationToken     = default
+        long              afterRoundID      = 0,
+        CancellationToken cancellationToken = default
     ) =>
         scheduler.ExecuteReadAsync<IReadOnlyList<PlaythroughEvent>>
         (
             async (connection, token) =>
             {
-                var roundLimit = Math.Clamp(maxRounds, 1, 200);
+                var roundLimit = Math.Clamp(maxRounds, 1, 500);
                 var rows = await connection.QueryAsync<PlaythroughEvent>
                            (
                                new CommandDefinition
@@ -217,6 +217,7 @@ public sealed class EventRepository
                                        FROM playthrough_events
                                        WHERE session_id = @sessionID
                                          AND scene_id = @sceneID
+                                         AND round_id > @afterRoundID
                                          AND round_id < @beforeRoundID
                                          AND type IN ('DirectorInput', 'NarrativeOutput')
                                        ORDER BY round_id DESC
@@ -234,15 +235,14 @@ public sealed class EventRepository
                                        JOIN selected_rounds sr ON sr.round_id = pe.round_id
                                        WHERE pe.session_id = @sessionID
                                          AND pe.scene_id = @sceneID
-                                         AND (pe.type IN ('DirectorInput', 'NarrativeOutput')
-                                              OR (@includeNarrationTrace AND pe.type = 'NarrationTrace'))
+                                         AND pe.type IN ('DirectorInput', 'NarrativeOutput')
                                    )
                                    SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
                                    FROM ranked_events
                                    WHERE row_number = 1
                                    ORDER BY round_id, id
                                    """,
-                                   new { sessionID, sceneID, beforeRoundID, roundLimit, includeNarrationTrace },
+                                   new { sessionID, sceneID, afterRoundID, beforeRoundID, roundLimit },
                                    cancellationToken: token
                                )
                            );
@@ -279,86 +279,6 @@ public sealed class EventRepository
                         cancellationToken: token
                     )
                 ),
-            cancellationToken
-        );
-
-    public Task<IReadOnlyList<PlaythroughEvent>> GetSceneSummaryChunkAsync
-    (
-        long              sessionID,
-        long              sceneID,
-        long              afterRoundID,
-        long              beforeRoundID,
-        int               retainedRecentRounds,
-        int               chunkSize,
-        CancellationToken cancellationToken = default
-    ) =>
-        scheduler.ExecuteReadAsync<IReadOnlyList<PlaythroughEvent>>
-        (
-            async (connection, token) =>
-            {
-                var rows = await connection.QueryAsync<PlaythroughEvent>
-                           (
-                               new CommandDefinition
-                               (
-                                   """
-                                   WITH uncovered_rounds AS
-                                   (
-                                       SELECT DISTINCT round_id
-                                       FROM playthrough_events
-                                       WHERE session_id = @sessionID
-                                         AND scene_id = @sceneID
-                                         AND round_id > @afterRoundID
-                                         AND round_id < @beforeRoundID
-                                         AND type IN ('DirectorInput', 'NarrativeOutput')
-                                   ),
-                                   summarizable_rounds AS
-                                   (
-                                       SELECT round_id
-                                       FROM uncovered_rounds
-                                       ORDER BY round_id DESC
-                                       LIMIT -1 OFFSET @retainedRecentRounds
-                                   ),
-                                   selected_rounds AS
-                                   (
-                                       SELECT round_id
-                                       FROM summarizable_rounds
-                                       ORDER BY round_id
-                                       LIMIT @chunkSize
-                                   ),
-                                   ranked_events AS
-                                   (
-                                       SELECT pe.*,
-                                              ROW_NUMBER() OVER
-                                              (
-                                                  PARTITION BY pe.round_id, pe.type
-                                                  ORDER BY pe.id DESC
-                                              ) AS row_number
-                                       FROM playthrough_events pe
-                                       JOIN selected_rounds sr ON sr.round_id = pe.round_id
-                                       WHERE pe.session_id = @sessionID
-                                         AND pe.scene_id = @sceneID
-                                         AND pe.type IN ('DirectorInput', 'NarrativeOutput')
-                                   )
-                                   SELECT id, project_id, session_id, round_id, scene_id, type, data, created_at
-                                   FROM ranked_events
-                                   WHERE row_number = 1
-                                   ORDER BY round_id, id
-                                   """,
-                                   new
-                                   {
-                                       sessionID,
-                                       sceneID,
-                                       afterRoundID,
-                                       beforeRoundID,
-                                       retainedRecentRounds = Math.Clamp(retainedRecentRounds, 1, 200),
-                                       chunkSize            = Math.Clamp(chunkSize,            1, 100)
-                                   },
-                                   cancellationToken: token
-                               )
-                           );
-
-                return [.. rows];
-            },
             cancellationToken
         );
 
@@ -419,14 +339,7 @@ public sealed class EventRepository
                 (
                     new CommandDefinition
                     (
-                        """
-                        UPDATE playthrough_events
-                        SET data = json_remove(data, '$.messages')
-                        WHERE type = 'NarrationTrace'
-                          AND session_id = (SELECT session_id FROM playthrough_events WHERE id = @eventID)
-                          AND round_id >= (SELECT round_id FROM playthrough_events WHERE id = @eventID);
-                        UPDATE playthrough_events SET data = @data WHERE id = @eventID;
-                        """,
+                        "UPDATE playthrough_events SET data = @data WHERE id = @eventID",
                         new { eventID, data },
                         cancellationToken: token
                     )

@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using DirectorPrompt.Domain;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -18,7 +17,7 @@ public sealed class HistoryBuilder
     public async Task<IReadOnlyList<ChatHistoryEntry>> BuildAsync
     (
         long              sessionID,
-        long              sceneID,
+        Scene             scene,
         long              currentRoundID,
         CancellationToken cancellationToken = default
     )
@@ -27,9 +26,10 @@ public sealed class HistoryBuilder
 
         Log.Debug
         (
-            "开始构建叙事历史: 对话={SessionID}, 场景={SceneID}, 当前轮次={CurrentRoundID}, 最大轮次={MaxRounds}, Token预算={TokenBudget}",
+            "开始构建叙事历史: 对话={SessionID}, 场景={SceneID}, 进展摘要轮次={ProgressSummaryRoundID}, 当前轮次={CurrentRoundID}, 最大轮次={MaxRounds}, Token预算={TokenBudget}",
             sessionID,
-            sceneID,
+            scene.ID,
+            scene.ProgressSummaryRoundID,
             currentRoundID,
             config.MaxRounds,
             config.TokenBudget
@@ -38,12 +38,35 @@ public sealed class HistoryBuilder
         var events = await eventRepository.GetRecentBySceneAsync
                      (
                          sessionID,
-                         sceneID,
+                         scene.ID,
                          currentRoundID,
-                         config.MaxRounds,
-                         cancellationToken: cancellationToken
+                         Math.Max(config.MaxRounds * 2, 200),
+                         scene.ProgressSummaryRoundID,
+                         cancellationToken
                      );
 
+        var history    = BuildEntries(events, currentRoundID);
+        var usedTokens = history.Sum(EstimateTokens);
+
+        Log.Information
+        (
+            "叙事历史构建完成: 对话={SessionID}, 场景={SceneID}, 起始轮次={AfterRoundID}, 已选轮次={SelectedRoundCount}, 估算Token={UsedTokens}",
+            sessionID,
+            scene.ID,
+            scene.ProgressSummaryRoundID,
+            history.Count,
+            usedTokens
+        );
+
+        return history;
+    }
+
+    public static IReadOnlyList<ChatHistoryEntry> BuildEntries
+    (
+        IReadOnlyList<PlaythroughEvent> events,
+        long                            currentRoundID
+    )
+    {
         var directorEvents = events
                              .Where(e => e.Type == EventType.DirectorInput)
                              .GroupBy(e => e.RoundID)
@@ -62,48 +85,29 @@ public sealed class HistoryBuilder
                                      .ToList();
 
         var history = new List<ChatHistoryEntry>();
+
         foreach (var roundID in roundIDs)
         {
             var directorEntry  = directorEvents.GetValueOrDefault(roundID);
             var narrativeEntry = narrativeEvents.GetValueOrDefault(roundID);
 
-            if (directorEntry is null || narrativeEntry is null)
+            if (directorEntry is null
+                ||
+                narrativeEntry is null)
+            {
                 continue;
+            }
 
             var directorInput = ParseDirectorInput(directorEntry.Data);
             var narrativeText = narrativeEntry.Data;
+
             if (!string.IsNullOrWhiteSpace(narrativeText))
+            {
                 history.Add(new ChatHistoryEntry(roundID, directorInput, narrativeText));
+            }
         }
 
-        var selected   = new List<ChatHistoryEntry>();
-        var usedTokens = 0;
-
-        for (var index = history.Count - 1; index >= 0; index--)
-        {
-            var entry = history[index];
-            var tokens = EstimateTokens(entry.DirectorInput) + EstimateTokens(entry.NarrativeOutput);
-
-            if (selected.Count > 0 && usedTokens + tokens > config.TokenBudget)
-                break;
-
-            selected.Add(entry);
-            usedTokens += tokens;
-        }
-
-        selected.Reverse();
-
-        Log.Information
-        (
-            "叙事历史构建完成: 对话={SessionID}, 场景={SceneID}, 候选轮次={CandidateRoundCount}, 已选轮次={SelectedRoundCount}, 估算Token={UsedTokens}",
-            sessionID,
-            sceneID,
-            history.Count,
-            selected.Count,
-            usedTokens
-        );
-
-        return selected;
+        return history;
     }
 
     public static string BuildSceneHistoryText(IReadOnlyList<PlaythroughEvent> events)
@@ -118,6 +122,19 @@ public sealed class HistoryBuilder
                 EventType.NarrativeOutput => sb.AppendLine($"[叙事输出] {evt.Data}"),
                 _                         => sb
             };
+        }
+
+        return sb.ToString();
+    }
+
+    public static string BuildSceneHistoryText(IReadOnlyList<ChatHistoryEntry> entries)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var entry in entries)
+        {
+            sb.AppendLine($"[导演指令] {entry.DirectorInput}");
+            sb.AppendLine($"[叙事输出] {entry.NarrativeOutput}");
         }
 
         return sb.ToString();
@@ -145,9 +162,13 @@ public sealed class HistoryBuilder
         catch (JsonException exception)
         {
             Log.Warning(exception, "解析导演指令历史失败, 将使用原始数据: 数据长度={DataLength}", json.Length);
+
             return json;
         }
     }
+
+    public static int EstimateTokens(ChatHistoryEntry entry) =>
+        EstimateTokens(entry.DirectorInput) + EstimateTokens(entry.NarrativeOutput);
 
     private static int EstimateTokens(string text) =>
         (Encoding.UTF8.GetByteCount(text) + 3) / 4;

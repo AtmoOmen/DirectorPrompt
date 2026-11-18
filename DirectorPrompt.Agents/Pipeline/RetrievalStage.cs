@@ -135,13 +135,6 @@ public sealed class RetrievalStage
             sb.AppendLine("## 场景信息");
             sb.AppendLine($"时间标签: {snapshot.Scene.TimeLabel}");
             sb.AppendLine($"状态: {snapshot.Scene.Status}");
-
-            if (!string.IsNullOrWhiteSpace(snapshot.Scene.ProgressSummary))
-            {
-                sb.AppendLine("进展摘要:");
-                sb.AppendLine(snapshot.Scene.ProgressSummary);
-            }
-
             sb.AppendLine();
         }
 

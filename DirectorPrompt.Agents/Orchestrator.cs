@@ -193,7 +193,7 @@ public sealed class Orchestrator
 
         var timelinePosition = activeScene.TimelinePosition;
 
-        var history = await historyBuilder.BuildAsync(sessionID, activeScene.ID, roundID, cancellationToken);
+        var history = await historyBuilder.BuildAsync(sessionID, activeScene, roundID, cancellationToken);
 
         Log.Information("历史叙事注入: {HistoryCount} 轮", history.Count);
 
@@ -210,6 +210,8 @@ public sealed class Orchestrator
             MemoryConfig            = orchestratorConfig.MemoryConfig,
             History                 = history,
             PreviousSceneSummary    = previousSceneSummary,
+            ProgressSummary         = activeScene.ProgressSummary,
+            ProgressSummaryRoundID  = activeScene.ProgressSummaryRoundID,
             OnStreamingUpdate       = onStreamingUpdate,
             OnStageUpdate           = onStageUpdate,
             PhaseActivatedEntryIDs  = (phaseResult as PhaseEvaluationResult)?.ActivatedEntryIDs ?? []
@@ -483,8 +485,7 @@ public sealed class Orchestrator
                 RoundID   = context.RoundID,
                 SceneID   = context.CurrentSceneID,
                 Type      = EventType.NarrationTrace,
-                Data = JsonSerializer.Serialize
-                    (new NarrationTrace(context.NarrationActivities, context.NarrativeIntents, context.NarrationMessages), JsonOptions.Compact),
+                Data      = JsonSerializer.Serialize(new NarrationTrace(context.NarrationActivities, context.NarrativeIntents), JsonOptions.Compact),
                 CreatedAt = now
             }
         );

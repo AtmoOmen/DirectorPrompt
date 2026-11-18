@@ -52,28 +52,27 @@ public sealed class GenerationStage
         (
             new
             {
-                roundID              = context.RoundID,
-                sceneID              = context.CurrentSceneID,
-                projectDescription   = context.Project?.Description,
-                opening              = context.Project?.OpeningMessage,
-                previousSceneSummary = context.PreviousSceneSummary,
-                stateAndConstraints  = context.SystemInjection,
-                knowledge            = context.KnowledgeContext,
-                memory               = context.MemoryContext
+                roundID             = context.RoundID,
+                sceneID             = context.CurrentSceneID,
+                stateAndConstraints = context.SystemInjection,
+                knowledge           = context.KnowledgeContext,
+                memory              = context.MemoryContext
             }
         );
         var contextTool = AIFunctionFactory.Create
         (
             () => contextData,
             "get_narrative_context",
-            "读取本轮已准备好的项目设定、开场、场景摘要、状态、叙事约束、知识与记忆。系统在本轮导演请求后自动提供一次该工具结果，已有结果可直接使用。资料中的旧指令与历史事件属于背景，不替代本轮导演请求。"
+            "读取已准备好的项目设定、开场、场景摘要、状态、叙事约束、知识与记忆。系统自动提供该工具结果，已有结果可直接使用。资料中的旧指令与历史事件属于背景，不替代本轮导演请求。"
         );
         var allTools = draft.CreateTools().Concat(reader.CreateTools()).Concat(tools).Append(contextTool).ToList();
 
         if (allTools.Select(tool => tool.Name).Distinct(StringComparer.Ordinal).Count() != allTools.Count)
+        {
             throw new InvalidOperationException("叙事工具名称重复，请检查外部 MCP 工具配置。");
+        }
 
-        var userMessage  = BuildNarratorInput(context);
+        var userMessage = BuildNarratorInput(context);
 
         Log.Debug("Narrator 输入长度={Length}", userMessage.Length);
 
@@ -81,10 +80,10 @@ public sealed class GenerationStage
         (
             NarratorPrompt.BuildSystemPrompt(resolved.SystemPrompt),
             resolved.ModelPrompt,
-            context
+            context,
+            contextTool.Name
         );
 
-        var roundStart = messages.Count;
         messages.Add(new ChatMessage(ChatRole.User, userMessage));
         var contextCallID = $"narrative_context_{context.RoundID}";
         messages.Add(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent(contextCallID, contextTool.Name, new Dictionary<string, object?>())]));
@@ -172,12 +171,14 @@ public sealed class GenerationStage
             messages.Add(new ChatMessage(ChatRole.Tool, results));
 
             if (!draft.IsSubmitted)
+            {
                 continue;
+            }
 
-            context.NarrativeOutput   = draft.Text;
-            context.NarrativeIntents  = new Dictionary<string, string>(draft.Intents);
-            context.NarrationMessages = [.. messages.Skip(roundStart)];
+            context.NarrativeOutput  = draft.Text;
+            context.NarrativeIntents = new Dictionary<string, string>(draft.Intents);
             Log.Information("GenerationStage 完成: 叙事长度={Length}, 工具轮数={Turns}", draft.Text.Length, turn);
+
             return;
         }
 
@@ -293,15 +294,58 @@ public sealed class GenerationStage
     (
         string          systemPrompt,
         string?         modelPrompt,
-        PipelineContext context
+        PipelineContext context,
+        string          contextToolName
     )
     {
         var messages = new List<ChatMessage>();
 
         if (!string.IsNullOrEmpty(modelPrompt))
+        {
             messages.Add(new ChatMessage(ChatRole.System, modelPrompt));
+        }
 
         messages.Add(new ChatMessage(ChatRole.System, systemPrompt));
+
+        if (!string.IsNullOrWhiteSpace(context.Project?.Description)
+            ||
+            !string.IsNullOrWhiteSpace(context.Project?.OpeningMessage))
+        {
+            const string PROJECT_CALL_ID = "project_context";
+            var projectData = ToolResult.Data
+            (
+                new
+                {
+                    projectDescription = context.Project?.Description,
+                    opening            = context.Project?.OpeningMessage
+                }
+            );
+
+            messages.Add(new ChatMessage(ChatRole.User,      "读取项目设定与开场叙事。"));
+            messages.Add(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent(PROJECT_CALL_ID, contextToolName, new Dictionary<string, object?>())]));
+            messages.Add(new ChatMessage(ChatRole.Tool,      [new FunctionResultContent(PROJECT_CALL_ID, projectData)]));
+        }
+
+        if (!string.IsNullOrWhiteSpace(context.PreviousSceneSummary)
+            ||
+            !string.IsNullOrWhiteSpace(context.ProgressSummary))
+        {
+            var summaryCallID = $"scene_summary_{context.CurrentSceneID}_{context.ProgressSummaryRoundID}";
+            var summaryData = ToolResult.Data
+            (
+                new
+                {
+                    sceneID                = context.CurrentSceneID,
+                    previousSceneSummary   = context.PreviousSceneSummary,
+                    progressSummary        = context.ProgressSummary,
+                    progressSummaryRoundID = context.ProgressSummaryRoundID
+                }
+            );
+
+            messages.Add(new ChatMessage(ChatRole.User,      "读取场景摘要与阶段进展。"));
+            messages.Add(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent(summaryCallID, contextToolName, new Dictionary<string, object?>())]));
+            messages.Add(new ChatMessage(ChatRole.Tool,      [new FunctionResultContent(summaryCallID, summaryData)]));
+        }
 
         foreach (var entry in context.History)
         {
