@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:fa="using:FluentAvalonia.UI.Controls"
              xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
+             xmlns:agents="clr-namespace:DirectorPrompt.Agents;assembly=DirectorPrompt.Agents"
              xmlns:loc="clr-namespace:DirectorPrompt.Localization"
              xmlns:components="clr-namespace:DirectorPrompt.Views.Components"
              mc:Ignorable="d"
@@ -127,7 +128,34 @@
                                                         <TextBlock Text="{Binding Arguments}" TextWrapping="Wrap"
                                                                    FontSize="12" />
                                                     </Border>
+                                                    <ItemsControl ItemsSource="{Binding RecallEntries}"
+                                                                  IsVisible="{Binding HasRecallEntries}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="agents:NarrationRecallEntry">
+                                                                <Border Margin="0,4" Padding="8" CornerRadius="4"
+                                                                        Background="{DynamicResource ControlFillColorDefaultBrush}">
+                                                                    <StackPanel Spacing="4">
+                                                                        <StackPanel Orientation="Horizontal"
+                                                                                Spacing="8">
+                                                                            <TextBlock
+                                                                                Text="{Binding [Dialog.RecallRelevance], Source={x:Static loc:Loc.Instance}}" />
+                                                                            <TextBlock
+                                                                                Text="{Binding Relevance, StringFormat={}{0:P1}}"
+                                                                                FontWeight="SemiBold" />
+                                                                        </StackPanel>
+                                                                        <TextBlock Text="{Binding Remarks}"
+                                                                                TextWrapping="Wrap"
+                                                                                IsVisible="{Binding Remarks, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                                                FontWeight="SemiBold" />
+                                                                        <TextBlock Text="{Binding Content}"
+                                                                                TextWrapping="Wrap" />
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
                                                     <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                                               IsVisible="{Binding !HasRecallEntries}"
                                                                Classes.tool-error="{Binding HasError}"
                                                                FontSize="12" Margin="0,4" />
                                                 </StackPanel>

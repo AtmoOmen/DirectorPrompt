@@ -48,28 +48,42 @@ public sealed class RetrievalStage
 
         await Task.WhenAll(knowledgeTask, memoryTask);
 
-        context.KnowledgeContext = FormatKnowledgeContext(await knowledgeTask);
-        context.MemoryContext    = FormatMemoryContext(await memoryTask);
+        var knowledgeResults = await knowledgeTask;
+        var memoryResults    = await memoryTask;
+
+        context.KnowledgeContext = FormatKnowledgeContext(knowledgeResults);
+        context.MemoryContext    = FormatMemoryContext(memoryResults);
         context.SystemInjection  = BuildSystemInjection(snapshot);
 
-        foreach (var (title, content) in new[]
+        foreach (var recalledActivity in new[]
                  {
-                     ("Dialog.RecalledKnowledge", context.KnowledgeContext),
-                     ("Dialog.RecalledMemory", context.MemoryContext)
+                     new NarrationActivity
+                     (
+                         0,
+                         0,
+                         NarrationActivityKind.Retrieval,
+                         "Dialog.RecalledKnowledge",
+                         context.KnowledgeContext,
+                         PipelineStageStatus.Complete,
+                         RecallEntries: knowledgeResults.Select
+                             (result => new NarrationRecallEntry(result.Content, result.SemanticSimilarity, result.Remarks)).ToArray()
+                     ),
+                     new NarrationActivity
+                     (
+                         0,
+                         0,
+                         NarrationActivityKind.Retrieval,
+                         "Dialog.RecalledMemory",
+                         context.MemoryContext,
+                         PipelineStageStatus.Complete,
+                         RecallEntries: memoryResults.Select(result => new NarrationRecallEntry(result.Content, result.FinalScore)).ToArray()
+                     )
                  })
         {
-            if (string.IsNullOrEmpty(content))
+            if (string.IsNullOrEmpty(recalledActivity.Content))
                 continue;
 
-            var activity = new NarrationActivity
-            (
-                context.NarrationActivities.Count,
-                0,
-                NarrationActivityKind.Retrieval,
-                title,
-                content,
-                PipelineStageStatus.Complete
-            );
+            var activity = recalledActivity with { ID = context.NarrationActivities.Count };
 
             context.NarrationActivities.Add(activity);
             context.OnStreamingUpdate?.Invoke(new NarrationUpdate(Activity: activity));

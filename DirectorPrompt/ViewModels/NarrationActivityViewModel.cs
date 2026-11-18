@@ -30,6 +30,10 @@ public sealed class NarrationActivityViewModel
 
     public bool HasArguments => Activity.Arguments is not null;
 
+    public IReadOnlyList<NarrationRecallEntry> RecallEntries => Activity.RecallEntries ?? [];
+
+    public bool HasRecallEntries => RecallEntries.Count > 0;
+
     public string Header => Activity.Kind == NarrationActivityKind.Retrieval ?
                                 Loc.Get(Activity.Title) :
                                 Loc.Get
@@ -68,6 +72,12 @@ public sealed class NarrationActivityViewModel
     {
         var previous = Activity;
         Activity = value;
+
+        if (!ReferenceEquals(previous.RecallEntries, value.RecallEntries))
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RecallEntries)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasRecallEntries)));
+        }
 
         if (previous.Content != value.Content)
         {
