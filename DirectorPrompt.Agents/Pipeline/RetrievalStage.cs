@@ -38,8 +38,12 @@ public sealed class RetrievalStage
 
         await Task.WhenAll(indexingTask, snapshotTask);
 
-        var snapshot         = await snapshotTask;
-        var query            = BuildRetrievalQuery(context, snapshot);
+        var snapshot = await snapshotTask;
+        var query = string.Join
+        (
+            '\n',
+            context.DirectiveBatch.Directives.Where(item => !item.IsSystem).Select(item => item.Content)
+        );
         var embeddingService = embeddingServiceFactory.Create(toolContext.EmbeddingConfig);
         var queryEmbedding   = await embeddingService.GenerateEmbeddingAsync(query, cancellationToken);
         var queryVector      = EmbeddingConversions.FloatsToBytes(queryEmbedding);
@@ -97,42 +101,6 @@ public sealed class RetrievalStage
             context.SystemInjection?.Length  ?? 0
         );
 
-    }
-
-    private static string BuildRetrievalQuery(PipelineContext context, RoundReadSnapshot snapshot)
-    {
-        var sb = new StringBuilder();
-
-        if (snapshot.Scene is not null)
-        {
-            sb.AppendLine("当前场景:");
-            sb.AppendLine($"时间: {snapshot.Scene.TimeLabel}");
-
-            if (!string.IsNullOrWhiteSpace(snapshot.Scene.ProgressSummary))
-                sb.AppendLine($"进展: {snapshot.Scene.ProgressSummary}");
-            else if (!string.IsNullOrWhiteSpace(snapshot.Scene.Summary))
-                sb.AppendLine($"摘要: {snapshot.Scene.Summary}");
-
-            if (snapshot.SceneCharacters.Count > 0)
-            {
-                sb.AppendLine("在场人物:");
-
-                foreach (var character in snapshot.SceneCharacters)
-                {
-                    var aliases = character.Aliases.Length > 0 ?
-                                      $", 别称: {string.Join("、", character.Aliases)}" :
-                                      string.Empty;
-                    sb.AppendLine($"- {character.Name}{aliases}: {character.Description}");
-                }
-            }
-        }
-
-        sb.AppendLine("导演指令:");
-
-        foreach (var item in context.DirectiveBatch.Directives)
-            sb.AppendLine($"{item.Order}. [{item.Type}] {item.Content}");
-
-        return sb.ToString();
     }
 
     private static string FormatKnowledgeContext(IReadOnlyList<KnowledgeRetrievalResult> results)
