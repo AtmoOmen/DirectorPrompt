@@ -2,7 +2,6 @@ using Dapper;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Data.Sqlite;
-using Serilog;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
@@ -41,7 +40,7 @@ public sealed class ProjectRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -122,7 +121,7 @@ public sealed class ProjectRepository
                     (
                         """
                         DELETE FROM round_changes
-                        WHERE round_id IN (SELECT id FROM rounds WHERE project_id = @id);
+                        WHERE session_id IN (SELECT id FROM sessions WHERE project_id = @id);
 
                         DELETE FROM character_relation_logs
                         WHERE relation_id IN (SELECT id FROM character_relations WHERE project_id = @id);
@@ -174,6 +173,10 @@ public sealed class ProjectRepository
                 await DropVectorTableAsync(connection, transaction, VectorTableManager.GetMemoryTableName(id),    token);
                 await DropVectorTableAsync(connection, transaction, VectorTableManager.GetCharacterTableName(id), token);
                 await transaction.CommitAsync(token);
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition("PRAGMA incremental_vacuum;", cancellationToken: token)
+                );
             },
             cancellationToken: cancellationToken
         );
@@ -186,22 +189,15 @@ public sealed class ProjectRepository
         CancellationToken cancellationToken
     )
     {
-        try
-        {
-            await using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = $"DROP TABLE IF EXISTS \"{tableName}\"";
-            await command.ExecuteNonQueryAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = $"DROP TRIGGER IF EXISTS \"{tableName}_delete\"; DROP TABLE IF EXISTS \"{tableName}\";";
+        await command.ExecuteNonQueryAsync(cancellationToken);
 
-            await using var metaCommand = connection.CreateCommand();
-            metaCommand.Transaction = transaction;
-            metaCommand.CommandText = "DELETE FROM vector_tables WHERE table_name = $tableName";
-            metaCommand.Parameters.AddWithValue("$tableName", tableName);
-            await metaCommand.ExecuteNonQueryAsync(cancellationToken);
-        }
-        catch
-        {
-            Log.Warning("向量表 {Table} 删除失败, 可能 vec0 扩展未加载", tableName);
-        }
+        await using var metaCommand = connection.CreateCommand();
+        metaCommand.Transaction = transaction;
+        metaCommand.CommandText = "DELETE FROM vector_tables WHERE table_name = $tableName";
+        metaCommand.Parameters.AddWithValue("$tableName", tableName);
+        await metaCommand.ExecuteNonQueryAsync(cancellationToken);
     }
 }

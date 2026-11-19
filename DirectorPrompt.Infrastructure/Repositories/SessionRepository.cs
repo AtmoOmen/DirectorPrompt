@@ -1,6 +1,7 @@
 using Dapper;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using Microsoft.Data.Sqlite;
 
 namespace DirectorPrompt.Infrastructure.Repositories;
 
@@ -44,7 +45,7 @@ public sealed class SessionRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -117,14 +118,24 @@ public sealed class SessionRepository
         (
             async (connection, token) =>
             {
-                await using var transaction = await connection.BeginTransactionAsync(token);
+                await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(token);
+                var projectID = await connection.QuerySingleOrDefaultAsync<long?>
+                                (
+                                    new CommandDefinition
+                                    (
+                                        "SELECT project_id FROM sessions WHERE id = @id",
+                                        new { id },
+                                        transaction,
+                                        cancellationToken: token
+                                    )
+                                );
                 await connection.ExecuteAsync
                 (
                     new CommandDefinition
                     (
                         """
                         DELETE FROM round_changes
-                        WHERE round_id IN (SELECT id FROM rounds WHERE scene_id IN (SELECT id FROM scenes WHERE session_id = @id));
+                        WHERE session_id = @id;
 
                         DELETE FROM character_relation_logs
                         WHERE relation_id IN (SELECT id FROM character_relations WHERE session_id = @id);
@@ -159,7 +170,15 @@ public sealed class SessionRepository
                         cancellationToken: token
                     )
                 );
+
+                if (projectID is not null)
+                    await VectorTableManager.CompactAsync(connection, transaction, token, projectID);
+
                 await transaction.CommitAsync(token);
+                await connection.ExecuteAsync
+                (
+                    new CommandDefinition("PRAGMA incremental_vacuum;", cancellationToken: token)
+                );
             },
             cancellationToken: cancellationToken
         );

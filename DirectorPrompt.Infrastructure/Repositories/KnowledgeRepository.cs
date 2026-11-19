@@ -51,7 +51,7 @@ public sealed class KnowledgeRepository
                        )
                    );
 
-        return rows.ToList();
+        return [.. rows];
     }
 
     public Task<IReadOnlyList<KnowledgeEntry>> GetPendingIndexEntriesAsync
@@ -87,7 +87,7 @@ public sealed class KnowledgeRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -111,7 +111,7 @@ public sealed class KnowledgeRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -140,7 +140,7 @@ public sealed class KnowledgeRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -183,7 +183,7 @@ public sealed class KnowledgeRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -257,13 +257,7 @@ public sealed class KnowledgeRepository
 
     public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken: cancellationToken);
-
-        var projectID = await connection.QueryFirstOrDefaultAsync<long?>
-                        (
-                            "SELECT project_id FROM knowledge_entries WHERE id = @id",
-                            new { id }
-                        );
+        await using var connection = await connectionFactory.CreateAsync(true, cancellationToken);
 
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
@@ -291,8 +285,6 @@ public sealed class KnowledgeRepository
             throw;
         }
 
-        if (projectID is not null)
-            await DeleteEmbeddingAsync(projectID.Value, id, cancellationToken);
     }
 
     public async Task<IReadOnlyList<KnowledgeGroup>> GetGroupsAsync(long projectID, CancellationToken cancellationToken = default)
@@ -305,7 +297,7 @@ public sealed class KnowledgeRepository
                        new { projectID }
                    );
 
-        return rows.ToList();
+        return [.. rows];
     }
 
     public async Task<KnowledgeGroup> CreateGroupAsync(KnowledgeGroup group, CancellationToken cancellationToken = default)
@@ -504,11 +496,13 @@ public sealed class KnowledgeRepository
 
                 Log.Information("知识向量搜索: 原始行数={Raw}, 分组后={Grouped}", rows.Count, grouped.Count);
 
-                return grouped.Select(group => group.MinBy(row => row.Distance))
+                return
+                [
+                    .. grouped.Select(group => group.MinBy(row => row.Distance))
                               .Select(row => new VectorSearchResult(row.EntryID, row.Source, row.Distance))
                               .OrderBy(row => row.Distance)
                               .Take(topK)
-                              .ToList();
+                ];
             },
             cancellationToken
         );
