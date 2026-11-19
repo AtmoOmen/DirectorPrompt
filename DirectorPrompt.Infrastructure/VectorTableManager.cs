@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Serilog;
@@ -153,9 +154,10 @@ public sealed class VectorTableManager
     (
         SqliteConnection  connection,
         string            tableName,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        DbTransaction?    transaction = null
     ) =>
-        await GetDimensionAsync(connection, tableName, cancellationToken) is not null;
+        await GetDimensionAsync(connection, tableName, cancellationToken, (SqliteTransaction?)transaction) is not null;
 
     private static async Task<int?> GetDimensionAsync
     (

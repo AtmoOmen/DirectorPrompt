@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using DirectorPrompt.Agents.Retrieval;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -37,7 +38,13 @@ public sealed class MemoryTools
         ),
         AIFunctionFactory.Create
         (
-            (string content, string tags, string? characterNames = null) =>
+            (
+                    [Description("必填。根据已发生的正文事实编写的完整记忆正文，不得省略或为空。")]
+                    string content,
+                    [Description("必填。用于检索的记忆标签，以逗号分隔。")] string tags,
+                    [Description("涉及的已有角色名，以逗号分隔；没有相关角色时省略。")]
+                    string? characterNames = null
+                ) =>
                 CreateMemoryAsync(context, content, tags, characterNames),
             "create_memory",
             """
@@ -49,7 +56,15 @@ public sealed class MemoryTools
         ),
         AIFunctionFactory.Create
         (
-            (long memoryID, string content, string? tags = null, string? characterNames = null) =>
+            (
+                    [Description("必填。由 query_memory 返回的记忆 ID。")]
+                    long memoryID,
+                    [Description("必填。修改后的完整记忆正文；即使只修改标签或关联角色，也必须填写需要保留的完整正文。")]
+                    string content,
+                    [Description("新的标签，以逗号分隔；省略时保留已有标签。")] string? tags = null,
+                    [Description("关联角色名，以逗号分隔；省略时保留已有角色关联。")]
+                    string? characterNames = null
+                ) =>
                 UpdateMemoryAsync(context, memoryID, content, tags, characterNames),
             "update_memory",
             """
@@ -62,7 +77,15 @@ public sealed class MemoryTools
         ),
         AIFunctionFactory.Create
         (
-            (string memoryIDs, string content, string tags, string? characterNames = null) =>
+            (
+                    [Description("必填。需要合并的记忆 ID，以逗号分隔，取自 query_memory 返回的 id。")]
+                    string memoryIDs,
+                    [Description("必填。合并后的完整记忆正文，不得省略或为空。")]
+                    string content,
+                    [Description("必填。合并后的记忆标签，以逗号分隔。")] string tags,
+                    [Description("涉及的已有角色名，以逗号分隔；没有相关角色时省略。")]
+                    string? characterNames = null
+                ) =>
                 MergeMemoriesAsync(context, memoryIDs, content, tags, characterNames),
             "merge_memories",
             """
@@ -161,6 +184,9 @@ public sealed class MemoryTools
         string?              characterNames
     )
     {
+        if (string.IsNullOrWhiteSpace(content))
+            return ToolResult.Error("content 必须填写完整的记忆正文，不能为空。请补全后重新调用 create_memory。");
+
         Log.Information
         (
             "工具调用: create_memory(sceneID={SceneID}, length={Length})",
@@ -204,6 +230,9 @@ public sealed class MemoryTools
         string?              characterNames
     )
     {
+        if (string.IsNullOrWhiteSpace(content))
+            return ToolResult.Error("content 必须填写修改后的完整记忆正文，不能为空。请补全后重新调用 update_memory。");
+
         Log.Information("工具调用: update_memory(memoryID={MemoryID})", memoryID);
 
         var existing = await memoryRepository.GetByIDAsync(memoryID);
@@ -250,6 +279,9 @@ public sealed class MemoryTools
         string?              characterNames
     )
     {
+        if (string.IsNullOrWhiteSpace(content))
+            return ToolResult.Error("content 必须填写合并后的完整记忆正文，不能为空。请补全后重新调用 merge_memories。");
+
         Log.Information("工具调用: merge_memories(memoryIDs={MemoryIDs})", memoryIDs);
 
         var (charList, error) = await ResolveCharacterIDsAsync(context, characterNames);

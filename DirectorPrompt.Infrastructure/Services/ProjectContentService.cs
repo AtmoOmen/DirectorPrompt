@@ -106,7 +106,7 @@ public sealed class ProjectContentService
                                     (group => new ProjectKnowledgeGroup
                                      (
                                          group,
-                                         entries.Where(entry => entry.GroupID == group.ID).ToList()
+                                         [.. entries.Where(entry => entry.GroupID == group.ID)]
                                      )
                                     )
                                     .ToList();
@@ -116,7 +116,7 @@ public sealed class ProjectContentService
                 (
                     project,
                     grouped,
-                    entries.Where(entry => entry.GroupID is null).ToList(),
+                    [.. entries.Where(entry => entry.GroupID is null)],
                     categories,
                     states
                 );
@@ -138,9 +138,9 @@ public sealed class ProjectContentService
         (
             "开始创建项目内容: 项目名称长度={NameLength}, 知识分组数={KnowledgeGroupCount}, 分类数={CategoryCount}, 全局属性数={StateAttributeCount}, 仅校验={DryRun}",
             name.Length,
-            blueprint?.KnowledgeGroups.Count ?? 0,
+            blueprint?.KnowledgeGroups.Count     ?? 0,
             blueprint?.CharacterCategories.Count ?? 0,
-            blueprint?.StateAttributes.Count ?? 0,
+            blueprint?.StateAttributes.Count     ?? 0,
             dryRun
         );
 
@@ -223,7 +223,6 @@ public sealed class ProjectContentService
                                      projectID,
                                      blueprint.StateAttributes,
                                      null,
-                                     categoryIDs,
                                      groupIDs,
                                      entryIDs,
                                      token
@@ -241,7 +240,6 @@ public sealed class ProjectContentService
                                          projectID,
                                          category.StateAttributes,
                                          categoryID,
-                                         categoryIDs,
                                          groupIDs,
                                          entryIDs,
                                          token
@@ -336,7 +334,7 @@ public sealed class ProjectContentService
 
         var snapshot = await GetProjectAsync(projectID, cancellationToken) ??
                        throw new InvalidOperationException($"项目不存在: ID={projectID}");
-        var metrics = CountDependencies(snapshot, new HashSet<string>());
+        var metrics = CountDependencies(snapshot, []);
 
         await projectRepository.DeleteAsync(projectID, cancellationToken);
         NotifyChanged(projectID, true);
@@ -499,7 +497,7 @@ public sealed class ProjectContentService
             "管理知识条目: 项目={ProjectID}, 操作={Action}, 知识条目={KnowledgeEntryID}, 内容长度={ContentLength}",
             projectID,
             action,
-            entryID ?? entry?.ID,
+            entryID               ?? entry?.ID,
             entry?.Content.Length ?? 0
         );
 
@@ -659,7 +657,7 @@ public sealed class ProjectContentService
             "管理人物分类: 项目={ProjectID}, 操作={Action}, 分类={CategoryID}, 父分类数={ParentCategoryCount}",
             projectID,
             action,
-            categoryID ?? category?.ID,
+            categoryID                         ?? category?.ID,
             category?.ParentCategoryIDs.Length ?? 0
         );
 
@@ -791,7 +789,7 @@ public sealed class ProjectContentService
             case ProjectContentAction.Create:
             {
                 var value = definition ?? throw new ArgumentException("缺少状态属性数据", nameof(definition));
-                await ValidateStateDefinitionAsync(projectID, value, null, cancellationToken);
+                await ValidateStateDefinitionAsync(projectID, value, cancellationToken);
                 var created = await CreateStateAttributeAsync(projectID, value, cancellationToken);
                 NotifyChanged(projectID, false);
                 return created;
@@ -801,7 +799,7 @@ public sealed class ProjectContentService
                 var value = definition  ?? throw new ArgumentException("缺少状态属性数据",  nameof(definition));
                 var id    = attributeID ?? throw new ArgumentException("缺少状态属性 ID", nameof(attributeID));
                 await EnsureEntityProjectAsync("state_attributes", id, projectID, cancellationToken);
-                await ValidateStateDefinitionAsync(projectID, value, id, cancellationToken);
+                await ValidateStateDefinitionAsync(projectID, value, cancellationToken);
                 var updated = await UpdateStateAttributeAsync(projectID, id, value, cancellationToken);
                 NotifyChanged(projectID, false);
                 return updated;
@@ -828,13 +826,13 @@ public sealed class ProjectContentService
     {
         var snapshot = await GetProjectAsync(projectID, cancellationToken) ??
                        throw new InvalidOperationException($"项目不存在: ID={projectID}");
-        var attribute = snapshot.StateAttributes.FirstOrDefault(item => item.ID == attributeID) ??
-                        throw new InvalidOperationException($"状态属性不存在: ID={attributeID}");
-        var config = attribute.Configuration;
+        var (_, _, name, displayName, attributeScope, categoryID, valueType, driver, config) = snapshot.StateAttributes.FirstOrDefault
+                                                                                                   (item => item.ID == attributeID) ??
+                                                                                               throw new InvalidOperationException($"状态属性不存在: ID={attributeID}");
         var trigger = Enum.TryParse<SystemTrigger>(config.Trigger, true, out var parsedTrigger) ?
                           parsedTrigger :
                           SystemTrigger.SceneChange;
-        var scope = patch.Scope ?? attribute.Scope;
+        var scope = patch.Scope ?? attributeScope;
 
         return await ManageStateAttributeAsync
                (
@@ -842,14 +840,14 @@ public sealed class ProjectContentService
                    ProjectContentAction.Update,
                    new StateAttributeDefinition
                    {
-                       Name        = patch.Name        ?? attribute.Name,
-                       DisplayName = patch.DisplayName ?? attribute.DisplayName,
+                       Name        = patch.Name        ?? name,
+                       DisplayName = patch.DisplayName ?? displayName,
                        Scope       = scope,
                        CategoryID = scope == StateScope.Global ?
                                         null :
-                                        patch.CategoryID ?? attribute.CategoryID,
-                       ValueType = patch.ValueType ?? attribute.ValueType,
-                       Driver    = patch.Driver    ?? attribute.Driver,
+                                        patch.CategoryID ?? categoryID,
+                       ValueType = patch.ValueType ?? valueType,
+                       Driver    = patch.Driver    ?? driver,
                        Numeric = patch.Numeric ??
                                  new NumericStateDefinition
                                  {
@@ -873,17 +871,19 @@ public sealed class ProjectContentService
                                   NarrativeGuidance = config.NarrativeGuidance
                               },
                        Phases = patch.Phases ??
-                                config.Phases.Select
-                                (phase => new PhaseDefinition
-                                    {
-                                        Name              = phase.Name,
-                                        Expression        = phase.Expression,
-                                        KnowledgeEntryIDs = [.. phase.KnowledgeIDs],
-                                        KnowledgeGroupIDs = [.. phase.KnowledgeGroupIDs],
-                                        EnterDirectives   = [.. phase.EnterDirectives],
-                                        ExitDirectives    = [.. phase.ExitDirectives]
-                                    }
-                                ).ToList()
+                       [
+                           .. config.Phases.Select
+                           (phase => new PhaseDefinition
+                               {
+                                   Name              = phase.Name,
+                                   Expression        = phase.Expression,
+                                   KnowledgeEntryIDs = [.. phase.KnowledgeIDs],
+                                   KnowledgeGroupIDs = [.. phase.KnowledgeGroupIDs],
+                                   EnterDirectives   = [.. phase.EnterDirectives],
+                                   ExitDirectives    = [.. phase.ExitDirectives]
+                               }
+                           )
+                       ]
                    },
                    attributeID,
                    cancellationToken
@@ -925,7 +925,7 @@ public sealed class ProjectContentService
                         projectID,
                         entryIDs,
                         [groupID],
-                        new HashSet<string>(),
+                        [],
                         token
                     );
                     await DeleteKnowledgeRowsAsync(connection, transaction, projectID, entryIDs, token);
@@ -977,7 +977,7 @@ public sealed class ProjectContentService
                         projectID,
                         [entryID],
                         [],
-                        new HashSet<string>(),
+                        [],
                         token
                     );
                     await DeleteKnowledgeRowsAsync(connection, transaction, projectID, [entryID], token);
@@ -1003,7 +1003,7 @@ public sealed class ProjectContentService
                                    new CommandDefinition
                                    (
                                        "SELECT * FROM character_categories WHERE id = @categoryID AND project_id = @projectID",
-                                       new { categoryID, projectID },
+                                       new { projectID, categoryID },
                                        cancellationToken: token
                                    )
                                ) ??
@@ -1167,7 +1167,7 @@ public sealed class ProjectContentService
         SqliteTransaction                       transaction,
         long                                    projectID,
         IReadOnlyList<KnowledgeGroupDefinition> groups,
-        IReadOnlyDictionary<string, long>       groupIDs,
+        Dictionary<string, long>                groupIDs,
         CancellationToken                       cancellationToken
     )
     {
@@ -1218,7 +1218,6 @@ public sealed class ProjectContentService
         long                                    projectID,
         IReadOnlyList<StateAttributeDefinition> definitions,
         long?                                   categoryID,
-        IReadOnlyDictionary<string, long>       categoryIDs,
         IReadOnlyDictionary<string, long>       groupIDs,
         IReadOnlyDictionary<string, long>       entryIDs,
         CancellationToken                       cancellationToken
@@ -1404,11 +1403,11 @@ public sealed class ProjectContentService
 
     private static async Task DeleteKnowledgeRowsAsync
     (
-        SqliteConnection    connection,
-        SqliteTransaction   transaction,
-        long                projectID,
-        IReadOnlyList<long> entryIDs,
-        CancellationToken   cancellationToken
+        SqliteConnection  connection,
+        SqliteTransaction transaction,
+        long              projectID,
+        List<long>        entryIDs,
+        CancellationToken cancellationToken
     )
     {
         if (entryIDs.Count == 0)
@@ -1416,7 +1415,7 @@ public sealed class ProjectContentService
 
         var tableName = VectorTableManager.GetKnowledgeTableName(projectID);
 
-        if (await VectorTableManager.TableExistsAsync(connection, tableName, cancellationToken))
+        if (await VectorTableManager.TableExistsAsync(connection, tableName, cancellationToken, transaction))
         {
             await connection.ExecuteAsync
             (
@@ -1454,11 +1453,11 @@ public sealed class ProjectContentService
 
     private static async Task DeleteStateAttributesAsync
     (
-        SqliteConnection              connection,
-        SqliteTransaction             transaction,
-        long                          projectID,
-        IReadOnlyList<StateAttribute> attributes,
-        CancellationToken             cancellationToken
+        SqliteConnection     connection,
+        SqliteTransaction    transaction,
+        long                 projectID,
+        List<StateAttribute> attributes,
+        CancellationToken    cancellationToken
     )
     {
         if (attributes.Count == 0)
@@ -1527,7 +1526,7 @@ public sealed class ProjectContentService
         long                 projectID,
         IReadOnlyList<long>  entryIDs,
         IReadOnlyList<long>  groupIDs,
-        IReadOnlySet<string> attributeNames,
+        HashSet<string>      attributeNames,
         CancellationToken    cancellationToken,
         IReadOnlyList<long>? excludedAttributeIDs = null
     )
@@ -1555,24 +1554,20 @@ public sealed class ProjectContentService
             var phases = config.Phases.Select
             (phase => phase with
                 {
-                    KnowledgeIDs = phase.KnowledgeIDs.Where(id => !entrySet.Contains(id)).ToList(),
-                    KnowledgeGroupIDs = phase.KnowledgeGroupIDs.Where(id => !groupSet.Contains(id)).ToList()
+                    KnowledgeIDs = [.. phase.KnowledgeIDs.Where(id => !entrySet.Contains(id))],
+                    KnowledgeGroupIDs = [.. phase.KnowledgeGroupIDs.Where(id => !groupSet.Contains(id))]
                 }
             ).ToList();
             var transitions = config.Transitions?.Where
-                              (
-                                  transition => !transition.Conditions.Any
-                                  (
-                                      condition => attributeNames.Contains(condition.StateName ?? string.Empty)
-                                  )
-                              ).ToList();
+            (transition => !transition.Conditions.Any
+                           (condition => attributeNames.Contains(condition.StateName ?? string.Empty)
+                           )
+            ).ToList();
             var numericChanges = config.NumericChanges.Where
-                                 (
-                                     change => !change.Conditions.Any
-                                     (
-                                         condition => attributeNames.Contains(condition.StateName ?? string.Empty)
-                                     )
-                                 ).ToList();
+            (change => !change.Conditions.Any
+                       (condition => attributeNames.Contains(condition.StateName ?? string.Empty)
+                       )
+            ).ToList();
             var updated = config with
             {
                 Phases = phases,
@@ -1686,8 +1681,8 @@ public sealed class ProjectContentService
             {
                 Name              = phase.Name,
                 Expression        = phase.Expression,
-                KnowledgeIDs      = phase.KnowledgeEntryIDs.Concat(phase.KnowledgeEntryKeys.Select(key => entryIDs[key])).Distinct().ToList(),
-                KnowledgeGroupIDs = phase.KnowledgeGroupIDs.Concat(phase.KnowledgeGroupKeys.Select(key => groupIDs[key])).Distinct().ToList(),
+                KnowledgeIDs      = [.. phase.KnowledgeEntryIDs.Concat(phase.KnowledgeEntryKeys.Select(key => entryIDs[key])).Distinct()],
+                KnowledgeGroupIDs = [.. phase.KnowledgeGroupIDs.Concat(phase.KnowledgeGroupKeys.Select(key => groupIDs[key])).Distinct()],
                 EnterDirectives   = phase.EnterDirectives,
                 ExitDirectives    = phase.ExitDirectives
             }
@@ -1738,7 +1733,7 @@ public sealed class ProjectContentService
     private static (int Transitions, int PhaseReferences) CountDependencies
     (
         ProjectContentSnapshot snapshot,
-        IReadOnlySet<string>   attributeNames
+        HashSet<string>        attributeNames
     )
     {
         var transitions     = 0;
@@ -1747,19 +1742,16 @@ public sealed class ProjectContentService
         foreach (var attribute in snapshot.StateAttributes)
         {
             transitions += attribute.Configuration.Transitions?.Sum
-                           (
-                               transition => transition.Conditions.Count
-                               (
-                                   condition => attributeNames.Contains(condition.StateName ?? string.Empty)
-                               )
-                           ) ?? 0;
+                           (transition => transition.Conditions.Count
+                            (condition => attributeNames.Contains(condition.StateName ?? string.Empty)
+                            )
+                           ) ??
+                           0;
             transitions += attribute.Configuration.NumericChanges.Sum
-                           (
-                               change => change.Conditions.Count
-                               (
-                                   condition => attributeNames.Contains(condition.StateName ?? string.Empty)
-                               )
-                           );
+            (change => change.Conditions.Count
+             (condition => attributeNames.Contains(condition.StateName ?? string.Empty)
+             )
+            );
             phaseReferences += attribute.Configuration.Phases.Sum(phase => phase.KnowledgeIDs.Count + phase.KnowledgeGroupIDs.Count);
         }
 
@@ -1820,7 +1812,6 @@ public sealed class ProjectContentService
     (
         long                     projectID,
         StateAttributeDefinition definition,
-        long?                    attributeID,
         CancellationToken        cancellationToken
     )
     {
@@ -1838,7 +1829,7 @@ public sealed class ProjectContentService
             await EnsureEntityProjectAsync("character_categories", definition.CategoryID.Value, projectID, cancellationToken);
         }
 
-        if (definition.ValueType == StateValueType.Numeric && definition.Numeric is { } numeric)
+        if (definition is { ValueType: StateValueType.Numeric, Numeric: { } numeric })
         {
             if (numeric.Min is not null && numeric.Max is not null && numeric.Min > numeric.Max)
                 throw new ArgumentException("状态属性最小值不能大于最大值", nameof(definition));
@@ -1849,15 +1840,13 @@ public sealed class ProjectContentService
                 throw new ArgumentException("状态属性初始值必须位于最小值和最大值之间", nameof(definition));
 
             if (numeric.Changes.Any
-                (
-                    change => change.Operation is null ||
-                              string.IsNullOrWhiteSpace(change.ValueExpression) ||
-                              change.Conditions.Any
-                              (
-                                  condition => string.IsNullOrWhiteSpace(condition.ExpectedValue) ||
-                                               condition.Source is StateRuleConditionSource.GlobalState or StateRuleConditionSource.CharacterState &&
-                                               string.IsNullOrWhiteSpace(condition.StateName)
-                              )
+                (change => change.Operation is null                          ||
+                           string.IsNullOrWhiteSpace(change.ValueExpression) ||
+                           change.Conditions.Any
+                           (condition => string.IsNullOrWhiteSpace(condition.ExpectedValue) ||
+                                         (condition.Source is StateRuleConditionSource.GlobalState or StateRuleConditionSource.CharacterState &&
+                                          string.IsNullOrWhiteSpace(condition.StateName))
+                           )
                 ))
                 throw new ArgumentException("数值变更规则必须指定有效的条件和变化表达式", nameof(definition));
         }
@@ -1918,7 +1907,7 @@ public sealed class ProjectContentService
 
     private void NotifyChanged(long projectID, bool isDeleted)
     {
-        ProjectContentChange? change = null;
+        ProjectContentChange change;
 
         lock (changeSync)
         {

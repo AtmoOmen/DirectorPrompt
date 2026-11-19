@@ -384,7 +384,7 @@ public sealed class KnowledgeRepository
 
                 await using var transaction = await connection.BeginTransactionAsync(token);
 
-                if (await VectorTableManager.TableExistsAsync(connection, tableName, token))
+                if (await VectorTableManager.TableExistsAsync(connection, tableName, token, transaction))
                 {
                     await connection.ExecuteAsync
                     (

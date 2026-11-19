@@ -69,7 +69,28 @@ public sealed class PostProcessingStage
             Tools       = [.. tools]
         };
 
-        await client.GetResponseAsync(messages, options, cancellationToken);
+        var response   = await client.GetResponseAsync(messages, options, cancellationToken);
+        var calls      = new Dictionary<string, string>(StringComparer.Ordinal);
+        var toolErrors = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var content in response.Messages.SelectMany(message => message.Contents))
+        {
+            switch (content)
+            {
+                case FunctionCallContent call:
+                    calls[call.CallId] = call.Name;
+                    break;
+                case FunctionResultContent result when calls.TryGetValue(result.CallId, out var toolName):
+                    if (ToolResult.IsError(result.Result))
+                        toolErrors[toolName] = result.Result?.ToString() ?? string.Empty;
+                    else
+                        toolErrors.Remove(toolName);
+                    break;
+            }
+        }
+
+        if (toolErrors.Count > 0)
+            throw new InvalidOperationException($"记忆与状态更新尚未完成：{string.Join("；", toolErrors.Select(error => $"{error.Key}: {error.Value}"))}");
 
         await characterRepository.ArchiveStaleAsync
         (

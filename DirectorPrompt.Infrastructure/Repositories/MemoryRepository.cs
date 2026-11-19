@@ -65,7 +65,7 @@ public sealed class MemoryRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -94,7 +94,7 @@ public sealed class MemoryRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -138,7 +138,7 @@ public sealed class MemoryRepository
                                )
                            );
 
-                return rows.ToList();
+                return [.. rows];
             },
             cancellationToken
         );
@@ -537,7 +537,7 @@ public sealed class MemoryRepository
                 );
                 var tableName = VectorTableManager.GetMemoryTableName(projectID);
 
-                if (await VectorTableManager.TableExistsAsync(connection, tableName, token))
+                if (await VectorTableManager.TableExistsAsync(connection, tableName, token, transaction))
                 {
                     await connection.ExecuteAsync
                     (
@@ -593,7 +593,7 @@ public sealed class MemoryRepository
 
                 await using var transaction = await connection.BeginTransactionAsync(token);
 
-                if (await VectorTableManager.TableExistsAsync(connection, tableName, token))
+                if (await VectorTableManager.TableExistsAsync(connection, tableName, token, transaction))
                 {
                     await connection.ExecuteAsync
                     (
@@ -712,24 +712,26 @@ public sealed class MemoryRepository
                                )
                            );
 
-                return rows
+                return
+                [
+                    .. rows
                        .GroupBy(row => row.EntryID)
                        .Select(group => group.MinBy(row => row.Distance))
                        .Select(row => new VectorSearchResult(row.EntryID, row.Source, row.Distance))
                        .OrderBy(row => row.Distance)
                        .Take(topK)
-                       .ToList();
+                ];
             },
             cancellationToken
         );
 
     private sealed class MergeSourceMetadata
     {
-        public long  FoundCount       { get; set; }
-        public long? ProjectID        { get; set; }
-        public long? MaxProjectID     { get; set; }
-        public long? SessionID        { get; set; }
-        public long? MaxSessionID     { get; set; }
-        public long  TimelinePosition { get; set; }
+        public long  FoundCount       { get; init; }
+        public long? ProjectID        { get; init; }
+        public long? MaxProjectID     { get; init; }
+        public long? SessionID        { get; init; }
+        public long? MaxSessionID     { get; init; }
+        public long  TimelinePosition { get; init; }
     }
 }

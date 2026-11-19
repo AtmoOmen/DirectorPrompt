@@ -107,7 +107,36 @@ public sealed class ChatClientFactory : IChatClientFactory, IDisposable
             builder = builder.Use(next => new CacheControlChatClient(next));
 
         if (invokeTools)
-            builder = builder.UseFunctionInvocation(configure: client => client.IncludeDetailedErrors = true);
+            builder = builder.UseFunctionInvocation
+            (
+                configure: client =>
+                {
+                    client.IncludeDetailedErrors = true;
+                    client.FunctionInvoker = async (context, cancellationToken) =>
+                    {
+                        try
+                        {
+                            return await context.Function.InvokeAsync(context.Arguments, cancellationToken);
+                        }
+                        catch (ArgumentException exception) when (exception.ParamName == "arguments")
+                        {
+                            Log.Warning
+                            (
+                                exception,
+                                "工具参数校验失败: 工具={Tool}, 调用={CallID}, 参数名={ArgumentNames}",
+                                context.Function.Name,
+                                context.CallContent.CallId,
+                                string.Join(", ", context.Arguments.Keys)
+                            );
+                            return ToolResult.Error
+                            (
+                                $"工具 {context.Function.Name} 的参数不符合要求：{exception.Message}\n" +
+                                $"请补全或修正参数后重新调用，不得省略必填字段。参数结构：{context.Function.JsonSchema}"
+                            );
+                        }
+                    };
+                }
+            );
 
         return builder.Build();
     }
